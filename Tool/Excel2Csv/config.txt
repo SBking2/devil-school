@@ -1,0 +1,3 @@
+D:\Project\Godot\2DGame
+Excel
+Godot\Data
