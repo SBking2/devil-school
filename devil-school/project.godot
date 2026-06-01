@@ -11,7 +11,8 @@ config_version=5
 [application]
 
 config/name="devil-school"
-config/features=PackedStringArray("4.6", "Forward Plus")
+run/main_scene="uid://dge3avc7g1le2"
+config/features=PackedStringArray("4.6", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 
 [dotnet]
