@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://dge3avc7g1le2"]
+
+[ext_resource type="Script" uid="uid://bgg7dp3nm278q" path="res://scripts/Core/Nodes/NGame.cs" id="1_uwrxv"]
+[ext_resource type="PackedScene" uid="uid://bitmk3vfwbj4b" path="res://scenes/run.tscn" id="2_yqjtg"]
+
+[node name="NGame" type="Control" unique_id=376375264]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_uwrxv")
+
+[node name="NRun" parent="." unique_id=1352939076 instance=ExtResource("2_yqjtg")]
+layout_mode = 0

@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://bitmk3vfwbj4b"]
+
+[ext_resource type="Script" uid="uid://cf7ns8aok1b1a" path="res://scripts/Core/Nodes/NRun.cs" id="1_2d5n6"]
+
+[node name="NRun" type="Control" unique_id=1352939076]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_2d5n6")

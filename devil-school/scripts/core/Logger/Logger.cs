@@ -35,7 +35,13 @@ namespace EGame
         private static void LogMessage(LogLevel level, string message, bool is_show_stack_trace, int skip_frame, bool is_color = true)
         {
             var time_stamp = DateTime.Now.ToString("HH:mm:ss");
-            string normal_message = $"{GetLevelStr(level)} {time_stamp} {message}";
+
+            string normal_message = $"{GetLevelStr(level)}";
+
+            if (is_color)
+                normal_message = $"[color={GetColorCode(level)}]" + normal_message + "[/color]";
+
+            normal_message += $" {time_stamp} {message}";
 
             //报错信息要输出报错位置
             if(is_show_stack_trace)
@@ -43,9 +49,6 @@ namespace EGame
                 StackTrace st = new StackTrace(skip_frame, true);
                 normal_message += $"\n{st}";
             }
-
-            if(is_color)
-                normal_message = $"[color={GetColorCode(level)}]" + normal_message + "[/color]";
 
             GD.PrintRich(normal_message);
         }

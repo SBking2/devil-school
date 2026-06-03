@@ -1,0 +1,15 @@
+{
+  "profiles": {
+    "devil-school": {
+      "commandName": "Project",
+      "commandLineArgs": "--path . --verbose",
+      "workingDirectory": "."
+    },
+    "Godot": {
+      "commandName": "Executable",
+      "executablePath": "D:\\Software\\GameEngine\\Godot\\Godot_v4.6.1-stable_mono_win64.exe",
+      "commandLineArgs": "--path . --verbose",
+      "workingDirectory": "."
+    }
+  }
+}
