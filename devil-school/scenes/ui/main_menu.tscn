@@ -1,0 +1,23 @@
+[gd_scene format=3 uid="uid://04wg4ebg55yg"]
+
+[ext_resource type="Script" uid="uid://cvwue5w6i0wm0" path="res://scripts/Core/Nodes/UI/NMainMenu.cs" id="1_fe2o3"]
+[ext_resource type="Texture2D" uid="uid://bitprluqb53ql" path="res://images/ui/main_menu/background.png" id="2_1g8jr"]
+
+[node name="MainMenu" type="Control" unique_id=435895190]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_fe2o3")
+
+[node name="TextureRect" type="TextureRect" parent="." unique_id=1612320092]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_1g8jr")
+expand_mode = 1
