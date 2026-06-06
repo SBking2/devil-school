@@ -7,11 +7,17 @@ namespace EGame
 {
     public static class Logger
     {
-        private enum LogLevel
+        public enum LogLevel
         {
-            Debug,
-            Warn,
-            Error
+            VeryDebug = 0,
+            Debug = 1,
+            Warn = 2,
+            Error = 3
+        }
+
+        public static void VeyDebug(string message, int skip_frame = 2)
+        {
+            LogMessage(LogLevel.VeryDebug, message, false, skip_frame);
         }
 
         public static void Debug(string message, int skip_frame = 2)
@@ -34,6 +40,9 @@ namespace EGame
         /// </summary>
         private static void LogMessage(LogLevel level, string message, bool is_show_stack_trace, int skip_frame, bool is_color = true)
         {
+            if (level < Settins.LogLevel)
+                return;
+
             var time_stamp = DateTime.Now.ToString("HH:mm:ss");
 
             string normal_message = $"{GetLevelStr(level)}";
@@ -57,9 +66,10 @@ namespace EGame
         {
             switch(level)
             {
-                case LogLevel.Debug: return "[DEBUG]";
-                case LogLevel.Warn:  return "[WARNN]";
-                case LogLevel.Error: return "[ERROR]";
+                case LogLevel.VeryDebug:    return "[VRBDBG]";  // Very Debug
+                case LogLevel.Debug:        return "[DEBUG]";
+                case LogLevel.Warn:         return "[WARN]";   // 修正拼写
+                case LogLevel.Error:        return "[ERROR]";
             }
             return "";
         }
@@ -68,9 +78,10 @@ namespace EGame
         {
             switch (level)
             {
-                case LogLevel.Debug:    return "#76FF56";
-                case LogLevel.Warn:     return "#FFCB3D";
-                case LogLevel.Error:    return "#FF4747";
+                case LogLevel.VeryDebug:        return "#888888";   // 灰色，表示更详细的调试信息
+                case LogLevel.Debug:            return "#76FF56";   // 绿色
+                case LogLevel.Warn:             return "#FFCB3D";   // 黄色
+                case LogLevel.Error:            return "#FF4747";   // 红色
             }
             return "";
         }
