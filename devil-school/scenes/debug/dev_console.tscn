@@ -1,0 +1,69 @@
+[gd_scene format=3 uid="uid://drjgdl7h8yx3o"]
+
+[ext_resource type="Script" uid="uid://cpp3tsoh5b18" path="res://scripts/Core/Nodes/Debug/NDevConsole.cs" id="1_56lm3"]
+[ext_resource type="Texture2D" uid="uid://b7rj5uh5fh7ob" path="res://images/debug/dev_console_label.png" id="1_akqup"]
+
+[node name="DevConsole" type="CanvasLayer" unique_id=1579904544]
+
+[node name="NConsole" type="Control" parent="." unique_id=1404201125]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_56lm3")
+
+[node name="BG" type="ColorRect" parent="NConsole" unique_id=1069038030]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.43529412)
+
+[node name="OutputContainer" type="MarginContainer" parent="NConsole" unique_id=600430168]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 600.0
+grow_horizontal = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+metadata/_edit_lock_ = true
+
+[node name="RichTextLabel" type="RichTextLabel" parent="NConsole/OutputContainer" unique_id=154381565]
+layout_mode = 2
+text = "Hello My name is fucking cuming!
+fuck you"
+
+[node name="InputContainer" type="HBoxContainer" parent="NConsole" unique_id=1264476880]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -48.0
+grow_horizontal = 2
+grow_vertical = 0
+metadata/_edit_lock_ = true
+
+[node name="IconContainer" type="MarginContainer" parent="NConsole/InputContainer" unique_id=1081354310]
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_override_constants/margin_left = 5
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 5
+theme_override_constants/margin_bottom = 5
+
+[node name="Icon" type="TextureRect" parent="NConsole/InputContainer/IconContainer" unique_id=83407461]
+layout_mode = 2
+texture = ExtResource("1_akqup")
+expand_mode = 1
+
+[node name="InputBoard" type="LineEdit" parent="NConsole/InputContainer" unique_id=1309037763]
+layout_mode = 2
+size_flags_horizontal = 3

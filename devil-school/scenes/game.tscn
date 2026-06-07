@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://bgg7dp3nm278q" path="res://scripts/Core/Nodes/NGame.cs" id="1_uwrxv"]
 [ext_resource type="Script" uid="uid://ppkuavrg33ky" path="res://scripts/Core/Nodes/UI/NClickableControl.cs" id="3_lbhrr"]
 [ext_resource type="Script" uid="uid://bxw63hwdl8rpg" path="res://scripts/Core/Nodes/NSceneContainer.cs" id="3_lnu2h"]
+[ext_resource type="PackedScene" uid="uid://drjgdl7h8yx3o" path="res://scenes/debug/dev_console.tscn" id="4_lbhrr"]
 
 [node name="NGame" type="Control" unique_id=376375264]
 layout_mode = 3
@@ -31,3 +32,5 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("3_lbhrr")
+
+[node name="DevConsole" parent="." unique_id=1579904544 instance=ExtResource("4_lbhrr")]

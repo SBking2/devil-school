@@ -67,7 +67,7 @@ namespace EGame
             {
                 _IsPress = true;
                 OnPressed();
-            }    
+            }
         }
 
         private void OnMouseReleasedHandler(InputEventMouseButton _event)
