@@ -64,13 +64,13 @@ namespace EGame
             }
         }
 
-        public CmdResult ExecuteCommand(string cmd)
+        public CmdResult ProcessCmd(string cmd)
         {
             cmd = cmd.Trim();   //删除开头和结尾的空白字符
             _Historys.EnQueue(cmd);
             SaveHistory();
 
-            var result = ExecuteCommandInternal(cmd);
+            var result = ProcessCommandInternal(cmd);
             var task = result.Task;
 
             if(task != null)
@@ -79,7 +79,7 @@ namespace EGame
             return result;
         }
 
-        private CmdResult ExecuteCommandInternal(string input_line)
+        private CmdResult ProcessCommandInternal(string input_line)
         {
             var array = input_line.Split(' ');
             var cmd_name = array[0];

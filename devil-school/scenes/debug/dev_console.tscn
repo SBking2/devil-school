@@ -6,6 +6,7 @@
 [node name="DevConsole" type="CanvasLayer" unique_id=1579904544]
 
 [node name="NConsole" type="Control" parent="." unique_id=1404201125]
+visible = false
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -35,10 +36,9 @@ theme_override_constants/margin_right = 10
 theme_override_constants/margin_bottom = 10
 metadata/_edit_lock_ = true
 
-[node name="RichTextLabel" type="RichTextLabel" parent="NConsole/OutputContainer" unique_id=154381565]
+[node name="OutputBuffer" type="RichTextLabel" parent="NConsole/OutputContainer" unique_id=154381565]
+unique_name_in_owner = true
 layout_mode = 2
-text = "Hello My name is fucking cuming!
-fuck you"
 
 [node name="InputContainer" type="HBoxContainer" parent="NConsole" unique_id=1264476880]
 layout_mode = 1
@@ -64,6 +64,8 @@ layout_mode = 2
 texture = ExtResource("1_akqup")
 expand_mode = 1
 
-[node name="InputBoard" type="LineEdit" parent="NConsole/InputContainer" unique_id=1309037763]
+[node name="InputBuffer" type="LineEdit" parent="NConsole/InputContainer" unique_id=1309037763]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+keep_editing_on_text_submit = true

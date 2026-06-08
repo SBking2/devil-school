@@ -15,12 +15,18 @@ namespace EGame
         public override void _EnterTree()
         {
             base._EnterTree();
-            Logger.Debug("Game Start!");
             Instance = this;
 
-            _RootSceneContainer = GetNode<NSceneContainer>("%RootSceneContainer");
+            
+        }
 
+        public override void _Ready()
+        {
+            base._Ready();
+            _RootSceneContainer = GetNode<NSceneContainer>("%RootSceneContainer");
             EnterMainMenu();
+
+            Settins.LogLevel = Logger.LogLevel.Debug;
         }
 
         private void EnterMainMenu()

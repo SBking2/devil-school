@@ -74,7 +74,7 @@ namespace EGame
             return "";
         }
 
-        private static string GetColorCode(LogLevel level)
+        public static string GetColorCode(LogLevel level)
         {
             switch (level)
             {
