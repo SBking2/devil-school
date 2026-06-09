@@ -1,12 +1,11 @@
 [gd_scene format=3 uid="uid://drjgdl7h8yx3o"]
 
-[ext_resource type="Script" uid="uid://cpp3tsoh5b18" path="res://scripts/Core/Nodes/Debug/NDevConsole.cs" id="1_56lm3"]
+[ext_resource type="Script" uid="uid://cpp3tsoh5b18" path="res://scripts/core/Nodes/Debug/NDevConsole.cs" id="1_56lm3"]
 [ext_resource type="Texture2D" uid="uid://b7rj5uh5fh7ob" path="res://images/debug/dev_console_label.png" id="1_akqup"]
 
 [node name="DevConsole" type="CanvasLayer" unique_id=1579904544]
 
 [node name="NConsole" type="Control" parent="." unique_id=1404201125]
-visible = false
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -39,6 +38,7 @@ metadata/_edit_lock_ = true
 [node name="OutputBuffer" type="RichTextLabel" parent="NConsole/OutputContainer" unique_id=154381565]
 unique_name_in_owner = true
 layout_mode = 2
+bbcode_enabled = true
 
 [node name="InputContainer" type="HBoxContainer" parent="NConsole" unique_id=1264476880]
 layout_mode = 1

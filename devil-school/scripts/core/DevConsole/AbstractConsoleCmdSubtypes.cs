@@ -1,5 +1,3 @@
-
-
 using System;
 using System.Collections.Generic;
 
@@ -11,7 +9,7 @@ namespace EGame
         
         private static Type[] _AllTypes = new Type[]
         {
-            
+            typeof(LogConsoleCmd),
         };
     }
 }

@@ -6,12 +6,9 @@ namespace EGame
 	public partial class NDevConsole : Control
 	{
 		public static NDevConsole Instance { get; private set; }
-
 		private RichTextLabel _OutputBuffer;
 		private LineEdit _InputBuffer;
-
 		private DevConsole _DevConsole;
-
 		public override void _EnterTree()
 		{
 			base._EnterTree();
@@ -42,13 +39,24 @@ namespace EGame
 				{
 					if (key_event.Keycode == Key.Enter && IsVisibleInTree())
 						TryProcessCmd();
-
 					else if (key_event.Keycode == Key.Asciitilde || key_event.Keycode == Key.Quoteleft)
 					{
 						if (this.Visible == false)
 							ShowConsole();
 						else
 							HideConsole();
+					}
+					else if(key_event.Keycode == Key.Up)
+					{
+						var cmd = _DevConsole.GetNextCommand();
+						if(cmd != string.Empty)
+							_InputBuffer.Text = cmd;
+					}
+					else if(key_event.Keycode == Key.Down)
+					{
+						var cmd = _DevConsole.GetPreviousCommand();
+						if(cmd != string.Empty)
+							_InputBuffer.Text = cmd;
 					}
 				}
 			}
@@ -58,6 +66,7 @@ namespace EGame
 		{
 			var input = _InputBuffer.Text;
 			input = input.Trim();
+			input = input.ToLower();
 
 			if (input == string.Empty)
 				return;
@@ -79,7 +88,9 @@ namespace EGame
 		private void ProcessCmd(string input)
 		{
 			var result = _DevConsole.ProcessCmd(input);
-			_OutputBuffer.Text = _OutputBuffer.Text + result.Message + "\n";
+			var color_code = result.Success ? "#76FF56" : "#E74C3C";
+			var result_str = result.Success ? "Success" : "Failed";
+			_OutputBuffer.Text = _OutputBuffer.Text + $"[b][color={color_code}][{result_str}][/color][/b] : " + result.Message + "\n";
 		}
 
 		private void ShowConsole()

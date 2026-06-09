@@ -9,20 +9,22 @@ namespace EGame
     public class DevConsole
     {
         public static DevConsole Instance { get; } = new DevConsole(false);
-
         private Dictionary<string, AbstractConsoleCmd> _CmdDic = new Dictionary<string, AbstractConsoleCmd>();
-
         private FixedSizeQueue<string> _Historys;
-
-        private int _HistoryIndex;
-
+        private int _HistoryIndex = -1;
         private string _HistoryFilePath;
 
         public DevConsole(bool is_only_debug)
         {
             //记录命令
             _HistoryFilePath = UserDataPathProvider.GetAccountScopedBasePath("console_history.log");
+            
+            var user_data_header = "user://";
+            var start_index = _HistoryFilePath.IndexOf(user_data_header);
+            var console_file_path = _HistoryFilePath.Remove(start_index, user_data_header.Length);
+            Logger.VeyDebug($"DevConsole history file path: {OS.GetUserDataDir() + "/" + console_file_path}");
             _Historys = new FixedSizeQueue<string>(40);
+            _HistoryIndex = -1;
             LoadHistory();
 
             var all_cmd_type = AbstractConsoleCmdSubtypes.All;
@@ -32,6 +34,24 @@ namespace EGame
                 if(instance.DebugOnly == false || is_only_debug == false)
                     RegisterCmd(instance);
             }
+        }
+
+        public string GetNextCommand()
+        {
+            if(_HistoryIndex + 1 >= _Historys.Count)
+                return string.Empty;
+            
+            _HistoryIndex++;
+            return _Historys[_HistoryIndex];
+        }
+
+        public string GetPreviousCommand()
+        {
+            if(_HistoryIndex - 1 < 0)
+                return string.Empty;
+
+            _HistoryIndex--;
+            return _Historys[_HistoryIndex];
         }
 
         private void RegisterCmd(AbstractConsoleCmd cmd)
@@ -68,6 +88,8 @@ namespace EGame
         {
             cmd = cmd.Trim();   //删除开头和结尾的空白字符
             _Historys.EnQueue(cmd);
+
+            _HistoryIndex = -1;
             SaveHistory();
 
             var result = ProcessCommandInternal(cmd);

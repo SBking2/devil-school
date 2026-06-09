@@ -15,5 +15,12 @@ namespace EGame
             this.Message = msg;
             this.Task = task;
         }
+
+        public CmdResult(bool success, string msg)
+        {
+            this.Success = success;
+            this.Message = msg;
+            this.Task = null;
+        }
     }
 }
