@@ -67,20 +67,33 @@ namespace EGame
 
         private void OnMousePressedHandler(InputEventMouseButton _event)
         {
-            if(IsFocus && _event.ButtonIndex == MouseButton.Left)
+            if(IsFocus)
             {
-                _IsPress = true;
-                OnPressed();
+                PressHandler();
             }
         }
 
         private void OnMouseReleasedHandler(InputEventMouseButton _event)
         {
-            if(IsFocus && _event.ButtonIndex == MouseButton.Left)
+            if(IsFocus)
+            {
+                OnReleased();
+            }    
+        }
+
+        private void PressHandler()
+        {
+            _IsPress = true;
+            OnPressed();
+        }
+
+        private void ReleaseHanlder()
+        {
+            if(_IsPress)
             {
                 _IsPress = false;
                 OnReleased();
-            }    
+            }
         }
 
         private void RefreshFocus()

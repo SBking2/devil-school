@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://drjgdl7h8yx3o"]
 
-[ext_resource type="Script" uid="uid://cpp3tsoh5b18" path="res://scripts/core/Nodes/Debug/NDevConsole.cs" id="1_56lm3"]
+[ext_resource type="Script" uid="uid://cpp3tsoh5b18" path="res://scripts/Core/Nodes/Debug/NDevConsole.cs" id="1_56lm3"]
 [ext_resource type="Texture2D" uid="uid://b7rj5uh5fh7ob" path="res://images/debug/dev_console_label.png" id="1_akqup"]
 
 [node name="DevConsole" type="CanvasLayer" unique_id=1579904544]

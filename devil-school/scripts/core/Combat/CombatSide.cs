@@ -7,6 +7,7 @@ namespace EGame
     {
         None,
         Player,
+        Partner,
         Enemy
     }
 
@@ -19,6 +20,7 @@ namespace EGame
                 CombatSide.None => CombatSide.None,
                 CombatSide.Player => CombatSide.Enemy,
                 CombatSide.Enemy => CombatSide.Player,
+                CombatSide.Partner => CombatSide.Partner,
                 _ => throw new ArgumentOutOfRangeException("side", side, null),
             };
         }
