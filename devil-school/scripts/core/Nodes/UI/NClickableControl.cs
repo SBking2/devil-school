@@ -36,13 +36,17 @@ namespace EGame
         private bool _IsControlFocus = false;
         private bool _IsControlHorver = false;
         private bool _IsPress = false;
+        private Vector2 _BeginDragPos = Vector2.Zero;
+        
+        [Export(PropertyHint.None, "拖动距离阈值")] 
+        protected float _DragThreshold = -1.0f;
         
         private void OnHorveredHandler()
         {
             _IsControlHorver = true;
             RefreshFocus();
         }
-
+        
         private void OnUnHorveredHandler()
         {
             _IsControlHorver = false;
@@ -105,6 +109,15 @@ namespace EGame
         /////////////////////////////////////////////////////////////////////////
         //////                      开放给项目使用
         /////////////////////////////////////////////////////////////////////////
+
+        protected void CheckDragThreshold(InputEvent input_event)
+        {
+            if(_DragThreshold > 0)
+            {
+                if(_IsPress && input_event is InputEventMouseMotion motion_event && _BeginDragPos.DistanceTo(motion_event.GlobalPosition) >= _DragThreshold)
+                    _IsPress = false;
+            }
+        }
 
         public bool IsFocus { get; private set; }
 
