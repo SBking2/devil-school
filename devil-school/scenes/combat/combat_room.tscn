@@ -1,0 +1,36 @@
+[gd_scene format=3 uid="uid://bsxu1c73j63ye"]
+
+[ext_resource type="Script" uid="uid://bbrkcdg7dgky6" path="res://scripts/Core/Nodes/Combat/NCombatRoom.cs" id="1_8crir"]
+
+[node name="NCombatRoom" type="Control" unique_id=1520124920]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_8crir")
+
+[node name="SceneContainer" type="Control" parent="." unique_id=1209730091]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="AllyContainer" type="Control" parent="SceneContainer" unique_id=1537444898]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="EnemyContainer" type="Control" parent="SceneContainer" unique_id=912809607]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2

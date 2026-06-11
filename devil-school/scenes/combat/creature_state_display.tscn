@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://rwlxjqk1845h"]
+
+[ext_resource type="Script" uid="uid://cta76wt63dvmq" path="res://scripts/Core/Nodes/Combat/NCreatureStateDisplay.cs" id="1_ytmxm"]
+[ext_resource type="PackedScene" uid="uid://obmiisif0xmg" path="res://scenes/combat/heal_bar.tscn" id="2_xw7np"]
+
+[node name="NCreatureStateDisplay" type="Control" unique_id=713187903]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_ytmxm")
+
+[node name="NHealBar" parent="." unique_id=1199805928 instance=ExtResource("2_xw7np")]
+layout_mode = 0

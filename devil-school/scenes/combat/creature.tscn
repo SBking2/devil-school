@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://c4ldc63weessa"]
+
+[ext_resource type="Script" uid="uid://dufsfuvck6tx3" path="res://scripts/Core/Nodes/Combat/NCreature.cs" id="1_slh05"]
+
+[node name="NCreature" type="Control" unique_id=1993856050]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_slh05")

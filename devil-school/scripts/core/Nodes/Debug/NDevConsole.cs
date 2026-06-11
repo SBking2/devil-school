@@ -26,6 +26,8 @@ namespace EGame
 			_DevConsole = new DevConsole(false);
 			_OutputBuffer = GetNode<RichTextLabel>("%OutputBuffer");
 			_InputBuffer = GetNode<LineEdit>("%InputBuffer");
+
+			HideConsole();
 		}
 
 		public override void _Input(InputEvent @event)
