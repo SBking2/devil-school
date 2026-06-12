@@ -19,14 +19,12 @@ namespace EGame
 			base._Ready();
 			_MiddleHP = GetNode<Control>("%MiddleHP");
 			_ForegroundHP = GetNode<Control>("%ForegroundHP");
-
-			RefreshForegroundWidth();
 		}
 
-		private void RefreshForegroundWidth()
+		private void RefreshForegroundWidth(int cur_hp, int max_hp)
 		{
 			if(_ForegroundHP != null)
-				_ForegroundHP.OffsetRight = GetFGWidth(10, 50) - MaxForegroundWidth;
+				_ForegroundHP.OffsetRight = GetFGWidth(cur_hp, max_hp) - MaxForegroundWidth;
 		}
 
 		private float GetFGWidth(int current_hp, int max_hp)
