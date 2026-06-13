@@ -10,7 +10,31 @@ namespace EGame
             return new ModelID(type.Catogory(), type.Entry());
         }
 
-        public static string Catogory(this Type type)
+        private static string Catogory(this Type type)
+        {
+            var ct = type.CatogoryType();
+            var result = ct.Name.Slugify();
+            if(result.EndsWith("_MODEL"))
+            {
+                int length = "_MODEL".Length;
+                result.Substring(0, result.Length - length);
+            }
+            return result;
+        }
+
+        public static string Entry(this Type type)
+        {
+            var ct = type.EntryType();
+            var result = ct.Name.Slugify();
+            if (result.EndsWith("_MODEL"))
+            {
+                int length = "_MODEL".Length;
+                result.Substring(0, result.Length - length);
+            }
+            return result;
+        }
+
+        private static Type CatogoryType(this Type type)
         {
             var tmp_type = type;
 
@@ -18,13 +42,14 @@ namespace EGame
                 tmp_type = tmp_type.BaseType;
 
             if (tmp_type.BaseType == null)
-                return "";
-            return tmp_type.Name;
+                throw new ModelDBException("Try to get the catogory in the class which is not the subtype of abstract_model!");
+
+            return tmp_type;
         }
 
-        public static string Entry(this Type type)
+        private static Type EntryType(this Type type)
         {
-            return type.Name;
+            return type;
         }
     }
 }

@@ -27,7 +27,7 @@ namespace EGame
 
 		private void EnterMainMenu()
 		{
-			var main_menu = LoadManager.LoadScene<Control>("res://scenes/ui/main_menu.tscn");
+			var main_menu = SceneHelper.LoadScene<Control>("ui/main_menu.tscn");
 			_RootSceneContainer.SetScene(main_menu);
 		}
 	}

@@ -57,5 +57,15 @@ namespace EGame
 				}
 			}
 		}
+
+		public NCreatureVisual CreateVisuals()
+		{
+			if (_PartnerModel != null)
+				return _PartnerModel.CreateVisual();
+			if (_MonsterModel != null)
+				return _MonsterModel.CreateVisual();
+
+			return null;
+		}
 	}
 }
