@@ -16,19 +16,28 @@ namespace EGame
 		{
 			base._EnterTree();
 			Instance = this;
+
+			ModelDB.OnInit();
 		}
 
 		public override void _Ready()
 		{
 			base._Ready();
 			_RootSceneContainer = GetNode<NSceneContainer>("%RootSceneContainer");
-			EnterMainMenu();
+			DebugEnterCombat();
 		}
 
 		private void EnterMainMenu()
 		{
 			var main_menu = SceneHelper.LoadScene<Control>("ui/main_menu.tscn");
 			_RootSceneContainer.SetScene(main_menu);
+		}
+
+		private void DebugEnterCombat()
+		{
+			CombatRoom room = new CombatRoom();
+			var nroom = NCombatRoom.Create(room);
+			_RootSceneContainer.SetScene(nroom);
 		}
 	}
 }

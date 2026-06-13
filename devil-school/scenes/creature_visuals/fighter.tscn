@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://ditku4suqqkus"]
+
+[ext_resource type="Script" uid="uid://bftk3rmnrxvas" path="res://scripts/Core/Nodes/Combat/NCreatureVisual.cs" id="1_fw0lh"]
+[ext_resource type="Texture2D" uid="uid://c65wymxrvmqbo" path="res://images/character/fighter.png" id="2_fw0lh"]
+
+[node name="CreatureVisual" type="Control" unique_id=1192989334]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_fw0lh")
+
+[node name="TextureRect" type="TextureRect" parent="." unique_id=1483926569]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 58.0
+texture = ExtResource("2_fw0lh")
+expand_mode = 1

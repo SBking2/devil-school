@@ -10,9 +10,5 @@ namespace EGame
         public static CombatManager Instance { get; } = new CombatManager();
 
         private CombatState _CombatState;
-        public void SetUpCombat(CombatState state)
-        {
-            
-        }
     }
 }

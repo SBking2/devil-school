@@ -11,7 +11,7 @@ namespace EGame
 		}
 		public static T LoadScene<T>(string path) where T : Node
 		{
-			var scene = GD.Load<PackedScene>(GetScenePath(path));
+			var scene = GD.Load<PackedScene>(GetScenePath(path + ".tscn"));
 			var instance = scene.Instantiate();
 			return instance as T;
 		}

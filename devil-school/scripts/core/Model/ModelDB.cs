@@ -17,10 +17,20 @@ namespace EGame
             foreach(var type in all_subtypes)
             {
                 var instance = (AbstractModel)Activator.CreateInstance(type);
-                var id = type.ToModelID();
+                var id = ToModelID(type);
                 _ModelInstance.Add(id, instance);
                 Logger.Debug($"Loaded Model : {id.ToString()}");
             }
+        }
+
+        public static ModelID GetID<T>() where T : AbstractModel
+        {
+            return GetID(typeof(T));
+        }
+
+        public static ModelID GetID(Type type)
+        {
+            return ToModelID(type);
         }
 
         public static MonsterModel Monster<T>() where T : MonsterModel
@@ -35,10 +45,68 @@ namespace EGame
 
         private static AbstractModel Get(Type type)
         {
-            var id = type.ToModelID();
+            var id = ToModelID(type);
             if (_ModelInstance.ContainsKey(id))
                 return _ModelInstance[id];
             return null;
+        }
+        public static bool Contains<T>() where T : AbstractModel
+        {
+            return Contains(typeof(T));
+        }
+        public static bool Contains(Type type)
+        {
+            var id = ToModelID(type);
+            return _ModelInstance.ContainsKey(id);
+        }
+
+        ///////////////////////////////////////////// 获取ModelID ////////////////////////////////////
+
+        private static ModelID ToModelID(Type type)
+        {
+            return new ModelID(Catogory(type), Entry(type));
+        }
+
+        private static string Catogory(Type type)
+        {
+            var ct = CatogoryType(type);
+            var result = ct.Name.Slugify();
+            if (result.EndsWith("_MODEL"))
+            {
+                int length = "_MODEL".Length;
+                result = result.Substring(0, result.Length - length);
+            }
+            return result;
+        }
+
+        public static string Entry(Type type)
+        {
+            var ct = EntryType(type);
+            var result = ct.Name.Slugify();
+            if (result.EndsWith("_MODEL"))
+            {
+                int length = "_MODEL".Length;
+                result = result.Substring(0, result.Length - length);
+            }
+            return result;
+        }
+
+        private static Type CatogoryType(Type type)
+        {
+            var tmp_type = type;
+
+            while (tmp_type.BaseType != typeof(AbstractModel) && tmp_type.BaseType != null)
+                tmp_type = tmp_type.BaseType;
+
+            if (tmp_type.BaseType == null)
+                throw new ModelDBException($"Try to get the catogory in the class {type.Name} which is not the subtype of abstract_model!");
+
+            return tmp_type;
+        }
+
+        private static Type EntryType(Type type)
+        {
+            return type;
         }
     }
 }

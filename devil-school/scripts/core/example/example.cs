@@ -12,10 +12,7 @@ namespace EGame
 		{
 			base._Ready();
 			_Executor = new ActionExecutor(_QueueSet);
-			ModelDB.OnInit();
 
-			var goblin_model = ModelDB.Monster<GoblinModel>();
-			Logger.Error(goblin_model.ToString());
 		}
 
 		public override void _Input(InputEvent @event)

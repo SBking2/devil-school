@@ -3,7 +3,7 @@ namespace EGame
 {
 	public partial class NCreature : Control
 	{
-		private static readonly string NCREATURE_PREFAB_PATH = "scenes/combat/creature.tscn";
+		private static readonly string NCREATURE_PREFAB_PATH = "combat/creature";
 		public Creature Data {get; protected set;}
 
 		private NCreatureVisual _NCreatureVisual;

@@ -10,17 +10,16 @@ namespace EGame
 	{
 		private Player _Player;
 		private MonsterModel _MonsterModel;
-		private PartnerModel _PartnerModel;
-
 		public bool IsPlayer => _Player != null;
-		public bool IsMonster => _MonsterModel != null;
-		public bool IsPartner => _PartnerModel != null;
+		public bool IsEnemy => Side == CombatSide.Enemy;
 
 		public event Action<int, int> OnHPChanged;
 		public event Action<int, int> OnMaxHPChanged;
 
 		private int _HP;
 		private int _MaxHP;
+
+		private CombatSide Side { get; }
 
 		public int HP
 		{
@@ -58,10 +57,20 @@ namespace EGame
 			}
 		}
 
+		public Creature(Player player)
+		{
+			_Player = player;
+			Side = CombatSide.Player;
+		}
+
+		public Creature(MonsterModel monster_model, CombatSide side)
+		{
+			_MonsterModel = monster_model;
+			Side = side;
+		}
+
 		public NCreatureVisual CreateVisuals()
 		{
-			if (_PartnerModel != null)
-				return _PartnerModel.CreateVisual();
 			if (_MonsterModel != null)
 				return _MonsterModel.CreateVisual();
 
