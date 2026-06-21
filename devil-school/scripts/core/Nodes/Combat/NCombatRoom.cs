@@ -6,7 +6,7 @@ namespace EGame
 {
     public partial class NCombatRoom : Control
     {
-        private static readonly string NCOMBAT_PREFAB_PATH = "combat/combat_room";
+        private static readonly string COMBAT_SCENE_PATH = "combat/combat_room";
         public CombatRoom Data { get; private set; }
 
         private Control _SceneContainer;
@@ -15,11 +15,11 @@ namespace EGame
         
         public static NCombatRoom Create(CombatRoom data)
         {
-            var combat_room = SceneHelper.LoadScene<NCombatRoom>(NCOMBAT_PREFAB_PATH);
+            var combat_room = SceneHelper.LoadScene<NCombatRoom>(COMBAT_SCENE_PATH);
             combat_room.Data = data;
             return combat_room;
         }
-
+        
         public override void _Ready()
         {
             base._Ready();

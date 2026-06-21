@@ -3,7 +3,7 @@ using System;
 
 namespace EGame
 {
-	public class AbstractModel : IComparable<AbstractModel>
+	public abstract class AbstractModel : IComparable<AbstractModel>
 	{
 		public ModelID ID { get; protected set; }
 		public bool IsMutable { get; protected set; }
@@ -26,6 +26,18 @@ namespace EGame
 			model.IsMutable = true;
 			model.DeepCopy();
 			return model;
+		}
+
+		protected void AssertMutable()
+		{
+			if (IsMutable == false)
+				throw new ModelDBException($"UnSuccessed Assert Mutable of {ID.ToString()}");
+		}
+
+		protected void AssertCanonical()
+		{
+			if (IsMutable == true)
+				throw new ModelDBException($"UnSuccessed Assert Canonical of {ID.ToString()}");
 		}
 
 		/// <summary>

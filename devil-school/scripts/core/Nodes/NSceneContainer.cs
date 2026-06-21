@@ -4,44 +4,44 @@ using System.Collections.Generic;
 
 namespace EGame
 {
-    public partial class NSceneContainer : Control
-    {
-        private Control _CurrentScene = null;
+	public partial class NSceneContainer : Control
+	{
+		private Control _CurrentScene = null;
 
-        public Control CurrentScene
-        {
-            get
-            {
-                if (!GodotObject.IsInstanceValid(_CurrentScene))
-                    return null;
+		public Control CurrentScene
+		{
+			get
+			{
+				if (!GodotObject.IsInstanceValid(_CurrentScene))
+					return null;
 
-                if (_CurrentScene.IsQueuedForDeletion())
-                    return null;
-                
-                return _CurrentScene;
-            }
+				if (_CurrentScene.IsQueuedForDeletion())
+					return null;
+				
+				return _CurrentScene;
+			}
 
-            private set
-            {
-                _CurrentScene = value;
-            }
-        }
+			private set
+			{
+				_CurrentScene = value;
+			}
+		}
 
-        public void SetScene(Control scene)
-        {
-            var remove_list = new List<Node>();
-            foreach(var child in GetChildren())
-                remove_list.Add(child);
+		public void SetScene(Control scene)
+		{
+			var remove_list = new List<Node>();
+			foreach(var child in GetChildren())
+				remove_list.Add(child);
 
-            for (int i = 0; i < remove_list.Count; i++)
-                remove_list[i].QueueFree();
+			for (int i = 0; i < remove_list.Count; i++)
+				remove_list[i].QueueFree();
 
-            CurrentScene = scene;
+			CurrentScene = scene;
 
-            if (CurrentScene.GetParent() == null)
-                AddChild(CurrentScene);
-            else
-                CurrentScene.Reparent(this);
-        }
-    }
+			if (CurrentScene.GetParent() == null)
+				AddChild(CurrentScene);
+			else
+				CurrentScene.Reparent(this);
+		}
+	}
 }

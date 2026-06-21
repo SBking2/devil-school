@@ -1,16 +1,29 @@
 
-using System.Collections.Generic;
-
 namespace EGame
 {
     /// <summary>
-    /// 管理着游戏运行
+    /// 管理着一次游戏运行
     /// </summary>
     public class RunManager
     {
         public static RunManager Instance { get; } = new RunManager();
+        public RunManager()
+        {
+            RunState = new RunState();
+        }
+        
+        public RunState RunState { get; private set; }
+        
+        public void DebugEnterRoom()
+        {
+            var combat_room = CreateRoom();
+            var ncombat_room = NCombatRoom.Create(combat_room);
+            NRun.Instance.SetCurrentRoom(ncombat_room);
+        }
 
-        private List<Player> _Players = new List<Player>();
-        public IReadOnlyList<Player> Players => _Players;
+        private CombatRoom CreateRoom()
+        {
+            return new CombatRoom(ModelDB.Encounter<DebugEncounterModel>().MutableClone() as EncounterModel);
+        }
     }
 }

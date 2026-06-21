@@ -10,6 +10,7 @@ namespace EGame
         private static Type[] _AllTypes = new Type[]
         {
             typeof(LogConsoleCmd),
+            typeof(SceneSwitchCmd)
         };
     }
 }

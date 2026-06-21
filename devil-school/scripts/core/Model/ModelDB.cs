@@ -37,6 +37,11 @@ namespace EGame
         {
             return Get<T>() as MonsterModel;
         }
+        
+        public static EncounterModel Encounter<T>() where T : EncounterModel
+        {
+            return Get<T>() as EncounterModel;
+        }
 
         private static AbstractModel Get<T>() where T : AbstractModel
         {

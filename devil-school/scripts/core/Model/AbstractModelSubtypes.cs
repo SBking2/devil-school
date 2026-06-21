@@ -11,7 +11,8 @@ namespace EGame
 		private static Type[] _ModelSubtypes = new Type[]
 		{
 			typeof(FighterModel),
-			typeof(MagicModel)
+			typeof(MagicModel),
+			typeof(DebugEncounterModel),
 		};
 	}
 }

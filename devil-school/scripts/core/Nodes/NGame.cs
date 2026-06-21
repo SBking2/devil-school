@@ -9,6 +9,8 @@ namespace EGame
 	public partial class NGame : Control
 	{
 		public static NGame Instance { get; private set; }
+		public NMainMenu MainMenuNode => _RootSceneContainer.CurrentScene as NMainMenu;
+		public NRun RunNode => _RootSceneContainer.CurrentScene as NRun;
 
 		private NSceneContainer _RootSceneContainer;
 		
@@ -18,26 +20,25 @@ namespace EGame
 			Instance = this;
 
 			ModelDB.OnInit();
+			Settins.LogLevel = Logger.LogLevel.Debug;
 		}
 
 		public override void _Ready()
 		{
 			base._Ready();
 			_RootSceneContainer = GetNode<NSceneContainer>("%RootSceneContainer");
-			DebugEnterCombat();
 		}
 
-		private void EnterMainMenu()
+		public void EnterMainMenu()
 		{
-			var main_menu = SceneHelper.LoadScene<Control>("ui/main_menu.tscn");
+			var main_menu = NMainMenu.Create();
 			_RootSceneContainer.SetScene(main_menu);
 		}
 
-		private void DebugEnterCombat()
+		public void EnterRun()
 		{
-			CombatRoom room = new CombatRoom();
-			var nroom = NCombatRoom.Create(room);
-			_RootSceneContainer.SetScene(nroom);
+			var run = NRun.Create();
+			_RootSceneContainer.SetScene(run);
 		}
 	}
 }

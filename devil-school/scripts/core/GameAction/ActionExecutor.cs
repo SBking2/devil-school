@@ -48,8 +48,7 @@ namespace EGame
 			_QueueSet = queue_set;
 			_QueueSet.OnQueueChanged += Run;
 		}
-		
-		public async Task Execute()
+		private async Task Execute()
 		{
 			_RunningTCS = new TaskCompletionSource();
 			GameAction ready_game_action = _QueueSet.GetReadyAction();
@@ -61,7 +60,6 @@ namespace EGame
 			_RunningTCS.SetResult();
 			Logger.Debug("Action Exectuor Stop!");
 		}
-
 		private void Run()
 		{
 			if(IsRunning == false)
