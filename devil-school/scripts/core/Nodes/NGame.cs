@@ -13,7 +13,7 @@ namespace EGame
 		public NRun RunNode => _RootSceneContainer.CurrentScene as NRun;
 
 		private NSceneContainer _RootSceneContainer;
-		
+	
 		public override void _EnterTree()
 		{
 			base._EnterTree();
@@ -28,7 +28,7 @@ namespace EGame
 			base._Ready();
 			_RootSceneContainer = GetNode<NSceneContainer>("%RootSceneContainer");
 		}
-
+		
 		public void EnterMainMenu()
 		{
 			var main_menu = NMainMenu.Create();
