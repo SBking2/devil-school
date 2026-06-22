@@ -6,6 +6,12 @@ namespace EGame
     /// </summary>
     public class RunState
     {
-        
+        public Player Player { get; private set;}
+        public static RunState CreateForSinglePlayer(Player player)
+        {
+            var state = new RunState();
+            state.Player = player;
+            return state;
+        }
     }
 }

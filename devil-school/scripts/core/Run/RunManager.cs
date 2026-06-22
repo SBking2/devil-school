@@ -7,13 +7,13 @@ namespace EGame
     public class RunManager
     {
         public static RunManager Instance { get; } = new RunManager();
-        public RunManager()
-        {
-            RunState = new RunState();
-        }
-        
         public RunState RunState { get; private set; }
         
+        public void SetUpForSinglePlayer(RunState state)
+        {
+            RunState = state;
+        }
+
         public void DebugEnterRoom()
         {
             var combat_room = CreateRoom();

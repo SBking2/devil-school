@@ -35,10 +35,14 @@ namespace EGame
 			_RootSceneContainer.SetScene(main_menu);
 		}
 
-		public void EnterRun()
+		public void StartSinglePlayerGame()
 		{
+			var player = Player.CreatureForNewRun(null, 0, 10);
+			var runstate = RunState.CreateForSinglePlayer(player);
+			RunManager.Instance.SetUpForSinglePlayer(runstate);
+
 			var run = NRun.Create();
-			_RootSceneContainer.SetScene(run);
-		}
+            _RootSceneContainer.SetScene(run);
+        }
 	}
 }

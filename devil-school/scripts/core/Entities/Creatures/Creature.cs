@@ -57,16 +57,20 @@ namespace EGame
 			}
 		}
 
-		public Creature(Player player)
+		public Creature(Player player, int max_hp)
 		{
 			_Player = player;
 			Side = CombatSide.Player;
+
+			_MaxHP = max_hp;
 		}
 
 		public Creature(MonsterModel monster_model, CombatSide side)
 		{
 			_MonsterModel = monster_model;
 			Side = side;
+
+			_MaxHP = monster_model.MaxHP;
 		}
 
 		public NCreatureVisual CreateVisuals()

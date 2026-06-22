@@ -19,7 +19,7 @@ namespace EGame
 				if (lower_name.Equals("mainmenu"))
 					NGame.Instance.EnterMainMenu();
 				else if (lower_name.Equals("run"))
-					NGame.Instance.EnterRun();
+					NGame.Instance.StartSinglePlayerGame();
 				else
 					return new CmdResult(false, $"Unkonw Scene Name : {scene_name}");
 
