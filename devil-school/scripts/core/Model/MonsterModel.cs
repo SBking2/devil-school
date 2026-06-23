@@ -5,11 +5,11 @@ namespace EGame
 	{
 		public virtual int MaxHP => 10;
 
-		protected virtual string VisualsPath => $"creature_visuals/" + ID.Entry.ToLowerInvariant();
+		protected virtual string _VisualsPath => $"creature_visuals/" + ID.Entry.ToLowerInvariant();
 
 		public NCreatureVisual CreateVisual()
 		{
-			return SceneHelper.LoadScene<NCreatureVisual>(VisualsPath);
+			return SceneHelper.LoadScene<NCreatureVisual>(_VisualsPath);
 		}
 	}
 }

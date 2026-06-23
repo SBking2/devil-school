@@ -1,10 +1,18 @@
 
+using Godot;
 using System.Collections.Generic;
 
 namespace EGame
 {
     public abstract class EncounterModel : AbstractModel
     {
+        protected virtual string _EncounterSlotName => $"encounters/{ID.Entry.ToLowerInvariant()}";
+
+        public Control CreateEncounterSlots()
+        {
+            return SceneHelper.LoadScene<Control>(_EncounterSlotName);
+        }
+
         protected IReadOnlyList<(MonsterModel, string)> _MonstersWithSlots;
 
         public IReadOnlyList<(MonsterModel, string)> MonsterWithSlot

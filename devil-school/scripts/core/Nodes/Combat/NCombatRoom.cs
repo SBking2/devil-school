@@ -28,28 +28,76 @@ namespace EGame
             _AllyContainer = GetNode<Control>("%AllyContainer");
             _EnemyContainer = GetNode<Control>("%EnemyContainer");
 
-            CreateAllCreatureNode();
+            CreateAllyNode();
+            CreateEnemyNode();
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
         ////////                               Creature
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-        private List<NCreature> _CreatureNodes = new List<NCreature>();
-        private void CreateAllCreatureNode()
-        {
-            foreach(var creature in Data.CombatState.Creatures)
-                AddCreature(creature);
-        }
-        private void AddCreature(Creature creature)
-        {
-            var n_creature = NCreature.Create(creature);
-            _CreatureNodes.Add(n_creature);
+        private List<NCreature> _AllyCreatureNodes = new List<NCreature>();
+        private List<NCreature> _EnemyCreatureNodes = new List<NCreature>();
 
-            if (creature.IsPlayer)
-                _AllyContainer.AddChild(n_creature);
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                               创建NCreature并插入指定位置
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private Control _EncounterSlots = null;
+
+        private void CreateAllyNode()
+        {
+            var allies = Data.CombatState.Allies;
+            foreach(var ally in allies)
+            {
+                var ncreature = NCreature.Create(ally);
+                _AllyCreatureNodes.Add(ncreature);
+            }
+
+            PositionAlly();
+        }
+
+        private void PositionAlly()
+        {
+            foreach(var ally in _AllyCreatureNodes)
+                _AllyContainer.AddChild(ally);
+        }
+
+        private void CreateEnemyNode()
+        {
+            var enemies = Data.CombatState.Enemies;
+            foreach (var enemy in enemies)
+            {
+                var ncreature = NCreature.Create(enemy);
+                _EnemyCreatureNodes.Add(ncreature);
+            }
+
+            if (this.Data.Encounter != null)
+            {
+                _EncounterSlots = this.Data.Encounter.CreateEncounterSlots();
+                if(_EncounterSlots != null)
+                    _EnemyContainer.AddChild(_EncounterSlots);
+            }
+
+            //使用了标记位置
+            if (_EncounterSlots != null)
+            {
+                foreach (var enemy in _EnemyCreatureNodes)
+                {
+                    _EncounterSlots.AddChild(enemy);
+
+                    var slot = _EncounterSlots.GetNode<Marker2D>(enemy.Data.SlotName);
+                    if (slot != null)
+                        enemy.GlobalPosition = slot.GlobalPosition;
+                }
+            }
             else
-                _EnemyContainer.AddChild(n_creature);
+            {
+                foreach (var enemy in _EnemyCreatureNodes)
+                {
+                    _EnemyContainer.AddChild(enemy);
+                }
+            }
         }
     }
 }

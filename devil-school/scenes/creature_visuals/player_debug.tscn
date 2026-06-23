@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://b5b6w4y64f0pu"]
+
+[ext_resource type="Script" uid="uid://bftk3rmnrxvas" path="res://scripts/Core/Nodes/Combat/NCreatureVisual.cs" id="1_c7ydh"]
+[ext_resource type="Texture2D" uid="uid://b7rj5uh5fh7ob" path="res://images/debug/dev_console_label.png" id="2_c7ydh"]
+
+[node name="CreatureVisual" type="Control" unique_id=1192989334]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_c7ydh")
+
+[node name="TextureRect" type="TextureRect" parent="." unique_id=1483926569]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 58.0
+texture = ExtResource("2_c7ydh")
+expand_mode = 1

@@ -57,6 +57,11 @@ namespace EGame
 			}
 		}
 
+		/// <summary>
+		/// 在房间里的位置
+		/// </summary>
+		public string SlotName { get; }
+
 		public Creature(Player player, int max_hp)
 		{
 			_Player = player;
@@ -65,10 +70,11 @@ namespace EGame
 			_MaxHP = max_hp;
 		}
 
-		public Creature(MonsterModel monster_model, CombatSide side)
+		public Creature(MonsterModel monster_model, CombatSide side, string slot_name)
 		{
 			_MonsterModel = monster_model;
 			Side = side;
+			SlotName = slot_name;
 
 			_MaxHP = monster_model.MaxHP;
 		}
@@ -77,6 +83,8 @@ namespace EGame
 		{
 			if (_MonsterModel != null)
 				return _MonsterModel.CreateVisual();
+			else if(_Player != null)
+				return _Player.Character.CreateVisual();
 
 			return null;
 		}

@@ -1,4 +1,5 @@
 
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -29,5 +30,10 @@ namespace EGame
 			var list = creature.IsPlayer ? _Allies : _Enemies;
 			list.Add(creature);
 		}
+
+		public void AddPlayer(Player player)
+		{
+            _Allies.Add(player.Creature);
+        }
 	}
 }

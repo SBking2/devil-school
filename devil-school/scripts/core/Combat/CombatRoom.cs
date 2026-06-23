@@ -16,13 +16,17 @@ namespace EGame
 		public CombatRoom(EncounterModel model)
 		{
 			this.Encounter = model;
+
 			CombatState = new CombatState();
+
+			//进入战斗之前先添加Creature
+			CombatState.AddPlayer(RunManager.Instance.RunState.Player);
 			
 			//生成具体MonsterModel
 			this.Encounter.GenerateMonsterWithSlost();
 			foreach (var slot in Encounter.MonsterWithSlot)
 			{
-				var creature = new Creature(slot.Item1, CombatSide.Enemy);
+				var creature = new Creature(slot.Item1, CombatSide.Enemy, slot.Item2);
 				CombatState.AddCreature(creature);
 			}
 		}

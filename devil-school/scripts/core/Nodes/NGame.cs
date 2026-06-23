@@ -37,7 +37,7 @@ namespace EGame
 
 		public void StartSinglePlayerGame()
 		{
-			var player = Player.CreatureForNewRun(null, 0, 10);
+			var player = Player.CreatureForNewRun(ModelDB.Character<PlayerDebugModel>().MutableClone() as CharacterModel, 0, 10);
 			var runstate = RunState.CreateForSinglePlayer(player);
 			RunManager.Instance.SetUpForSinglePlayer(runstate);
 

@@ -12,6 +12,7 @@ namespace EGame
 		{
 			typeof(FighterModel),
 			typeof(MagicModel),
+			typeof(PlayerDebugModel),
 			typeof(DebugEncounterModel),
 		};
 	}

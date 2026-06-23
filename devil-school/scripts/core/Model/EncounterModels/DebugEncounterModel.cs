@@ -9,8 +9,8 @@ namespace EGame
         {
             return new (MonsterModel, string)[]
             {
-                (ModelDB.Monster<FighterModel>(), "front"),
-                (ModelDB.Monster<MagicModel>(), "back")
+                (ModelDB.Monster<FighterModel>().MutableClone() as MonsterModel, "front"),
+                (ModelDB.Monster<MagicModel>().MutableClone() as MonsterModel, "back")
             };
         }
     }
