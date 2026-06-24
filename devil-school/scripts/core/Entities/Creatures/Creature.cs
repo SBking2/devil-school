@@ -62,6 +62,22 @@ namespace EGame
 		/// </summary>
 		public string SlotName { get; }
 
+		private Player _PetOwener = null;
+		public Player PetOwner
+		{
+			get
+			{
+				return _PetOwener;
+			}
+
+			set
+			{
+				if (_PetOwener != value)
+					throw new InvalidOperationException($"creature : {this} already has a owner!");
+				_PetOwener = value;
+			}
+		}
+
 		public Creature(Player player, int max_hp)
 		{
 			_Player = player;

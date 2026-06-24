@@ -1,4 +1,6 @@
 
+using System.Collections.Generic;
+
 namespace EGame
 {
     /// <summary>
@@ -6,11 +8,11 @@ namespace EGame
     /// </summary>
     public class RunState
     {
-        public Player Player { get; private set;}
-        public static RunState CreateForNewRun(Player player)
+        public IReadOnlyList<Player> Players { get; private set;}
+        public static RunState CreateForNewRun(IReadOnlyList<Player> players)
         {
             var state = new RunState();
-            state.Player = player;
+            state.Players = players;
             return state;
         }
     }

@@ -1,5 +1,6 @@
 
 using Godot;
+using System.Collections.Generic;
 
 namespace EGame
 {
@@ -38,7 +39,7 @@ namespace EGame
 		public void StartSinglePlayerGame()
 		{
 			var player = Player.CreatureForNewRun(ModelDB.Character<PlayerDebugModel>().MutableClone() as CharacterModel, 0, 10);
-			var runstate = RunState.CreateForNewRun(player);
+			var runstate = RunState.CreateForNewRun(new List<Player>() { player });
 			RunManager.Instance.SetUpForNewRun(runstate);
 
 			var run = NRun.Create();

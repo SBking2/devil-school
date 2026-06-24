@@ -20,7 +20,9 @@ namespace EGame
 			CombatState = new CombatState();
 
 			//进入战斗之前先添加Creature
-			CombatState.AddPlayer(RunManager.Instance.RunState.Player);
+			var players = RunManager.Instance.RunState.Players;
+			foreach(var player in players)
+				CombatState.AddPlayer(player);
 			
 			//生成具体MonsterModel
 			this.Encounter.GenerateMonsterWithSlost();
