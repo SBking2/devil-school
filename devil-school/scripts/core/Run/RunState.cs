@@ -7,7 +7,7 @@ namespace EGame
     public class RunState
     {
         public Player Player { get; private set;}
-        public static RunState CreateForSinglePlayer(Player player)
+        public static RunState CreateForNewRun(Player player)
         {
             var state = new RunState();
             state.Player = player;

@@ -9,7 +9,7 @@ namespace EGame
         public static RunManager Instance { get; } = new RunManager();
         public RunState RunState { get; private set; }
         
-        public void SetUpForSinglePlayer(RunState state)
+        public void SetUpForNewRun(RunState state)
         {
             RunState = state;
         }
