@@ -10,7 +10,7 @@ namespace EGame
 		private NSceneContainer _RoomContainer;
 
 		public static NRun Instance => NGame.Instance?.RunNode;
-		public NCombatRoom RoomNode => _RoomContainer.CurrentScene as NCombatRoom;
+		public NCombatRoom CombatRoomNode => _RoomContainer.CurrentScene as NCombatRoom;
 
 		public static NRun Create()
 		{

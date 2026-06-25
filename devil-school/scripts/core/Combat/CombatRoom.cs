@@ -32,5 +32,22 @@ namespace EGame
 				CombatState.AddCreature(creature);
 			}
 		}
+
+		public void EnterRoom()
+		{
+			//场景加载房间
+            var ncombat_room = NCombatRoom.Create(this);
+            NRun.Instance.SetCurrentRoom(ncombat_room);
+
+			//加载完毕后开始真正战斗
+			StartCombat();
+        }
+
+        private void StartCombat()
+		{
+            
+            CombatManager.Instance.SetUpCombat(CombatState);
+            CombatManager.Instance.AfterRoomLoaded();
+        }
 	}
 }

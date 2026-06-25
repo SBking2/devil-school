@@ -13,15 +13,27 @@ namespace EGame
 
         private CombatState _CombatState;
 
-        public void StartCombat(CombatState combat_state)
+        public void SetUpCombat(CombatState combat_state)
         {
             _CombatState = combat_state;
+        }
+
+        public void AfterRoomLoaded()
+        {
             TaskHelper.RunSafely(StartCombatInternal());
         }
+
         private async Task StartCombatInternal()
         {
-            await ExecutePlayerTurn();
-            await ExecuteEnemyTurn();
+            await StartTurn();
+        }
+
+        /// <summary>
+        /// 一个完整的回合,包括敌人和玩家
+        /// </summary>
+        private async Task StartTurn()
+        {
+
         }
 
         private async Task ExecutePlayerTurn()

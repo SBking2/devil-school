@@ -12,7 +12,9 @@ namespace EGame
         private Control _SceneContainer;
         private Control _AllyContainer;
         private Control _EnemyContainer;
-        
+
+        public static NCombatRoom Instance => NRun.Instance.CombatRoomNode;
+
         public static NCombatRoom Create(CombatRoom data)
         {
             var combat_room = SceneHelper.LoadScene<NCombatRoom>(COMBAT_SCENE_PATH);

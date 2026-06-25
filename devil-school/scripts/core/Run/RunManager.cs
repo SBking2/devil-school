@@ -17,8 +17,7 @@ namespace EGame
         public void DebugEnterRoom()
         {
             var combat_room = CreateRoom();
-            var ncombat_room = NCombatRoom.Create(combat_room);
-            NRun.Instance.SetCurrentRoom(ncombat_room);
+            combat_room.EnterRoom();
         }
 
         private CombatRoom CreateRoom()
