@@ -33,7 +33,7 @@ namespace EGame
         /// </summary>
         private async Task StartTurn()
         {
-
+            
         }
 
         private async Task ExecutePlayerTurn()
