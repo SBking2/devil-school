@@ -104,7 +104,7 @@ namespace EGame
         private CmdResult ProcessCommandInternal(string input_line)
         {
             var array = input_line.Split(' ');
-            var cmd_name = array[0];
+            var cmd_name = array[0].ToLowerInvariant();
             var args = array.Skip(1).ToArray();
             args = args.Where((string a) =>
             {

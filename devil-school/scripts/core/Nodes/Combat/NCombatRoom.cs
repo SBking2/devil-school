@@ -12,7 +12,7 @@ namespace EGame
         private Control _SceneContainer;
         private Control _AllyContainer;
         private Control _EnemyContainer;
-
+        
         public static NCombatRoom Instance => NRun.Instance.CombatRoomNode;
 
         public static NCombatRoom Create(CombatRoom data)
@@ -77,7 +77,7 @@ namespace EGame
             if (this.Data.Encounter != null)
             {
                 _EncounterSlots = this.Data.Encounter.CreateEncounterSlots();
-                if(_EncounterSlots != null)
+                if (_EncounterSlots != null)
                     _EnemyContainer.AddChild(_EncounterSlots);
             }
 

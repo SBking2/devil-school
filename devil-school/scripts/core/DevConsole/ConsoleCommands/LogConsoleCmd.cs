@@ -15,8 +15,9 @@ namespace EGame
                 return new CmdResult(false, "Must supply the log level as the first argument!");
             else
             {
+                var level = args[0].ToLowerInvariant();
                 Logger.LogLevel new_level;
-                if(fun.TryGetEnum<Logger.LogLevel>(args[0], out new_level))
+                if(fun.TryGetEnum<Logger.LogLevel>(level, out new_level))
                 {
                     Settins.LogLevel = new_level;
                     return new CmdResult(true, $"Set log level to {new_level}");

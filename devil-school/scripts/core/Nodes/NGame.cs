@@ -28,6 +28,7 @@ namespace EGame
 		{
 			base._Ready();
 			_RootSceneContainer = GetNode<NSceneContainer>("%RootSceneContainer");
+			EnterMainMenu();
 		}
 		
 		public void EnterMainMenu()

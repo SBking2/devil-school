@@ -37,7 +37,7 @@ namespace EGame
 		{
 			//场景加载房间
             var ncombat_room = NCombatRoom.Create(this);
-            NRun.Instance.SetCurrentRoom(ncombat_room);
+            NRun.Instance.SetCurrentScene(ncombat_room);
 
 			//加载完毕后开始真正战斗
 			StartCombat();

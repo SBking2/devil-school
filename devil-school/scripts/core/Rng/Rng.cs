@@ -4,6 +4,9 @@ namespace EGame
 {
     public class Rng
     {
+        //DateTimeOffset代表 时间+时区, UnixTime表明从1970年-01-01 00:00:00 到现在多少秒
+        public static Rng RealRandom { get; } = new Rng((uint)DateTimeOffset.Now.ToUnixTimeSeconds());
+
         private Random _Random;
         private int _Counter;
         private uint _Seed;

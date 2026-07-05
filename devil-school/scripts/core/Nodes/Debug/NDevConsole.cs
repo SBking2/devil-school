@@ -68,7 +68,6 @@ namespace EGame
 		{
 			var input = _InputBuffer.Text;
 			input = input.Trim();
-			input = input.ToLower();
 
 			if (input == string.Empty)
 				return;

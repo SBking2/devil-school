@@ -46,6 +46,11 @@ namespace EGame
         {
             return Get<T>() as EncounterModel;
         }
+        
+        public static EnviromentModel Enviroment<T>() where T : EnviromentModel
+        {
+            return Get<T>() as EnviromentModel;
+        }
 
         private static AbstractModel Get<T>() where T : AbstractModel
         {
