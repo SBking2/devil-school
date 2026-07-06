@@ -12,7 +12,7 @@ namespace EGame
 
         public void EnterEnviroment()
         {
-            var n_enviroment = EnviromentModel.CreateEnviroment();
+            var n_enviroment = NEnviroment.Create(this);
             NRun.Instance.SetCurrentScene(n_enviroment);
         }
     }

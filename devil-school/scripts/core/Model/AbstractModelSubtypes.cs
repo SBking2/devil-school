@@ -19,6 +19,9 @@ namespace EGame
 
 			//Encounter
 			typeof(DebugEncounterModel),
+			
+			//Enviroment
+			typeof(InitEnviromentModel)
 		};
 	}
 }
