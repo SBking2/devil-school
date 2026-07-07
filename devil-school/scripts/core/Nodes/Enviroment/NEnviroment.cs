@@ -12,5 +12,15 @@ namespace EGame
             n_enviroment.Data = data;
             return n_enviroment;
         }
+
+        public override void _Ready()
+        {
+            base._Ready();
+        }
+
+        private void CreateCreature(Creature creature)
+        {
+            var n_env_creature = NEnvCreature.Create(creature);
+        }
     }
 }

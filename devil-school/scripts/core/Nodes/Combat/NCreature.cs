@@ -4,7 +4,7 @@ namespace EGame
 	public partial class NCreature : Control 
 	{
 		private static readonly string NCREATURE_PREFAB_PATH = "combat/creature";
-		public Creature Data {get; protected set;}
+		public Creature Data { get; protected set;}
 
 		private NCreatureVisual _NCreatureVisual;
 
