@@ -16,11 +16,18 @@ namespace EGame
         public override void _Ready()
         {
             base._Ready();
+
+            //TODO:初始化组件
+
+            var players = Data.EnvState.Players;
+            foreach (var player in players)
+                CreateCreature(player.Creature);
         }
 
         private void CreateCreature(Creature creature)
         {
             var n_env_creature = NEnvCreature.Create(creature);
+            //TODO:放到特定的地点
         }
     }
 }

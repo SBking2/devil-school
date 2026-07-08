@@ -6,14 +6,13 @@ namespace EGame
 		private static readonly string NCREATURE_PREFAB_PATH = "combat/creature";
 		public Creature Data { get; protected set;}
 
-		private NCreatureVisual _NCreatureVisual;
+		private NCreatureVisual _Visual;
 
 		private NCreatureStateDisplay _StateDisplay;
 		public static NCreature Create(Creature creature)
 		{
 			var instance = SceneHelper.LoadScene<NCreature>(NCREATURE_PREFAB_PATH);
 			instance.Data = creature;
-			instance._NCreatureVisual = creature.CreateVisuals();
 			return instance;
 		}
 
@@ -24,10 +23,11 @@ namespace EGame
 			_StateDisplay = GetNode<NCreatureStateDisplay>("%StateDisplay");
 			_StateDisplay.SetCreature(this);
 
-			if(_NCreatureVisual != null)
+			_Visual = Data.CreateVisuals();
+			if(_Visual != null)
 			{
-				AddChild(_NCreatureVisual);
-				MoveChild(_NCreatureVisual, 0);
+				AddChild(_Visual);
+				MoveChild(_Visual, 0);
 			}
 		}
 	}

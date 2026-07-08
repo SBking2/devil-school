@@ -44,7 +44,7 @@ namespace EGame
 			RunManager.Instance.SetUpForNewRun(runstate);
 
 			var run = NRun.Create();
-            _RootSceneContainer.SetScene(run);
-        }
+			_RootSceneContainer.SetScene(run);
+		}
 	}
 }

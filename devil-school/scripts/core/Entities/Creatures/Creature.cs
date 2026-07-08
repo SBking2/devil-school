@@ -8,9 +8,9 @@ namespace EGame
 	/// </summary>
 	public class Creature
 	{
-		private Player _Player;
-		private MonsterModel _MonsterModel;
-		public bool IsPlayer => _Player != null;
+		public Player Player { get; private set; }
+        public MonsterModel MonsterModel { get; private set; }
+		public bool IsPlayer => Player != null;
 		public bool IsEnemy => Side == CombatSide.Enemy;
 
 		public event Action<int, int> OnHPChanged;
@@ -80,7 +80,7 @@ namespace EGame
 
 		public Creature(Player player, int max_hp)
 		{
-			_Player = player;
+			this.Player = player;
 			Side = CombatSide.Player;
 
 			_MaxHP = max_hp;
@@ -88,7 +88,7 @@ namespace EGame
 
 		public Creature(MonsterModel monster_model, CombatSide side, string slot_name)
 		{
-			_MonsterModel = monster_model;
+			this.MonsterModel = monster_model;
 			Side = side;
 			SlotName = slot_name;
 
@@ -97,10 +97,10 @@ namespace EGame
 
 		public NCreatureVisual CreateVisuals()
 		{
-			if (_MonsterModel != null)
-				return _MonsterModel.CreateVisual();
-			else if(_Player != null)
-				return _Player.Character.CreateVisual();
+			if (this.MonsterModel != null)
+				return this.MonsterModel.CreateVisual();
+			else if(this.Player != null)
+				return this.Player.Character.CreateVisual();
 
 			return null;
 		}

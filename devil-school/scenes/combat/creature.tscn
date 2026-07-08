@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://c4ldc63weessa"]
 
-[ext_resource type="Script" uid="uid://dufsfuvck6tx3" path="res://scripts/Core/Nodes/Combat/NCreature.cs" id="1_slh05"]
+[ext_resource type="Script" uid="uid://dufsfuvck6tx3" path="res://scripts/core/Nodes/Combat/NCreature.cs" id="1_slh05"]
 [ext_resource type="PackedScene" uid="uid://rwlxjqk1845h" path="res://scenes/combat/creature_state_display.tscn" id="2_nmxbd"]
 
 [node name="NCreature" type="Control" unique_id=1993856050]
