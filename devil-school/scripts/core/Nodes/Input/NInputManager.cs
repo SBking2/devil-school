@@ -8,10 +8,10 @@ namespace EGame
     {
         private static Dictionary<StringName, Key> _KeyMap = new Dictionary<StringName, Key>()
         {
-            { MegaInput.UP,             Key.W },
-            { MegaInput.DOWN,           Key.S },
-            { MegaInput.LEFT,           Key.A },
-            { MegaInput.RIGHT,          Key.D }
+            { EGInput.UP,             Key.W },
+            { EGInput.DOWN,           Key.S },
+            { EGInput.LEFT,           Key.A },
+            { EGInput.RIGHT,          Key.D }
         };
         
         private void ProcessKeyInput(InputEvent e)

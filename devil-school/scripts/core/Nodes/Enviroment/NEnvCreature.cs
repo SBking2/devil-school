@@ -17,7 +17,7 @@ namespace EGame
             instance._Visual = data.CreateVisuals();
             return instance;
         }
-
+        
         public override void _Ready()
         {
             base._Ready();
