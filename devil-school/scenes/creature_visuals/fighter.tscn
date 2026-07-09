@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://bftk3rmnrxvas" path="res://scripts/Core/Nodes/Combat/NCreatureVisual.cs" id="1_fw0lh"]
 [ext_resource type="Texture2D" uid="uid://c65wymxrvmqbo" path="res://images/character/fighter.png" id="2_fw0lh"]
+[ext_resource type="SpineSkeletonDataResource" uid="uid://c0h2pxnbcacot" path="res://animations/characters/drak_assassin/drak_assassin_spine.tres" id="3_c0o5w"]
 
 [node name="CreatureVisual" type="Control" unique_id=1192989334]
 layout_mode = 3
@@ -16,3 +17,10 @@ offset_right = 40.0
 offset_bottom = 58.0
 texture = ExtResource("2_fw0lh")
 expand_mode = 1
+
+[node name="SpineSprite" type="SpineSprite" parent="." unique_id=1506135569]
+skeleton_data_res = ExtResource("3_c0o5w")
+preview_skin = "Default"
+preview_animation = "-- Empty --"
+preview_frame = false
+preview_time = 0.0

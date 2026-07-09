@@ -1,0 +1,14 @@
+[remap]
+
+importer="spine.skel"
+type="SpineSkeletonFileResource"
+uid="uid://q1gy852j80wh"
+path="res://.godot/imported/ironclad.skel-8738744fd5c12d71e7a9255aab51f63a.spskel"
+
+[deps]
+
+source_file="res://animations/characters/drak_assassin/ironclad.skel"
+dest_files=["res://.godot/imported/ironclad.skel-8738744fd5c12d71e7a9255aab51f63a.spskel"]
+
+[params]
+

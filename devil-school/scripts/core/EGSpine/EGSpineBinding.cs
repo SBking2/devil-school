@@ -50,7 +50,9 @@ namespace EGame
         public Variant? Call(string name, params Variant[] args)
         {
             var result = _SpineObject.Call(name, args);
-            return result.VariantType == Variant.Type.Nil ? (Variant?)null : result;
+            if (result.VariantType == Variant.Type.Nil)
+                return null;
+            return result;
         }
 
         public Error Connect(string signal, Callable callback)
