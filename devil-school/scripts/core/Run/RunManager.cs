@@ -43,7 +43,7 @@ namespace EGame
 
             //获取Encounter
             var method = GetType().GetMethod(nameof(EnterEnviroment));
-
+            
             //把泛型绑到函数上
             var generic_method = method.MakeGenericMethod(type);
             generic_method.Invoke(this, null);
@@ -58,9 +58,9 @@ namespace EGame
             room.EnterRoom();
         }
 
-        public void EnterEnviroment<T>() where T : EnviromentModel
+        public void EnterEnviroment<T>() where T : WorldModel
         {
-            var model = ModelDB.Enviroment<T>().MutableClone() as EnviromentModel;
+            var model = ModelDB.World<T>().MutableClone() as WorldModel;
             Enviroment enviroment = new Enviroment(model);
             enviroment.EnterEnviroment();
         }

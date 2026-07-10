@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://diygjd4esptqc"]
+
+[ext_resource type="Script" uid="uid://b3fgkd622diw7" path="res://scripts/core/Nodes/Enviroment/NEnviroment.cs" id="1_fm0qm"]
+
+[node name="NEnviroment" type="Control" unique_id=1863448409]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_fm0qm")
+
+[node name="WorldParent" type="Node2D" parent="." unique_id=1551069912]
+unique_name_in_owner = true
+
+[node name="CreatureParent" type="Node2D" parent="." unique_id=359524890]
+unique_name_in_owner = true

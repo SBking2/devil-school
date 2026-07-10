@@ -8,6 +8,12 @@ layout_mode = 3
 anchors_preset = 0
 script = ExtResource("1_slh05")
 
+[node name="VisualParent" type="Control" parent="." unique_id=1290234263]
+unique_name_in_owner = true
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
 [node name="StateDisplay" parent="." unique_id=713187903 instance=ExtResource("2_nmxbd")]
 unique_name_in_owner = true
 layout_mode = 0

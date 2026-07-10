@@ -47,9 +47,9 @@ namespace EGame
             return Get<T>() as EncounterModel;
         }
         
-        public static EnviromentModel Enviroment<T>() where T : EnviromentModel
+        public static WorldModel World<T>() where T : WorldModel
         {
-            return Get<T>() as EnviromentModel;
+            return Get<T>() as WorldModel;
         }
 
         private static AbstractModel Get<T>() where T : AbstractModel

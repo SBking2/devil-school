@@ -12,7 +12,7 @@ namespace EGame
             typeof(LogConsoleCmd),
             typeof(RunControlCmd),
             typeof(CombatEncounterCmd),
-            typeof(EnviromentCmd),
+            typeof(WorldCmd),
         };
     }
 }

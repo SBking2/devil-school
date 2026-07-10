@@ -10,6 +10,10 @@ namespace EGame
 
         private NCreatureVisual _Visual;
 
+        private Node2D _VisualParent;
+
+        private CollisionShape2D _CollisionShape;
+
         public static NEnvCreature Create(Creature data)
         {
             var instance = SceneHelper.LoadScene<NEnvCreature>(N_ENV_CREATURE_PATH);
@@ -21,12 +25,17 @@ namespace EGame
         public override void _Ready()
         {
             base._Ready();
+            
+            _VisualParent = GetNode<Node2D>("%VisualParent");
+            _CollisionShape = GetNode<CollisionShape2D>("%CollisionShape");
 
+            //创建Visual
             _Visual = Data.CreateVisuals();
             if (_Visual != null)
             {
-                AddChild(_Visual);
-                MoveChild(_Visual, 0);
+                var parent = _VisualParent == null ? this : _VisualParent;
+                parent.AddChild(_Visual);
+                parent.MoveChild(_Visual, 0);
             }
         }
 
@@ -47,16 +56,16 @@ namespace EGame
         {
             var dir = Vector2.Zero;
 
-            if (Input.IsActionPressed(MegaInput.UP))
+            if (Input.IsActionPressed(EGInput.UP))
                 dir.Y -= 1f;
 
-            if (Input.IsActionPressed(MegaInput.DOWN))
+            if (Input.IsActionPressed(EGInput.DOWN))
                 dir.Y += 1f;
 
-            if (Input.IsActionPressed(MegaInput.RIGHT))
+            if (Input.IsActionPressed(EGInput.RIGHT))
                 dir.X += 1f;
 
-            if (Input.IsActionPressed(MegaInput.LEFT))
+            if (Input.IsActionPressed(EGInput.LEFT))
                 dir.X -= 1f;
 
             return dir;

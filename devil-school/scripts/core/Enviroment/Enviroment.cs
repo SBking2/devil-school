@@ -3,12 +3,12 @@ namespace EGame
 {
     public class Enviroment
     {
-        public EnviromentModel EnviromentModel { get; }
+        public WorldModel WorldModel { get; }
         public EnviromentState EnvState { get; }
 
-        public Enviroment(EnviromentModel model)
+        public Enviroment(WorldModel model)
         {
-            EnviromentModel = model;
+            WorldModel = model;
             EnvState = new EnviromentState();
 
             var players = RunManager.Instance.RunState.Players;

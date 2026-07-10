@@ -9,6 +9,9 @@ namespace EGame
 		private NCreatureVisual _Visual;
 
 		private NCreatureStateDisplay _StateDisplay;
+
+		public Control _VisualParent; 
+
 		public static NCreature Create(Creature creature)
 		{
 			var instance = SceneHelper.LoadScene<NCreature>(NCREATURE_PREFAB_PATH);
@@ -21,13 +24,17 @@ namespace EGame
 			base._Ready();
 
 			_StateDisplay = GetNode<NCreatureStateDisplay>("%StateDisplay");
+            _VisualParent = GetNode<Control>("%VisualParent");
+
 			_StateDisplay.SetCreature(this);
 
+			//创建Visual
 			_Visual = Data.CreateVisuals();
 			if(_Visual != null)
 			{
-				AddChild(_Visual);
-				MoveChild(_Visual, 0);
+                var parent = _VisualParent == null ? this : _VisualParent;
+                parent.AddChild(_Visual);
+                parent.MoveChild(_Visual, 0);
 			}
 		}
 	}

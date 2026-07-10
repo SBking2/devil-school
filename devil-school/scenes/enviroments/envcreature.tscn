@@ -8,6 +8,10 @@ size = Vector2(20, 35)
 [node name="NEnvCreature" type="CharacterBody2D" unique_id=1924216009]
 script = ExtResource("1_j7lxi")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=436417342]
+[node name="VisualParent" type="Node2D" parent="." unique_id=1785400410]
+unique_name_in_owner = true
+
+[node name="CollisionShape" type="CollisionShape2D" parent="." unique_id=436417342]
+unique_name_in_owner = true
 position = Vector2(0, -17.5)
 shape = SubResource("RectangleShape2D_j7lxi")
