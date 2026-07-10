@@ -39,6 +39,17 @@ namespace EGame
             }
         }
 
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////                                 移动相关
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        public Vector2 TargetMoveDir { get; private set; }
+
+        public void SetMoveDir(Vector2 dir)
+        {
+            TargetMoveDir = dir;
+        }
+
         public override void _PhysicsProcess(double delta)
         {
             base._PhysicsProcess(delta);
@@ -47,36 +58,9 @@ namespace EGame
 
         private void ProcessMove()
         {
-            var move = GetMoveDir();
+            var move = TargetMoveDir;
             Velocity = move.Normalized() * Data.Player.Character.MoveSpeed;
             MoveAndSlide();
-        }
-
-        private Vector2 GetMoveDir()
-        {
-            var dir = Vector2.Zero;
-
-            if (Input.IsActionPressed(EGInput.UP))
-                dir.Y -= 1f;
-
-            if (Input.IsActionPressed(EGInput.DOWN))
-                dir.Y += 1f;
-
-            if (Input.IsActionPressed(EGInput.RIGHT))
-                dir.X += 1f;
-
-            if (Input.IsActionPressed(EGInput.LEFT))
-                dir.X -= 1f;
-
-            return dir;
-        }
-
-        public void AddPlayerController()
-        {
-        }
-
-        public void RemovePlayerController()
-        {
         }
     }
 }

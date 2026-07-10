@@ -8,20 +8,13 @@ namespace EGame
     {
         private static readonly string _NENVIROMENT_PATH = "enviroments/enviroment";
         public Enviroment Data { get; private set; }
-
-        private Node2D _CreatureParent;
-
-        private Node2D _WorldParent;
-
-        private List<NEnvCreature> _NCreatures = new List<NEnvCreature>();
-
         public static NEnviroment Create(Enviroment data)
         {
             var n_enviroment = SceneHelper.LoadScene<NEnviroment>(_NENVIROMENT_PATH);
             n_enviroment.Data = data;
             return n_enviroment;
         }
-        
+
         public override void _Ready()
         {
             base._Ready();
@@ -29,9 +22,7 @@ namespace EGame
             _WorldParent = GetNode<Node2D>("%WorldParent");
             _CreatureParent = GetNode<Node2D>("%CreatureParent");
 
-            //创建场景
-            var scene = Data.WorldModel.CreateWorld();
-            _WorldParent.AddChild(scene);
+            CreateWorld();
 
             //创建Creature
             var players = Data.EnvState.Players;
@@ -39,11 +30,55 @@ namespace EGame
                 CreateCreature(player.Creature);
         }
 
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////                                 场景管理
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private Node2D _WorldParent;
+        private void CreateWorld()
+        {
+            //创建场景
+            var scene = Data.WorldModel.CreateWorld();
+            _WorldParent.AddChild(scene);
+        }
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////                                 Creature管理
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private Node2D _CreatureParent;
+
+        private List<NEnvCreature> _NCreatures = new List<NEnvCreature>();
+
         private void CreateCreature(Creature creature)
         {
             var n_env_creature = NEnvCreature.Create(creature);
             _NCreatures.Add(n_env_creature);
             _CreatureParent.AddChild(n_env_creature);
+        }
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////                              Input Controller
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private NEnviromentController _InputContorller;
+
+        public void AddController()
+        {
+            if (GodotObject.IsInstanceValid(_InputContorller))
+                return;
+            
+            _InputContorller = NEnviromentController.Create();
+            this.AddChild(_InputContorller);
+        }
+        
+        public void RemoveController()
+        {
+            if (GodotObject.IsInstanceValid(_InputContorller) == false)
+                return;
+
+            _InputContorller.QueueFree();
+            _InputContorller = null;
         }
     }
 }
