@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://bgg7dp3nm278q" path="res://scripts/Core/Nodes/NGame.cs" id="1_uwrxv"]
 [ext_resource type="Script" uid="uid://dsy8h32r4tgwf" path="res://scripts/Core/Nodes/Input/NInputManager.cs" id="3_lbhrr"]
 [ext_resource type="Script" uid="uid://bxw63hwdl8rpg" path="res://scripts/Core/Nodes/NSceneContainer.cs" id="3_lnu2h"]
-[ext_resource type="Script" uid="uid://gcr8f4bksx37" path="res://scripts/Core/Example/Example.cs" id="4_iywne"]
 [ext_resource type="PackedScene" uid="uid://drjgdl7h8yx3o" path="res://scenes/dev_console/dev_console.tscn" id="4_lbhrr"]
 
 [node name="NGame" type="Control" unique_id=376375264]
@@ -27,8 +26,5 @@ script = ExtResource("3_lnu2h")
 
 [node name="InputManager" type="Node" parent="." unique_id=2078358983]
 script = ExtResource("3_lbhrr")
-
-[node name="Example" type="Node" parent="." unique_id=1576930563]
-script = ExtResource("4_iywne")
 
 [node name="DevConsole" parent="." unique_id=1579904544 instance=ExtResource("4_lbhrr")]

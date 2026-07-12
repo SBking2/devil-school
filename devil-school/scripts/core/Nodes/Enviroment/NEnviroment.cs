@@ -7,13 +7,15 @@ namespace EGame
     public partial class NEnviroment : Control
     {
         private static readonly string _NENVIROMENT_PATH = "enviroments/enviroment";
-        public Enviroment Data { get; private set; }
+        public static NEnviroment Instance => NRun.Instance.EnviromentNode;
         public static NEnviroment Create(Enviroment data)
         {
             var n_enviroment = SceneHelper.LoadScene<NEnviroment>(_NENVIROMENT_PATH);
             n_enviroment.Data = data;
             return n_enviroment;
         }
+
+        public Enviroment Data { get; private set; }
 
         public override void _Ready()
         {
@@ -28,6 +30,8 @@ namespace EGame
             var players = Data.EnvState.Players;
             foreach (var player in players)
                 CreateCreature(player.Creature);
+
+            AddController(_NCreatures[0]);
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -63,12 +67,12 @@ namespace EGame
 
         private NEnviromentController _InputContorller;
 
-        public void AddController()
+        public void AddController(NEnvCreature controlled)
         {
             if (GodotObject.IsInstanceValid(_InputContorller))
                 return;
             
-            _InputContorller = NEnviromentController.Create();
+            _InputContorller = NEnviromentController.Create(controlled);
             this.AddChild(_InputContorller);
         }
         

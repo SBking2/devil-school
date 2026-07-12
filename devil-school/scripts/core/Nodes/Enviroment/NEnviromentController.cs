@@ -5,10 +5,11 @@ namespace EGame
 {
     public partial class NEnviromentController : Node
     {
-        private const string _SCENE_PATH = "input/enviroment_controller";
-        public static NEnviromentController Create()
+        private const string _SCENE_PATH = "enviroments/enviroment_controller";
+        public static NEnviromentController Create(NEnvCreature controled)
         {
             var instance = SceneHelper.LoadScene<NEnviromentController>(_SCENE_PATH);
+            instance._Creature = controled;
             return instance;
         }
 

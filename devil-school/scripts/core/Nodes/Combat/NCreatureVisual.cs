@@ -11,7 +11,7 @@ namespace EGame
         public override void _Ready()
         {
             base._Ready();
-            _SpineBody = GetNode<Node2D>("%_SpineBody");
+            _SpineBody = GetNode<Node2D>("%SpineBody");
 
             if(_SpineBody != null)
             {

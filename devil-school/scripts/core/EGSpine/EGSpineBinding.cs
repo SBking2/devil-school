@@ -30,7 +30,7 @@ namespace EGame
         {
             if (_SpineObject == null)
                 throw new ArgumentNullException("The SpineObject is null");
-
+            
             if (_SpineObject.GetClass() != SpineClassName)
                 throw new InvalidOperationException($"Expected {SpineClassName} but was {_SpineObject.GetClass()}");
 
@@ -39,7 +39,7 @@ namespace EGame
                 if (_SpineObject.HasMethod(method_name) == false)
                     throw new InvalidOperationException($"Class {SpineClassName} doesn't have the method which name is {method_name}");
             }
-
+            
             foreach (var signal_name in SignalNames)
             {
                 if (_SpineObject.HasSignal(signal_name) == false)
