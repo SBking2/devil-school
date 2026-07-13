@@ -5,7 +5,7 @@ namespace EGame
 {
     public partial class NMainMenu : Control
     {
-        private static readonly string MAINMENU_SCENE_PATH = "ui/main_menu";
+        private const string MAINMENU_SCENE_PATH = "ui/main_menu";
         public static NMainMenu Instance => NGame.Instance?.MainMenuNode;
         public static NMainMenu Create()
         {

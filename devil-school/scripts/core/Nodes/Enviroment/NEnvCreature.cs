@@ -5,7 +5,7 @@ namespace EGame
 {
     public partial class NEnvCreature : CharacterBody2D
     {
-        private static readonly string N_ENV_CREATURE_PATH = "enviroments/envcreature";
+        private const string N_ENV_CREATURE_PATH = "enviroments/envcreature";
         public Creature Data { get; private set; }
 
         private NCreatureVisual _Visual;

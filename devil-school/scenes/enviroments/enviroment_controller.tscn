@@ -1,6 +1,0 @@
-[gd_scene format=3 uid="uid://bdsl8woetgk4j"]
-
-[ext_resource type="Script" uid="uid://cl48lxgr7ckcj" path="res://scripts/Core/Nodes/Enviroment/NEnviromentController.cs" id="1_12aox"]
-
-[node name="NEnviromentController" type="Node" unique_id=691677353]
-script = ExtResource("1_12aox")

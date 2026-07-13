@@ -12,7 +12,7 @@ namespace EGame
 		{
 			get
 			{
-				if (!GodotObject.IsInstanceValid(_CurrentScene))
+				if (_CurrentScene == null)
 					return null;
 
 				if (_CurrentScene.IsQueuedForDeletion())

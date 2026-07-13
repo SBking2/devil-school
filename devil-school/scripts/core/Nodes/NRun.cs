@@ -6,7 +6,7 @@ namespace EGame
 	//开始游戏之后（进入存档之后）
 	public partial class NRun : Control
 	{
-		private static readonly string RUN_SCENE_PATH = "run";
+		private const string RUN_SCENE_PATH = "run";
 		private NSceneContainer _SceneContainer;
 		public static NRun Instance => NGame.Instance?.RunNode;
 		public NCombatRoom CombatRoomNode => _SceneContainer.CurrentScene as NCombatRoom;

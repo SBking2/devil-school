@@ -6,7 +6,7 @@ namespace EGame
 {
     public partial class NEnviroment : Control
     {
-        private static readonly string _NENVIROMENT_PATH = "enviroments/enviroment";
+        private const string _NENVIROMENT_PATH = "enviroments/enviroment";
         public static NEnviroment Instance => NRun.Instance.EnviromentNode;
         public static NEnviroment Create(Enviroment data)
         {
@@ -23,15 +23,17 @@ namespace EGame
 
             _WorldParent = GetNode<Node2D>("%WorldParent");
             _CreatureParent = GetNode<Node2D>("%CreatureParent");
+            _CameraController = GetNode<NCameraController>("%CameraController");
 
             CreateWorld();
-
+            
             //创建Creature
             var players = Data.EnvState.Players;
             foreach (var player in players)
                 CreateCreature(player.Creature);
 
             AddController(_NCreatures[0]);
+            _CameraController.SetCamera(NFollowCamera.Create(_NCreatures[0]));
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -69,7 +71,7 @@ namespace EGame
 
         public void AddController(NEnvCreature controlled)
         {
-            if (GodotObject.IsInstanceValid(_InputContorller))
+            if (_InputContorller != null)
                 return;
             
             _InputContorller = NEnviromentController.Create(controlled);
@@ -78,11 +80,18 @@ namespace EGame
         
         public void RemoveController()
         {
-            if (GodotObject.IsInstanceValid(_InputContorller) == false)
+            if (_InputContorller == null)
                 return;
 
             _InputContorller.QueueFree();
             _InputContorller = null;
         }
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////                                 相机
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private NCameraController _CameraController;
+        public Camera2D MainCamera => _CameraController?.CurrentCamera;
     }
 }

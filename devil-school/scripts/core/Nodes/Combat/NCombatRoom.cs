@@ -6,7 +6,7 @@ namespace EGame
 {
     public partial class NCombatRoom : Control
     {
-        private static readonly string COMBAT_SCENE_PATH = "combat/combat_room";
+        private const string COMBAT_SCENE_PATH = "combat/combat_room";
         public CombatRoom Data { get; private set; }
 
         private Control _SceneContainer;
