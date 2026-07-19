@@ -1,5 +1,6 @@
 
 using Godot;
+using System;
 
 namespace EGame
 {
@@ -10,6 +11,8 @@ namespace EGame
 
         private NCreatureVisual _Visual;
 
+        private CreatureAnimator _SpineAnimator;
+
         private Node2D _VisualParent;
 
         private CollisionShape2D _CollisionShape;
@@ -18,7 +21,6 @@ namespace EGame
         {
             var instance = SceneHelper.LoadScene<NEnvCreature>(N_ENV_CREATURE_PATH);
             instance.Data = data;
-            instance._Visual = data.CreateVisuals();
             return instance;
         }
         
@@ -30,12 +32,39 @@ namespace EGame
             _CollisionShape = GetNode<CollisionShape2D>("%CollisionShape");
 
             //创建Visual
-            _Visual = Data.CreateVisuals();
+            GenerateVisual();
+            GenerateAnimator();
+        }
+
+        private void GenerateVisual()
+        {
+            if (_Visual != null)
+                throw new InvalidOperationException($"{Name} already has CreatureVisual!");
+
+            if (Data.IsPlayer)
+                _Visual = Data.Player.Character.CreateVisual();
+            else
+                _Visual = Data.MonsterModel.CreateVisual();
+
             if (_Visual != null)
             {
                 var parent = _VisualParent == null ? this : _VisualParent;
                 parent.AddChild(_Visual);
                 parent.MoveChild(_Visual, 0);
+            }
+        }
+
+        private void GenerateAnimator()
+        {
+            if (_Visual != null)
+            {
+                if (_Visual.IsSpine)
+                {
+                    if (Data.IsPlayer == false)
+                        _SpineAnimator = Data.MonsterModel.CreateAnimator(_Visual.SpineSprite);
+                    else
+                        _SpineAnimator = Data.Player.Character.CreateAnimator(_Visual.SpineSprite);
+                }
             }
         }
 

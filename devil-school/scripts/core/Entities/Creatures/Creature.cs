@@ -94,15 +94,5 @@ namespace EGame
 
 			_MaxHP = monster_model.MaxHP;
 		}
-
-		public NCreatureVisual CreateVisuals()
-		{
-			if (this.MonsterModel != null)
-				return this.MonsterModel.CreateVisual();
-			else if(this.Player != null)
-				return this.Player.Character.CreateVisual();
-
-			return null;
-		}
 	}
 }

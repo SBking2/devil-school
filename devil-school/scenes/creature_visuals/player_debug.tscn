@@ -13,7 +13,7 @@ script = ExtResource("1_c7ydh")
 [node name="SpineBody" type="SpineSprite" parent="." unique_id=671142975]
 skeleton_data_res = ExtResource("2_c7ydh")
 preview_skin = "Default"
-preview_animation = "-- Empty --"
+preview_animation = "idle_loop"
 preview_frame = false
 preview_time = 0.0
 unique_name_in_owner = true

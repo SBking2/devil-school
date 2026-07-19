@@ -1,4 +1,5 @@
 using Godot;
+using System;
 namespace EGame
 {
 	public partial class NCreature : Control 
@@ -6,11 +7,16 @@ namespace EGame
 		private const string NCREATURE_PREFAB_PATH = "combat/creature";
 		public Creature Data { get; protected set;}
 
-		private NCreatureVisual _Visual;
+        private NCreatureVisual _Visual;
+		private CreatureAnimator _SpineAnimator;
 
-		private NCreatureStateDisplay _StateDisplay;
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //////										节点定位
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-		public Control _VisualParent; 
+        private NCreatureStateDisplay _StateDisplay;
+
+		private Control _VisualParent; 
 
 		public static NCreature Create(Creature creature)
 		{
@@ -29,13 +35,40 @@ namespace EGame
 			_StateDisplay.SetCreature(this);
 
 			//创建Visual
-			_Visual = Data.CreateVisuals();
+			GenerateVisual();
+			GenerateAnimator();
+		}
+
+		private void GenerateVisual()
+		{
+			if (_Visual != null)
+				throw new InvalidOperationException($"{Name} already has CreatureVisual!");
+
+			if (Data.IsPlayer)
+				_Visual = Data.Player.Character.CreateVisual();
+			else
+				_Visual = Data.MonsterModel.CreateVisual();
+
 			if(_Visual != null)
 			{
                 var parent = _VisualParent == null ? this : _VisualParent;
                 parent.AddChild(_Visual);
                 parent.MoveChild(_Visual, 0);
-			}
+            }
 		}
+
+		private void GenerateAnimator()
+		{
+            if (_Visual != null)
+            {
+                if (_Visual.IsSpine)
+                {
+                    if (Data.IsPlayer == false)
+                        _SpineAnimator = Data.MonsterModel.CreateAnimator(_Visual.SpineSprite);
+                    else
+                        _SpineAnimator = Data.Player.Character.CreateAnimator(_Visual.SpineSprite);
+                }
+            }
+        }
 	}
 }

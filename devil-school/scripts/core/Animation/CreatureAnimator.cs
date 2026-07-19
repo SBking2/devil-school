@@ -31,7 +31,7 @@ namespace EGame
             var anim = _AnyState.CallTrigger(trigger);
             if(anim == null)
                 anim = _CurrentState.CallTrigger(trigger);
-
+            
             if (anim != null)
                 PlayAnimation(anim);
         }
@@ -60,9 +60,9 @@ namespace EGame
         /// <summary>
         /// 动画由SpineSprite继续播，但是状态得手动更新
         /// </summary>
-        private void OnAnimationCompleted(GodotObject _, GodotObject _, GodotObject _)
+        private void OnAnimationCompleted(GodotObject _, GodotObject __, GodotObject ___)
         {
-            if(_CurrentState.NextState != null)
+            if(_CurrentState.IsLoop == false && _CurrentState.NextState != null)
             {
                 _CurrentState = _CurrentState.NextState;
             }
