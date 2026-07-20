@@ -11,15 +11,20 @@ namespace EGame
 
         private readonly Func<IEnumerable<Creature>, Task> _MoveTask;
         public override string ID => _StateID;
+        public string NextStateID { get; }
 
         public MoveState(string id, Func<IEnumerable<Creature>, Task> move_task)
         {
             this._StateID = id;
+            this._MoveTask = move_task;
         }
 
         public override string GetNextState()
         {
-            throw new System.NotImplementedException();
+            if (string.IsNullOrWhiteSpace(NextStateID))
+                throw new InvalidOperationException($"{ID} doesn't have the next state!");
+
+            return NextStateID;
         }
 
         public async Task ExecuteMove(IEnumerable<Creature> creatures)

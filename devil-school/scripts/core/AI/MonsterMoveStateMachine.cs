@@ -6,9 +6,7 @@ namespace EGame
     public class MonsterMoveStateMachine
     {
         private BaseMonsterMoveState _CurrentState;
-
         public Dictionary<string, BaseMonsterMoveState> States { get; } = new Dictionary<string, BaseMonsterMoveState>();
-
         public MonsterMoveStateMachine(IEnumerable<BaseMonsterMoveState> states, BaseMonsterMoveState init_state)
         {
             foreach(var state in states)
