@@ -13,13 +13,13 @@ namespace EGame
         public override string ID => _StateID;
         public string NextStateID { get; }
 
-        public MoveState(string id, Func<IEnumerable<Creature>, Task> move_task)
+        public MoveState(BaseMonsterMoveState state, Func<IEnumerable<Creature>, Task> move_task)
         {
-            this._StateID = id;
+            this._StateID = state.ID;
             this._MoveTask = move_task;
         }
 
-        public override string GetNextState()
+        public override string GetNextState(Creature owner, Rng rng)
         {
             if (string.IsNullOrWhiteSpace(NextStateID))
                 throw new InvalidOperationException($"{ID} doesn't have the next state!");

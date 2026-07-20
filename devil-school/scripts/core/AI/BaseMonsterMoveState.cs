@@ -8,7 +8,7 @@ namespace EGame
         //是否是行为节点
         public virtual bool IsMove => this is MoveState;
 
-        public abstract string GetNextState();
+        public abstract string GetNextState(Creature owner, Rng rng);
 
         public virtual void OnEnter()
         {
