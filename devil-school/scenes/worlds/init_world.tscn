@@ -1,9 +1,20 @@
 [gd_scene format=3 uid="uid://cprrwlc4ob8vg"]
 
-[ext_resource type="ArrayMesh" uid="uid://co4620ggtfjcy" path="res://models/world/test/test_mesh.tres" id="1_rmeui"]
+[ext_resource type="PackedScene" uid="uid://dks11c81aon2h" path="res://models/world/test/test.fbx" id="1_rmeui"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_rmeui"]
+
+[sub_resource type="Environment" id="Environment_rmeui"]
+ambient_light_source = 2
+ambient_light_color = Color(0.84709084, 0.87673146, 0.99999875, 1)
 
 [node name="InitWorld" type="Node3D" unique_id=1678437961]
 
-[node name="Ground" type="MeshInstance3D" parent="." unique_id=1636206957]
-transform = Transform3D(100, 0, 0, 0, 100, 0, 0, 0, 100, -0.3838024, 0, 0.41073322)
-mesh = ExtResource("1_rmeui")
+[node name="test" parent="." unique_id=192953278 instance=ExtResource("1_rmeui")]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1781123623]
+transform = Transform3D(100, 0, 0, 0, 100, 0, 0, 0, 100, 0, -22.26277, 0)
+mesh = SubResource("PlaneMesh_rmeui")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1990076639]
+environment = SubResource("Environment_rmeui")
