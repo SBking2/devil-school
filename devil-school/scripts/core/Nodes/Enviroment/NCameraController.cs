@@ -3,12 +3,12 @@ using Godot;
 
 namespace EGame
 {
-    public partial class NCameraController : Node2D
+    public partial class NCameraController : Node3D
     {
-        private Camera2D _Camera;
-        public Camera2D CurrentCamera => _Camera;
+        private Camera3D _Camera;
+        public Camera3D CurrentCamera => _Camera;
 
-        public void SetCamera(Camera2D camera)
+        public void SetCamera(Camera3D camera)
         {
             if(_Camera != null)
                 _Camera.QueueFree();

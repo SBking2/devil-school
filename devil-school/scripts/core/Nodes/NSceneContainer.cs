@@ -4,11 +4,11 @@ using System.Collections.Generic;
 
 namespace EGame
 {
-	public partial class NSceneContainer : Control
+	public partial class NSceneContainer : Node
 	{
-		private Control _CurrentScene = null;
+		private Node _CurrentScene = null;
 
-		public Control CurrentScene
+		public Node CurrentScene
 		{
 			get
 			{
@@ -27,7 +27,7 @@ namespace EGame
 			}
 		}
 
-		public void SetScene(Control scene)
+		public void SetScene(Node scene)
 		{
 			var remove_list = new List<Node>();
 			foreach(var child in GetChildren())

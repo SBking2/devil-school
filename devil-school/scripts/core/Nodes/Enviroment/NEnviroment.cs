@@ -4,7 +4,7 @@ using Godot;
 
 namespace EGame
 {
-    public partial class NEnviroment : Control
+    public partial class NEnviroment : Node3D
     {
         private const string _NENVIROMENT_PATH = "enviroments/enviroment";
         public static NEnviroment Instance => NRun.Instance.EnviromentNode;
@@ -21,7 +21,7 @@ namespace EGame
         {
             base._Ready();
 
-            _WorldParent = GetNode<Node2D>("%WorldParent");
+            _WorldParent = GetNode<Node3D>("%WorldParent");
             _CreatureParent = GetNode<Node2D>("%CreatureParent");
             _CameraController = GetNode<NCameraController>("%CameraController");
 
@@ -33,14 +33,16 @@ namespace EGame
                 CreateCreature(player.Creature);
 
             AddController(_NCreatures[0]);
-            _CameraController.SetCamera(NFollowCamera.Create(_NCreatures[0]));
+            //_CameraController.SetCamera(NFollowCamera.Create(_NCreatures[0]));
+            _CameraController.SetCamera(new Camera3D());
+            _CameraController.CurrentCamera.MakeCurrent();
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
         ///////                                 场景管理
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        private Node2D _WorldParent;
+        private Node3D _WorldParent;
         private void CreateWorld()
         {
             //创建场景
@@ -92,6 +94,6 @@ namespace EGame
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private NCameraController _CameraController;
-        public Camera2D MainCamera => _CameraController?.CurrentCamera;
+        public Camera3D MainCamera => _CameraController?.CurrentCamera;
     }
 }

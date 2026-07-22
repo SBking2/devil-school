@@ -3,7 +3,7 @@ using Godot;
 
 namespace EGame
 {
-    public partial class NFollowCamera : Camera2D
+    public partial class NFollowCamera : Camera3D
     {
         private NEnvCreature _Target;
 
@@ -22,7 +22,7 @@ namespace EGame
 
             if(_Target != null)
             {
-                var target_pos = _Target.GlobalPosition;
+                var target_pos = new Vector3(_Target.GlobalPosition.X, _Target.GlobalPosition.Y, 0.0f);
                 this.GlobalPosition = this.GlobalPosition.Lerp(target_pos, (float)(delta * _LerpSpeed));
             }
         }

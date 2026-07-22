@@ -1,27 +1,15 @@
 [gd_scene format=3 uid="uid://dge3avc7g1le2"]
 
-[ext_resource type="Script" uid="uid://bgg7dp3nm278q" path="res://scripts/core/Nodes/NGame.cs" id="1_uwrxv"]
-[ext_resource type="Script" uid="uid://dsy8h32r4tgwf" path="res://scripts/core/Nodes/Input/NInputManager.cs" id="3_lbhrr"]
-[ext_resource type="Script" uid="uid://bxw63hwdl8rpg" path="res://scripts/core/Nodes/NSceneContainer.cs" id="3_lnu2h"]
+[ext_resource type="Script" uid="uid://bgg7dp3nm278q" path="res://scripts/Core/Nodes/NGame.cs" id="1_uwrxv"]
+[ext_resource type="Script" uid="uid://dsy8h32r4tgwf" path="res://scripts/Core/Nodes/Input/NInputManager.cs" id="3_lbhrr"]
+[ext_resource type="Script" uid="uid://bxw63hwdl8rpg" path="res://scripts/Core/Nodes/NSceneContainer.cs" id="3_lnu2h"]
 [ext_resource type="PackedScene" uid="uid://drjgdl7h8yx3o" path="res://scenes/dev_console/dev_console.tscn" id="4_lbhrr"]
 
-[node name="NGame" type="Control" unique_id=376375264]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+[node name="NGame" type="Node" unique_id=943147096]
 script = ExtResource("1_uwrxv")
 
-[node name="RootSceneContainer" type="Control" parent="." unique_id=1154507782]
+[node name="RootSceneContainer" type="Node" parent="." unique_id=54595737]
 unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
 script = ExtResource("3_lnu2h")
 
 [node name="InputManager" type="Node" parent="." unique_id=2078358983]

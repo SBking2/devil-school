@@ -7,7 +7,7 @@ namespace EGame
 	/// <summary>
 	/// 管理整个游戏的启动等等(应用级别)
 	/// </summary>
-	public partial class NGame : Control
+	public partial class NGame : Node
 	{
 		public static NGame Instance { get; private set; }
 		public NMainMenu MainMenuNode => _RootSceneContainer.CurrentScene as NMainMenu;

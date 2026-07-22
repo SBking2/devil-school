@@ -24,9 +24,9 @@ namespace EGame
             _CurrentState.OnEnter();
         }
 
-        public MoveState RollMove(Rng rng)
+        public MoveState RollMove(Creature owner, Rng rng)
         {
-            NextState(rng);
+            NextState(owner, rng);
 
             if (_CurrentState.IsMove == false)
                 throw new InvalidOperationException($"{_CurrentState.ID} is not a move state!");
@@ -34,12 +34,12 @@ namespace EGame
             return _CurrentState as MoveState;
         }
 
-        private void NextState(Rng rng)
+        private void NextState(Creature owner, Rng rng)
         {
             //至少取一次下个节点,跳转到一个Move节点
             do
             {
-                var next_state = _CurrentState.GetNextState(rng);
+                var next_state = _CurrentState.GetNextState(owner, rng);
                 if (string.IsNullOrEmpty(next_state) || States.ContainsKey(next_state) == false)
                     throw new InvalidOperationException("no valid state found: " + next_state);
 

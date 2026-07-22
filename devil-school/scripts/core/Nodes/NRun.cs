@@ -4,7 +4,7 @@ using Godot;
 namespace EGame
 {
 	//开始游戏之后（进入存档之后）
-	public partial class NRun : Control
+	public partial class NRun : Node
 	{
 		private const string RUN_SCENE_PATH = "run";
 		private NSceneContainer _SceneContainer;
@@ -14,7 +14,7 @@ namespace EGame
 
 		public static NRun Create()
 		{
-			var run = SceneHelper.LoadScene<Control>(RUN_SCENE_PATH);
+			var run = SceneHelper.LoadScene<Node>(RUN_SCENE_PATH);
 			return run as NRun;
 		}
 		
@@ -24,9 +24,9 @@ namespace EGame
 			_SceneContainer = GetNode<NSceneContainer>("%SceneContainer");
 		}
 		
-		public void SetCurrentScene(Control control)
+		public void SetCurrentScene(Node scene)
 		{
-			_SceneContainer.SetScene(control);
+			_SceneContainer.SetScene(scene);
 		}
 	}
 }
