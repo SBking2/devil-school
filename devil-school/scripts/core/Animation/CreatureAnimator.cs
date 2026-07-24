@@ -4,9 +4,14 @@ using System;
 
 namespace EGame
 {
+    /// <summary>
+    /// 支持Spine和AnimationPlayer
+    /// </summary>
     public class CreatureAnimator
     {
         private readonly EGSpineSprite _SpineController;
+        private readonly AnimationPlayer _AnimPlayer;
+
         private AnimState _CurrentState;
 
         private readonly AnimState _AnyState;   //CallTrigger的时候优先查这个状态
@@ -17,7 +22,17 @@ namespace EGame
             _CurrentState = init_state;
             _AnyState = new AnimState("any");
 
-            _SpineController.ConnectAnimationCompleted(Callable.From<GodotObject, GodotObject, GodotObject>(OnAnimationCompleted));
+            _SpineController.ConnectAnimationCompleted(Callable.From<GodotObject, GodotObject, GodotObject>(OnSpineAnimationCompleted));
+            PlayAnimation(_CurrentState);
+        }
+
+        public CreatureAnimator(AnimationPlayer anim_player, AnimState init_state)
+        {
+            _AnimPlayer = anim_player;
+            _CurrentState = init_state;
+            _AnyState = new AnimState("any");
+
+            _AnimPlayer.AnimationFinished += OnAnimPlayerCompleted;
             PlayAnimation(_CurrentState);
         }
 
@@ -35,12 +50,22 @@ namespace EGame
             if (anim != null)
                 PlayAnimation(anim);
         }
-
+        
         private void PlayAnimation(AnimState state)
         {
             _CurrentState = state;
-            var anim_state = _SpineController.GetAnimationState();
-            anim_state.SetAnimation(_CurrentState.ID, _CurrentState.IsLoop);
+            
+            if(_SpineController != null)
+            {
+                var anim_state = _SpineController.GetAnimationState();
+                anim_state.SetAnimation(_CurrentState.ID, _CurrentState.IsLoop);
+            }
+            else
+            {
+                _AnimPlayer.Play(_CurrentState.ID);
+                Animation anim = _AnimPlayer.GetAnimation(_CurrentState.ID);
+                anim.LoopMode = _CurrentState.IsLoop ? Animation.LoopModeEnum.Linear : Animation.LoopModeEnum.None;
+            }
 
             //递归添加下一状态
             if (_CurrentState.NextState != null)
@@ -49,18 +74,35 @@ namespace EGame
         
         private void AddNextAnimation(AnimState state)
         {
-            var anim_state = _SpineController.GetAnimationState();
-            anim_state.AddAnimation(state.ID, state.IsLoop);
+            if(_SpineController != null)
+            {
+                var anim_state = _SpineController.GetAnimationState();
+                anim_state.AddAnimation(state.ID, state.IsLoop);
+            }
+            else
+            {
+                _AnimPlayer.Queue(state.ID);
+                Animation anim = _AnimPlayer.GetAnimation(state.ID);
+                anim.LoopMode = state.IsLoop ? Animation.LoopModeEnum.Linear : Animation.LoopModeEnum.None;
+            }
 
             //递归添加下一状态
-            if(state.NextState != null)
+            if (state.NextState != null)
                 AddNextAnimation(state.NextState);
         }
 
         /// <summary>
         /// 动画由SpineSprite继续播，但是状态得手动更新
         /// </summary>
-        private void OnAnimationCompleted(GodotObject _, GodotObject __, GodotObject ___)
+        private void OnSpineAnimationCompleted(GodotObject _, GodotObject __, GodotObject ___)
+        {
+            if(_CurrentState.IsLoop == false && _CurrentState.NextState != null)
+            {
+                _CurrentState = _CurrentState.NextState;
+            }
+        }
+
+        private void OnAnimPlayerCompleted(StringName anim_name)
         {
             if(_CurrentState.IsLoop == false && _CurrentState.NextState != null)
             {
