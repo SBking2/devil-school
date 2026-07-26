@@ -22,8 +22,7 @@ namespace EGame
             base._Ready();
 
             _WorldParent = GetNode<Node3D>("%WorldParent");
-            _CreatureParent = GetNode<Node2D>("%CreatureParent");
-            _CameraController = GetNode<NCameraController>("%CameraController");
+            _CreatureParent = GetNode<Node3D>("%CreatureParent");
 
             CreateWorld();
             
@@ -31,11 +30,9 @@ namespace EGame
             var players = Data.EnvState.Players;
             foreach (var player in players)
                 CreateCreature(player.Creature);
-
+            
             AddController(_NCreatures[0]);
-            //_CameraController.SetCamera(NFollowCamera.Create(_NCreatures[0]));
-            _CameraController.SetCamera(new Camera3D());
-            _CameraController.CurrentCamera.MakeCurrent();
+            NRun.Instance.CameraController.SetCamera(NThirdPersonCamera.Create(_NCreatures[0]));
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -54,7 +51,7 @@ namespace EGame
         ///////                                 Creature管理
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        private Node2D _CreatureParent;
+        private Node3D _CreatureParent;
 
         private List<NEnvCreature> _NCreatures = new List<NEnvCreature>();
 
@@ -63,37 +60,33 @@ namespace EGame
             var n_env_creature = NEnvCreature.Create(creature);
             _NCreatures.Add(n_env_creature);
             _CreatureParent.AddChild(n_env_creature);
+
+            var model_id = creature.IsPlayer ? creature.Player.Character.ID : creature.MonsterModel.ID;
+            Logger.Debug($"Create Creature : {model_id}");
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
         ///////                              Input Controller
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        private NEnviromentController _InputContorller;
-
+        private NEnviromentInput _EnviromentInput;
+        
         public void AddController(NEnvCreature controlled)
         {
-            if (_InputContorller != null)
+            if (_EnviromentInput != null)
                 return;
-            
-            _InputContorller = NEnviromentController.Create(controlled);
-            this.AddChild(_InputContorller);
+
+            _EnviromentInput = NEnviromentInput.Create(controlled);
+            this.AddChild(_EnviromentInput);
         }
         
         public void RemoveController()
         {
-            if (_InputContorller == null)
+            if (_EnviromentInput == null)
                 return;
 
-            _InputContorller.QueueFree();
-            _InputContorller = null;
+            _EnviromentInput.QueueFree();
+            _EnviromentInput = null;
         }
-
-        /////////////////////////////////////////////////////////////////////////////////////////////////////////
-        ///////                                 相机
-        /////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        private NCameraController _CameraController;
-        public Camera3D MainCamera => _CameraController?.CurrentCamera;
     }
 }

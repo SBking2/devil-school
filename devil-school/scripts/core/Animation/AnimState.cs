@@ -15,15 +15,17 @@ namespace EGame
         private Dictionary<string, List<Branch>> _Braches;
         public string ID { get;}
         public bool IsLoop { get;}
+        public float MixDuration { get; }
         public AnimState NextState { get; set; }
-        public AnimState(string id, bool is_loop = false)
+        public AnimState(string id, float mix_duration = 0f, bool is_loop = false)
         {
             this.ID = id;
             this.IsLoop = is_loop;
+            this.MixDuration = mix_duration;
             _Braches = new Dictionary<string, List<Branch>>();
         }
 
-        public void AddBranch(string trigger, AnimState state, Func<bool> condition)
+        public void AddBranch(string trigger, AnimState state, Func<bool> condition = null)
         {
             if(_Braches.ContainsKey(trigger) == false)
                 _Braches.Add(trigger, new List<Branch>());

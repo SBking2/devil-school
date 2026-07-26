@@ -58,11 +58,12 @@ namespace EGame
             if(_SpineController != null)
             {
                 var anim_state = _SpineController.GetAnimationState();
-                anim_state.SetAnimation(_CurrentState.ID, _CurrentState.IsLoop);
+                var track = anim_state.SetAnimation(_CurrentState.ID, _CurrentState.IsLoop);
+                track.SetMixDuration(_CurrentState.MixDuration);
             }
             else
             {
-                _AnimPlayer.Play(_CurrentState.ID);
+                _AnimPlayer.Play(_CurrentState.ID, _CurrentState.MixDuration);
                 Animation anim = _AnimPlayer.GetAnimation(_CurrentState.ID);
                 anim.LoopMode = _CurrentState.IsLoop ? Animation.LoopModeEnum.Linear : Animation.LoopModeEnum.None;
             }

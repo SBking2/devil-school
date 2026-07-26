@@ -5,10 +5,10 @@ namespace EGame
 {
     public class MonsterMoveStateMachine
     {
-        private BaseMonsterMoveState _CurrentState;
-        public Dictionary<string, BaseMonsterMoveState> States { get; } = new Dictionary<string, BaseMonsterMoveState>();
+        private AbstractMonsterMoveState _CurrentState;
+        public Dictionary<string, AbstractMonsterMoveState> States { get; } = new Dictionary<string, AbstractMonsterMoveState>();
         public List<MoveState> StateLog { get; } = new List<MoveState>();
-        public MonsterMoveStateMachine(IEnumerable<BaseMonsterMoveState> states, BaseMonsterMoveState init_state)
+        public MonsterMoveStateMachine(IEnumerable<AbstractMonsterMoveState> states, AbstractMonsterMoveState init_state)
         {
             foreach(var state in states)
                 States.Add(state.ID, state);
@@ -16,7 +16,7 @@ namespace EGame
             SetState(init_state);
         }
 
-        private void SetState(BaseMonsterMoveState state)
+        private void SetState(AbstractMonsterMoveState state)
         {
             //不允许_CurrentState为空，因此不判空
             _CurrentState.OnExit();

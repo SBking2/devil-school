@@ -1,25 +1,26 @@
 using Godot;
 namespace EGame
 {
-    /// <summary>
-    /// Visual部分只关心纯渲染的组件和功能
-    /// </summary>
-    public partial class NCreatureVisual : Control
-    {
-        public EGSpineSprite SpineSprite { get; private set; }
-        public bool IsSpine => SpineSprite != null;
+	/// <summary>
+	/// Visual部分只关心纯渲染的组件和功能
+	/// </summary>
+	public partial class NCreatureVisual : Node3D
+	{
+		private Node3D _ModelRoot;
 
-        private Node2D _SpineBody;
-        
-        public override void _Ready()
-        {
-            base._Ready();
-            _SpineBody = GetNode<Node2D>("%SpineBody");
+		private AnimationPlayer _AnimPlayer;
+		public Node3D ModelRoot => _ModelRoot;
+		public AnimationPlayer AnimPlayer => _AnimPlayer;
+		
+		public override void _Ready()
+		{
+			base._Ready();
+			_ModelRoot = GetNode<Node3D>("%ModelRoot");
 
-            if(_SpineBody != null)
-            {
-                SpineSprite = new EGSpineSprite(_SpineBody);
-            }
-        }
-    }
+			if(_ModelRoot != null)
+			{
+				_AnimPlayer = _ModelRoot.GetNode<AnimationPlayer>("AnimationPlayer");
+			}
+		}
+	}
 }

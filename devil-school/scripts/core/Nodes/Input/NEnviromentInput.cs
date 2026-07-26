@@ -3,11 +3,11 @@ using Godot;
 
 namespace EGame
 {
-    public partial class NEnviromentController : Node
+    public partial class NEnviromentInput : Node
     {
-        public static NEnviromentController Create(NEnvCreature controled)
+        public static NEnviromentInput Create(NEnvCreature controled)
         {
-            var instance = new NEnviromentController();
+            var instance = new NEnviromentInput();
             instance._Creature = controled;
             return instance;
         }
@@ -18,22 +18,24 @@ namespace EGame
 
         private NEnvCreature _Creature;
 
-        private Vector2 GetMoveDir()
+        private Vector3 GetMoveDir()
         {
-            var dir = Vector2.Zero;
+            var dir = Vector3.Zero;
 
             if (Input.IsActionPressed(EGInput.UP))
-                dir.Y -= 1f;
-
-            if (Input.IsActionPressed(EGInput.DOWN))
-                dir.Y += 1f;
+                dir.Z -= 1f;
             
+            if (Input.IsActionPressed(EGInput.DOWN))
+                dir.Z += 1f;
+
             if (Input.IsActionPressed(EGInput.RIGHT))
                 dir.X += 1f;
 
             if (Input.IsActionPressed(EGInput.LEFT))
                 dir.X -= 1f;
 
+            dir = NRun.Instance.CameraController.CurrentCamera.HorizontalQuaternion * dir;
+            dir = dir.Normalized();
             return dir;
         }
 

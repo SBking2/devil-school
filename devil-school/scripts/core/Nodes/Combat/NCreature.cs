@@ -59,7 +59,7 @@ namespace EGame
 
 		private void GenerateAnimator()
 		{
-            if (_Visual != null)
+/*            if (_Visual != null)
             {
                 if (_Visual.IsSpine)
                 {
@@ -68,7 +68,7 @@ namespace EGame
                     else
                         _SpineAnimator = Data.Player.Character.CreateAnimator(_Visual.SpineSprite);
                 }
-            }
+            }*/
         }
 	}
 }

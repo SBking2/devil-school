@@ -12,7 +12,7 @@ namespace EGame
         UseOnlyOnce
     }
 
-    public class RandomBrachState : BaseMonsterMoveState
+    public class RandomBrachState : AbstractMonsterMoveState
     {
         private struct StateWeight
         {

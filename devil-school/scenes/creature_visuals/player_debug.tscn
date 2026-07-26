@@ -1,20 +1,11 @@
 [gd_scene format=3 uid="uid://b5b6w4y64f0pu"]
 
 [ext_resource type="Script" uid="uid://bftk3rmnrxvas" path="res://scripts/Core/Nodes/Combat/NCreatureVisual.cs" id="1_c7ydh"]
-[ext_resource type="SpineSkeletonDataResource" uid="uid://c0h2pxnbcacot" path="res://animations/characters/drak_assassin/drak_assassin_spine.tres" id="2_c7ydh"]
+[ext_resource type="PackedScene" uid="uid://725b0ffd1asp" path="res://models/characters/test/UAL2_Standard.glb" id="2_c7ydh"]
 
-[node name="CreatureVisual" type="Control" unique_id=1192989334]
-layout_mode = 3
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
+[node name="CreatureVisual" type="Node3D" unique_id=1810010319]
 script = ExtResource("1_c7ydh")
 
-[node name="SpineBody" type="SpineSprite" parent="." unique_id=671142975]
-skeleton_data_res = ExtResource("2_c7ydh")
-preview_skin = "Default"
-preview_animation = "idle_loop"
-preview_frame = false
-preview_time = 0.0
+[node name="ModelRoot" parent="." unique_id=625916314 instance=ExtResource("2_c7ydh")]
 unique_name_in_owner = true
-scale = Vector2(0.1, 0.1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.2495266, 0)

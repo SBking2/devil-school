@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace EGame
 {
-    public class ConditionalBrachState : BaseMonsterMoveState
+    public class ConditionalBrachState : AbstractMonsterMoveState
     {
         /// <summary>
         /// 一条condition的分支
@@ -49,7 +49,7 @@ namespace EGame
         /// <summary>
         /// 添加一个条件分支,越晚添加的优先级越低
         /// </summary>
-        public void AddBrach(BaseMonsterMoveState state, Func<bool> condition)
+        public void AddBrach(AbstractMonsterMoveState state, Func<bool> condition)
         {
             _Brachs.Add(new ConditionalBrach(state.ID, condition));
         }

@@ -1,7 +1,7 @@
 
 namespace EGame
 {
-    public abstract class BaseMonsterMoveState
+    public abstract class AbstractMonsterMoveState
     {
         public abstract string ID { get; }
 

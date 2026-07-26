@@ -112,7 +112,7 @@ namespace EGame
             //查找Category类（要么有标记，要么是Abstract直系继承）
             while (
                 Attribute.IsDefined(tmp_type, typeof(ModelCategoryAttribute)) == false 
-                && tmp_type.BaseType != typeof(AbstractModel) 
+                && tmp_type.BaseType != typeof(AbstractModel)
                 && tmp_type.BaseType != null
                 )
                 tmp_type = tmp_type.BaseType;

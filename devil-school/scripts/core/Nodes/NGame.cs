@@ -28,7 +28,10 @@ namespace EGame
 		{
 			base._Ready();
 			_RootSceneContainer = GetNode<NSceneContainer>("%RootSceneContainer");
-			EnterMainMenu();
+
+			//Debug
+			StartSinglePlayerGame();
+			RunManager.Instance.EnterEnviroment<InitWorldModel>();
 		}
 		
 		public void EnterMainMenu()
