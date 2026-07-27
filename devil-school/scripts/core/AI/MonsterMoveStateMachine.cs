@@ -8,11 +8,12 @@ namespace EGame
         private AbstractMonsterMoveState _CurrentState;
         public Dictionary<string, AbstractMonsterMoveState> States { get; } = new Dictionary<string, AbstractMonsterMoveState>();
         public List<MoveState> StateLog { get; } = new List<MoveState>();
+
+        //因为要存储使用过的招式，所以使用 字符串+字典 更好
         public MonsterMoveStateMachine(IEnumerable<AbstractMonsterMoveState> states, AbstractMonsterMoveState init_state)
         {
             foreach(var state in states)
                 States.Add(state.ID, state);
-
             SetState(init_state);
         }
 

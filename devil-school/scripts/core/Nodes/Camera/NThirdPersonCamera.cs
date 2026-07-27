@@ -89,13 +89,11 @@ namespace EGame
                 UpdateArmLength(ArmLength);
             }
         }
-        public override void _Process(double delta)
+
+        public override void _PhysicsProcess(double delta)
         {
-            base._Process(delta);
-            if (_Target != null)
-            {
-                GlobalPosition = GlobalPosition.Lerp(_Target.GlobalPosition, (float)delta * CameraFollowLerpSpeed);
-            }
+            base._PhysicsProcess(delta);
+            ProcessMove(delta);
         }
 
         public void MakeCurrent()
@@ -108,6 +106,14 @@ namespace EGame
         {
             this.ArmLength = length;
             this._RealCamera.Position = new Vector3(0f, 0, this.ArmLength);
+        }
+
+        private void ProcessMove(double delta)
+        {
+            if (_Target != null)
+            {
+                GlobalPosition = GlobalPosition.Lerp(_Target.GlobalPosition, (float)delta * CameraFollowLerpSpeed);
+            }
         }
     }
 }

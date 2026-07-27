@@ -13,9 +13,9 @@ namespace EGame
         public override string ID => _StateID;
         public string NextStateID { get; }
 
-        public MoveState(AbstractMonsterMoveState state, Func<IEnumerable<Creature>, Task> move_task)
+        public MoveState(string id, Func<IEnumerable<Creature>, Task> move_task)
         {
-            this._StateID = state.ID;
+            this._StateID = id;
             this._MoveTask = move_task;
         }
 

@@ -16,6 +16,7 @@ namespace EGame
 
         private readonly AnimState _AnyState;   //CallTrigger的时候优先查这个状态
 
+        //直接使用State引用连线，利于编译检查
         public CreatureAnimator(EGSpineSprite owner, AnimState init_state)
         {
             _SpineController = owner;

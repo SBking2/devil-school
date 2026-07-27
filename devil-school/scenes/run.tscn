@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://bitmk3vfwbj4b"]
 
-[ext_resource type="Script" uid="uid://cf7ns8aok1b1a" path="res://scripts/Core/Nodes/NRun.cs" id="1_2d5n6"]
-[ext_resource type="Script" uid="uid://bxw63hwdl8rpg" path="res://scripts/Core/Nodes/NSceneContainer.cs" id="2_6elw1"]
-[ext_resource type="Script" uid="uid://bbid7im8laodh" path="res://scripts/Core/Nodes/Camera/NCameraController.cs" id="3_kyqep"]
+[ext_resource type="Script" uid="uid://cf7ns8aok1b1a" path="res://scripts/core/Nodes/NRun.cs" id="1_2d5n6"]
+[ext_resource type="Script" uid="uid://bxw63hwdl8rpg" path="res://scripts/core/Nodes/NSceneContainer.cs" id="2_6elw1"]
+[ext_resource type="Script" uid="uid://bbid7im8laodh" path="res://scripts/core/Nodes/Camera/NCameraController.cs" id="3_kyqep"]
 
 [node name="NRun" type="Node" unique_id=1271963219]
 script = ExtResource("1_2d5n6")

@@ -3,7 +3,7 @@ using Godot;
 
 namespace EGame
 {
-    public class PlayerDebugModel : CharacterModel
+    public class RobotModel : CharacterModel
     {
         public override CreatureAnimator CreateAnimator(AnimationPlayer anim_player)
         {
