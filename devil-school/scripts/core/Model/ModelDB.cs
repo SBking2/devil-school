@@ -37,6 +37,12 @@ namespace EGame
         {
             return Get<T>() as MonsterModel;
         }
+
+        public static MonsterModel Monster(string name)
+        {
+            return Get($"Monster.{name}") as MonsterModel;
+        }
+
         public static CharacterModel Character<T>() where T : CharacterModel
         {
             return Get<T>() as CharacterModel;
@@ -64,6 +70,23 @@ namespace EGame
                 return _ModelInstance[id];
             return null;
         }
+
+        private static AbstractModel Get(string id)
+        {
+            var slipt = id.Split(".");
+
+            if (slipt.Length != 2)
+                throw new InvalidOperationException($"Invalid Model ID : {id}!");
+
+            var category = slipt[0].Slugify();
+            var entry = slipt[1].Slugify();
+
+            var model_id = new ModelID(category, entry);
+            if (_ModelInstance.ContainsKey(model_id))
+                return _ModelInstance[model_id];
+            return null;
+        }
+
         public static bool Contains<T>() where T : AbstractModel
         {
             return Contains(typeof(T));

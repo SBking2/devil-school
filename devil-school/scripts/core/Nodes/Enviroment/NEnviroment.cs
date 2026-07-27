@@ -65,6 +65,11 @@ namespace EGame
             Logger.Debug($"Create Creature : {model_id}");
         }
 
+        public void AddMonsterCreature(NEnvCreature creature)
+        {
+            _CreatureParent.AddChild(creature);
+        }
+
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
         ///////                              Input Controller
         /////////////////////////////////////////////////////////////////////////////////////////////////////////

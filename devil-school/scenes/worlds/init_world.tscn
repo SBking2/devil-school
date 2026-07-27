@@ -2,6 +2,7 @@
 
 [ext_resource type="PackedScene" uid="uid://dks11c81aon2h" path="res://models/worlds/test/test.fbx" id="1_rmeui"]
 [ext_resource type="PackedScene" uid="uid://725b0ffd1asp" path="res://models/characters/test/UAL2_Standard.glb" id="2_d4mfe"]
+[ext_resource type="Script" uid="uid://q4rtp4tvykoq" path="res://scripts/Core/Nodes/Enviroment/NMonsterSpwanPoint.cs" id="3_xyxtw"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_rmeui"]
 
@@ -22,3 +23,15 @@ environment = SubResource("Environment_rmeui")
 
 [node name="UAL2_Standard" parent="." unique_id=988014084 instance=ExtResource("2_d4mfe")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1507063, 0)
+
+[node name="Monster1" type="Node3D" parent="." unique_id=1334568446]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.687683, 2.5120323, 0)
+script = ExtResource("3_xyxtw")
+MonsterID = "Zombie"
+CombatSide = 2
+
+[node name="Monster2" type="Node3D" parent="." unique_id=119722674]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.687683, 2.5120323, -3.5563145)
+script = ExtResource("3_xyxtw")
+MonsterID = "Zombie"
+CombatSide = 2

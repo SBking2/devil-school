@@ -91,7 +91,7 @@ namespace EGame
 		private void ProcessMove()
 		{
 			var move = TargetMoveDir;
-			Velocity = move.Normalized() * Data.Player.Character.MoveSpeed;
+			Velocity = move.Normalized() * (Data.IsPlayer ? Data.Player.Character.MoveSpeed : Data.MonsterModel.MoveSpeed);
 			MoveAndSlide();
 		}
 		
