@@ -4,14 +4,24 @@ namespace EGame
 	[ModelCategory]
 	public abstract class MonsterModel : CharacterModel
 	{
-		public MonsterMoveStateMachine MoveStateMachine { get; }
+		private TurnMoveStateMachine _TurnMoveStateMachine;
+		public TurnMoveStateMachine TurnMoveStateMachine => _TurnMoveStateMachine;
+
+		private WorldMoveStateMachine _WorldMoveStateMachine;
+		public WorldMoveStateMachine WorldMoveStateMachine => _WorldMoveStateMachine;
 
 		/// <summary>
 		/// 创建怪物的AI决策状态机
 		/// </summary>
-		public virtual MonsterMoveStateMachine CreateMoveStateMachine()
+		public virtual TurnMoveStateMachine CreateTurnMoveStateMachine()
 		{
-			MonsterMoveStateMachine state_machine = new MonsterMoveStateMachine(null, null);
+			TurnMoveStateMachine state_machine = new TurnMoveStateMachine(null, null);
+			return state_machine;
+		}
+
+		public virtual WorldMoveStateMachine CreateWorldMoveStateMachine()
+		{
+			WorldMoveStateMachine state_machine = new WorldMoveStateMachine(null, null);
 			return state_machine;
 		}
     }

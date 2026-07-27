@@ -6,19 +6,19 @@ namespace EGame
 {
     public class ZombieModel : MonsterModel
     {
-        public override MonsterMoveStateMachine CreateMoveStateMachine()
+        public override TurnMoveStateMachine CreateTurnMoveStateMachine()
         {
-            MoveState chase_state = new MoveState("chase", (creatures) =>
+            TurnStateMove chase_state = new TurnStateMove("chase", (creatures) =>
             {
                 return Task.CompletedTask;
             });
 
-            MoveState patrol_state = new MoveState("patrol", (creatures) =>
+            TurnStateMove patrol_state = new TurnStateMove("patrol", (creatures) =>
             {
                 return Task.CompletedTask;
             });
 
-            MonsterMoveStateMachine state_machine = new MonsterMoveStateMachine(null, null);
+            TurnMoveStateMachine state_machine = new TurnMoveStateMachine(null, null);
             return state_machine;
         }
 

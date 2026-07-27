@@ -12,7 +12,7 @@ namespace EGame
         UseOnlyOnce
     }
 
-    public class RandomBrachState : AbstractMonsterMoveState
+    public class TurnBaseStateRandomBrach : AbstractTurnMoveState
     {
         private struct StateWeight
         {
@@ -28,19 +28,25 @@ namespace EGame
 
         private List<StateWeight> _StateWeights = new List<StateWeight>();
         
-        public RandomBrachState(string id)
+        public TurnBaseStateRandomBrach(string id)
         {
             _StateID = id;
         }
 
         public override string GetNextState(Creature owner, Rng rng)
         {
-            float sum = _StateWeights.Sum((StateWeight weight) => GetStateWeight(weight, owner.MonsterModel.MoveStateMachine));
+            if (rng == null)
+                throw new InvalidOperationException($"Random State : {ID} doesn't have rng!");
+
+            float sum = _StateWeights.Sum((StateWeight weight) => GetStateWeight(weight, owner.MonsterModel.TurnMoveStateMachine));
+            if (sum <= 0f)
+                throw new InvalidOperationException($"Random State : {ID} doesn't have valid weight!");
+
             float random = rng.RangeFloat(0f, sum);
 
             for(int i = 0; i < _StateWeights.Count; i++)
             {
-                random -= GetStateWeight(_StateWeights[i], owner.MonsterModel.MoveStateMachine);
+                random -= GetStateWeight(_StateWeights[i], owner.MonsterModel.TurnMoveStateMachine);
                 if (random <= 0)
                     return _StateWeights[i].StateID;
             }
@@ -48,8 +54,11 @@ namespace EGame
             throw new InvalidOperationException($"Random State : {ID} could not find the next state!");
         }
 
-        private float GetStateWeight(StateWeight weight, MonsterMoveStateMachine machine)
+        private float GetStateWeight(StateWeight weight, TurnMoveStateMachine machine)
         {
+            if (machine == null)
+                throw new InvalidOperationException($"Random State : {ID} doesn't have state machine!");
+
             if (weight.WeightFunc == null)
                 throw new InvalidOperationException($"Random State : {ID} doesn't have the weight func!");
 
@@ -89,7 +98,7 @@ namespace EGame
             }
 
             //额外规则，限制一个节点必须间隔几个回合才能使用
-            if(weight.CoolTime > 0 && closest_time + 1 <= weight.CoolTime)
+            if(weight.CoolTime > 0 && closest_time >= 0 && closest_time + 1 <= weight.CoolTime)
             {
                 final_multi = 0f;
             }

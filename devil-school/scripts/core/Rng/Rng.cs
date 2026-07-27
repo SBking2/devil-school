@@ -46,7 +46,7 @@ namespace EGame
 
         public int RangeInt(int min, int max)
         {
-            if (min <= max)
+            if (min >= max)
                 throw new ArgumentException($"Min : {min} is than max : {max}");
 
             _Counter++;
@@ -60,7 +60,7 @@ namespace EGame
 
         public uint RangeUInt(uint min, uint max)
         {
-            if (min <= max)
+            if (min >= max)
                 throw new ArgumentException($"Min : {min} is than max : {max}");
 
             _Counter++;
@@ -76,7 +76,7 @@ namespace EGame
 
         public float RangeFloat(float min, float max)
         {
-            if (min <= max)
+            if (min >= max)
                 throw new ArgumentException($"Min : {min} is than max : {max}");
 
             _Counter++;
@@ -90,7 +90,7 @@ namespace EGame
 
         public double RangeDouble(double min, double max)
         {
-            if (min <= max)
+            if (min >= max)
                 throw new ArgumentException($"Min : {min} is than max : {max}");
 
             _Counter++;

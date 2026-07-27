@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace EGame
 {
-    public class ConditionalBrachState : AbstractMonsterMoveState
+    public class TurnStateConditionalBrach : AbstractTurnMoveState
     {
         /// <summary>
         /// 一条condition的分支
@@ -30,7 +30,7 @@ namespace EGame
 
         private List<ConditionalBrach> _Brachs = new List<ConditionalBrach>();
 
-        public ConditionalBrachState(string id)
+        public TurnStateConditionalBrach(string id)
         { 
             _StateID = id;
         }
@@ -49,9 +49,24 @@ namespace EGame
         /// <summary>
         /// 添加一个条件分支,越晚添加的优先级越低
         /// </summary>
-        public void AddBrach(AbstractMonsterMoveState state, Func<bool> condition)
+        public void AddBrach(AbstractTurnMoveState state, Func<bool> condition)
         {
             _Brachs.Add(new ConditionalBrach(state.ID, condition));
+        }
+
+        public void AddBrach(string state_id, Func<bool> condition)
+        {
+            _Brachs.Add(new ConditionalBrach(state_id, condition));
+        }
+
+        public void AddBranch(AbstractTurnMoveState state, Func<bool> condition)
+        {
+            AddBrach(state, condition);
+        }
+
+        public void AddBranch(string state_id, Func<bool> condition)
+        {
+            AddBrach(state_id, condition);
         }
     }
 }

@@ -94,7 +94,7 @@ namespace EGame
 			Velocity = move.Normalized() * Data.Player.Character.MoveSpeed;
 			MoveAndSlide();
 		}
-
+		
 		private void ProcessRotation(float delta)
 		{
 			if(TargetMoveDir != Vector3.Zero)
