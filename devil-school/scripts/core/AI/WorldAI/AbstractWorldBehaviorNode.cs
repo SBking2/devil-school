@@ -1,5 +1,4 @@
 
-using System;
 using System.Collections.Generic;
 
 namespace EGame
@@ -13,25 +12,12 @@ namespace EGame
         public double RunningTime { get; private set; }
         public int RunningTickCount { get; private set; }
 
-        internal WorldBehaviorTree Tree { get; private set; }
-
         protected virtual IEnumerable<AbstractWorldBehaviorNode> Children
         {
             get
             {
                 yield break;
             }
-        }
-
-        public void BindTree(WorldBehaviorTree tree)
-        {
-            if (Tree != null)
-                throw new InvalidOperationException("Behavior Node already has a tree!");
-
-            Tree = tree;
-
-            foreach (var child in Children)
-                child.BindTree(tree);
         }
 
         public virtual void OnTreeEvent(WorldBehaviorContext context)
@@ -54,7 +40,7 @@ namespace EGame
 
                     _IsStarted = true;
                     ResetTimer();
-                    Tree?.RecordNode(ID);
+                    context.Tree.RecordNode(ID);
                     OnEnter(context);
                 }
 
@@ -76,7 +62,6 @@ namespace EGame
             }
         }
 
-        //递归地退出所有节点
         public void Abort(WorldBehaviorContext context)
         {
             foreach (var child in Children)

@@ -9,7 +9,8 @@ namespace EGame
         private const int MAX_NODE_LOG_COUNT = 256;
 
         private AbstractWorldBehaviorNode _Root;
-        private readonly Creature _Owner;
+        private Creature _Owner;
+        private Rng _Rng;
         private bool _NeedTick = true;
 
         public AbstractWorldBehaviorNode Root => _Root;
@@ -17,9 +18,15 @@ namespace EGame
         public Dictionary<string, object> Blackboard { get; } = new Dictionary<string, object>();
         public List<string> NodeLog { get; } = new List<string>();
 
-        public WorldBehaviorTree(AbstractWorldBehaviorNode root, Creature owner)
+        public WorldBehaviorTree(AbstractWorldBehaviorNode root, Creature owner = null, Rng rng = null)
         {
             SetRoot(root);
+            _Owner = owner;
+            _Rng = rng ?? Rng.RealRandom;
+        }
+
+        public void SetOwner(Creature owner)
+        {
             _Owner = owner;
         }
 
@@ -32,6 +39,17 @@ namespace EGame
             context.Delta = delta;
 
             TickRoot(context);
+        }
+
+        public void Update(Creature owner, double delta, Rng rng = null)
+        {
+            if (owner != null)
+                _Owner = owner;
+
+            if (rng != null)
+                _Rng = rng;
+
+            Update(delta);
         }
 
         public void NotifyEvent(string event_id, object payload = null)
@@ -47,6 +65,17 @@ namespace EGame
             RequestEvaluate(context);
         }
 
+        public void NotifyEvent(Creature owner, string event_id, object payload = null, Rng rng = null)
+        {
+            if (owner != null)
+                _Owner = owner;
+
+            if (rng != null)
+                _Rng = rng;
+
+            NotifyEvent(event_id, payload);
+        }
+
         private void RequestEvaluate(WorldBehaviorContext context)
         {
             _Root.Abort(context);
@@ -56,7 +85,6 @@ namespace EGame
         private void SetRoot(AbstractWorldBehaviorNode root)
         {
             _Root = root ?? throw new ArgumentNullException(nameof(root));
-            _Root.BindTree(this);
         }
 
         private void TickRoot(WorldBehaviorContext context)
@@ -82,7 +110,7 @@ namespace EGame
 
         private WorldBehaviorContext CreateContext()
         {
-            return new WorldBehaviorContext(_Owner, null, this);
+            return new WorldBehaviorContext(_Owner, _Rng, this);
         }
     }
 }

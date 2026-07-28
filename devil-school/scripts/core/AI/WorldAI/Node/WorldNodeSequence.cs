@@ -48,7 +48,6 @@ namespace EGame
                 throw new ArgumentNullException(nameof(node));
 
             _Children.Add(node);
-            node.BindTree(Tree);
         }
 
         public void AddBrach(AbstractWorldBehaviorNode node)
