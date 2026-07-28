@@ -23,20 +23,20 @@ namespace EGame
 			}
 		}
 
-		private WorldMoveStateMachine _WorldMoveStateMachine;
-		public WorldMoveStateMachine WorldMoveStateMachine
+		private WorldBehaviorTree _WorldBehaviorTree;
+		public WorldBehaviorTree WorldBehaviorTree
 		{
 			get
 			{
-				return _WorldMoveStateMachine;
+				return _WorldBehaviorTree;
 			}
 
 			private set
 			{
 				AssertMutable();
-				if (_WorldMoveStateMachine != null)
-					throw new InvalidOperationException($"{ID} already has a world state-machine");
-				_WorldMoveStateMachine = value;
+				if (_WorldBehaviorTree != null)
+					throw new InvalidOperationException($"{ID} already has a world behavior tree");
+				_WorldBehaviorTree = value;
 			}
 		}
 
@@ -45,20 +45,18 @@ namespace EGame
 		/// </summary>
 		public virtual TurnMoveStateMachine CreateTurnMoveStateMachine()
 		{
-			TurnMoveStateMachine state_machine = new TurnMoveStateMachine(null, null);
-			return state_machine;
+			return null;
 		}
 
-		public virtual WorldMoveStateMachine CreateWorldMoveStateMachine()
+		public virtual WorldBehaviorTree CreateWorldBehaviorTree()
 		{
-			WorldMoveStateMachine state_machine = new WorldMoveStateMachine(null, null);
-			return state_machine;
+			return null;
 		}
 
         public override void SetUpForWorld()
         {
             base.SetUpForWorld();
-			_WorldMoveStateMachine = CreateWorldMoveStateMachine();
+			WorldBehaviorTree = CreateWorldBehaviorTree();
         }
     }
 }

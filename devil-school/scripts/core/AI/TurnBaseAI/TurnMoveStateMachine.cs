@@ -10,9 +10,16 @@ namespace EGame
         public Dictionary<string, AbstractTurnMoveState> States { get; } = new Dictionary<string, AbstractTurnMoveState>();
         public List<TurnStateMove> StateLog { get; } = new List<TurnStateMove>();
 
+        private readonly Creature _Ower;
+
         //因为要存储使用过的招式，所以使用 字符串+字典 更好
-        public TurnMoveStateMachine(IEnumerable<AbstractTurnMoveState> states, AbstractTurnMoveState init_state)
+        public TurnMoveStateMachine(IEnumerable<AbstractTurnMoveState> states, AbstractTurnMoveState init_state, Creature owner)
         {
+            this._Ower = owner;
+
+            if (states == null)
+                throw new InvalidOperationException("States is null!");
+
             foreach (var state in states)
                 States.Add(state.ID, state);
 
@@ -27,12 +34,12 @@ namespace EGame
             _CurrentState.OnEnter();
         }
 
-        public TurnStateMove RollMove(Creature owner, Rng rng)
+        public TurnStateMove RollMove()
         {
             if (_CurrentState == null)
                 throw new InvalidOperationException("Turn base state machine doesn't have current state!");
 
-            NextState(owner, rng);
+            NextState(_Ower, null);
 
             if (_CurrentState.IsMove == false)
                 throw new InvalidOperationException($"{_CurrentState.ID} is not a move state!");

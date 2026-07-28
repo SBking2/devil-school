@@ -76,12 +76,17 @@ namespace EGame
 		public void SetMoveDir(Vector3 dir)
 		{
 			TargetMoveDir = dir;
-			
-            if (TargetMoveDir.Length() > 0.1f)
-                _Animator.CallTrigger("walk");
-            else
-                _Animator.CallTrigger("idle");
+
+			if (TargetMoveDir.Length() > 0.1f)
+				SetAnimTrigger("walk");
+			else
+				SetAnimTrigger("idle");
         }
+
+		public void SetAnimTrigger(string trigger)
+		{
+			_Animator?.CallTrigger(trigger);
+		}
 
 		public override void _PhysicsProcess(double delta)
 		{
@@ -90,10 +95,16 @@ namespace EGame
 			ProcessRotation((float)delta);
         }
 
+        public override void _Process(double delta)
+        {
+            base._Process(delta);
+			Data.OnWolrdProcess(delta);
+        }
+
 		private void ProcessMove()
 		{
 			var move = TargetMoveDir;
-			Velocity = move.Normalized() * (Data.IsPlayer ? Data.Player.Character.MoveSpeed : Data.MonsterModel.MoveSpeed);
+			Velocity = move.Normalized() * Data.CharacterModel.MoveSpeed;
 			MoveAndSlide();
 		}
 		

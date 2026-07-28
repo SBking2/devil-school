@@ -1,27 +1,12 @@
 
-using System.Threading.Tasks;
+using System;
+using System.Collections.Generic;
 using Godot;
 
 namespace EGame
 {
     public class ZombieModel : MonsterModel
     {
-        public override TurnMoveStateMachine CreateTurnMoveStateMachine()
-        {
-            TurnStateMove chase_state = new TurnStateMove("chase", (creatures) =>
-            {
-                return Task.CompletedTask;
-            });
-
-            TurnStateMove patrol_state = new TurnStateMove("patrol", (creatures) =>
-            {
-                return Task.CompletedTask;
-            });
-
-            TurnMoveStateMachine state_machine = new TurnMoveStateMachine(null, null);
-            return state_machine;
-        }
-
         public override CreatureAnimator CreateAnimator(AnimationPlayer anim_player)
         {
             AnimState idle_state = new AnimState("Zombie_Idle", 0.1f, true);

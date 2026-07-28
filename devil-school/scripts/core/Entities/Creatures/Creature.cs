@@ -105,5 +105,21 @@ namespace EGame
 
 			_MaxHP = monster_model.MaxHP;
 		}
+
+		public void OnWolrdProcess(double delta)
+		{
+			if(MonsterModel?.WorldBehaviorTree != null)
+			{
+				MonsterModel.WorldBehaviorTree.Update(this, delta);
+			}
+		}
+
+		public void NotifyWorldEvent(string event_id, object payload = null)
+		{
+			if(MonsterModel?.WorldBehaviorTree != null)
+			{
+				MonsterModel.WorldBehaviorTree.NotifyEvent(this, event_id, payload);
+			}
+		}
 	}
 }
