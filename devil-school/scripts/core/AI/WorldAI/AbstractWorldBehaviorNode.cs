@@ -76,6 +76,7 @@ namespace EGame
             }
         }
 
+        //递归地退出所有节点
         public void Abort(WorldBehaviorContext context)
         {
             foreach (var child in Children)
