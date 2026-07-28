@@ -17,7 +17,7 @@ namespace EGame
         public string EventID { get; internal set; }
         public object EventPayload { get; internal set; }
 
-        internal WorldBehaviorContext(Creature owner, Rng rng, WorldBehaviorTree tree)
+        public WorldBehaviorContext(Creature owner, Rng rng, WorldBehaviorTree tree)
         {
             Owner = owner;
             Rng = rng ?? Rng.RealRandom;
