@@ -31,6 +31,8 @@ namespace EGame
 			//创建Visual
 			GenerateVisual();
 			GenerateAnimator();
+
+			Data.CharacterModel.SetUpForWorld();
 		}
 
 		private void GenerateVisual()

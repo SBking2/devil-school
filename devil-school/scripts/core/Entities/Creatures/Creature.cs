@@ -10,6 +10,17 @@ namespace EGame
 	{
 		public Player Player { get; private set; }
         public MonsterModel MonsterModel { get; private set; }
+
+		public CharacterModel CharacterModel
+		{
+			get
+			{
+				if (IsPlayer)
+					return Player.Character;
+				return MonsterModel;
+			}
+		}
+
 		public bool IsPlayer => Player != null;
 		public bool IsEnemy => Side == CombatSide.Enemy;
 
