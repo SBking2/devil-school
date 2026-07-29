@@ -5,19 +5,19 @@ namespace EGame
 {
     public class WorldBehaviorContext
     {
-        public Creature Owner { get; }
+        public NEnvCreature Owner { get; }
         public Rng Rng { get; }
         public WorldBehaviorTree Tree { get; }
         public Dictionary<string, object> Blackboard => Tree.Blackboard;
-        public AbstractWorldBehaviorNode ActiveNode { get; internal set; }
+        public AbstractWorldBehaviorNode ActiveNode { get; set; }
         public double ActiveNodeRunningTime => ActiveNode?.RunningTime ?? 0.0;
         public int ActiveNodeRunningTickCount => ActiveNode?.RunningTickCount ?? 0;
 
-        public double Delta { get; internal set; }
-        public string EventID { get; internal set; }
-        public object EventPayload { get; internal set; }
+        public double Delta { get; set; }
+        public string EventID { get; set; }
+        public object EventPayload { get; set; }
 
-        public WorldBehaviorContext(Creature owner, Rng rng, WorldBehaviorTree tree)
+        public WorldBehaviorContext(NEnvCreature owner, Rng rng, WorldBehaviorTree tree)
         {
             Owner = owner;
             Rng = rng ?? Rng.RealRandom;

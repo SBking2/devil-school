@@ -1,33 +1,22 @@
 
-using System;
-
 namespace EGame
 {
-    public class WorldNodeCondition : AbstractWorldBehaviorNode
+    public abstract class WorldNodeCondition : AbstractWorldBehaviorNode
     {
         private readonly string _NodeID;
-        private readonly Func<WorldBehaviorContext, bool> _ConditionFunc;
 
         public override string ID => _NodeID;
 
-        public WorldNodeCondition(string id, Func<WorldBehaviorContext, bool> condition_func)
+        protected WorldNodeCondition(string id)
         {
             _NodeID = id;
-            _ConditionFunc = condition_func;
-        }
-
-        public WorldNodeCondition(string id, Func<bool> condition_func)
-            : this(id, (_) => condition_func.Invoke())
-        {
-
         }
 
         protected override WorldBehaviorStatus OnTick(WorldBehaviorContext context)
         {
-            if (_ConditionFunc == null)
-                throw new InvalidOperationException($"Condition Node : {ID} doesn't have condition!");
-
-            return _ConditionFunc.Invoke(context) ? WorldBehaviorStatus.Success : WorldBehaviorStatus.Failure;
+            return CheckCondition(context) ? WorldBehaviorStatus.Success : WorldBehaviorStatus.Failure;
         }
+
+        protected abstract bool CheckCondition(WorldBehaviorContext context);
     }
 }

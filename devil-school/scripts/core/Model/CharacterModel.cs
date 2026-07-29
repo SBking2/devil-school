@@ -22,7 +22,7 @@ namespace EGame
             return animator;
         }
 
-        public virtual void SetUpForWorld()
+        public virtual void SetUpForWorld(NEnvCreature ncreature)
         {
 
         }

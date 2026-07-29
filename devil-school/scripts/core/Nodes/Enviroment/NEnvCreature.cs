@@ -15,6 +15,8 @@ namespace EGame
 
 		private Node3D _VisualParent;
 
+		private Node3D _SensorParent;
+
 		public static NEnvCreature Create(Creature data)
 		{
 			var instance = SceneHelper.LoadScene<NEnvCreature>(N_ENV_CREATURE_PATH);
@@ -27,12 +29,13 @@ namespace EGame
 			base._Ready();
 			
 			_VisualParent = GetNode<Node3D>("%VisualParent");
+            _SensorParent = GetNode<Node3D>("%SensorParent");
 
 			//创建Visual
 			GenerateVisual();
 			GenerateAnimator();
 
-			Data.CharacterModel.SetUpForWorld();
+			Data.SetUpForWorld(this);
 		}
 
 		private void GenerateVisual()
@@ -40,12 +43,9 @@ namespace EGame
 			if (_Visual != null)
 				throw new InvalidOperationException($"{Name} already has CreatureVisual!");
 
-			if (Data.IsPlayer)
-				_Visual = Data.Player.Character.CreateVisual();
-			else
-				_Visual = Data.MonsterModel.CreateVisual();
+            _Visual = Data.CreateVisual();
 
-			if (_Visual != null)
+            if (_Visual != null)
 			{
 				var parent = _VisualParent == null ? this : _VisualParent;
 				parent.AddChild(_Visual);
@@ -58,12 +58,9 @@ namespace EGame
 			if (_Visual != null)
 			{
 				if (_Visual.AnimPlayer != null)
-				{	
-					if (Data.IsPlayer == false)
-						_Animator = Data.MonsterModel.CreateAnimator(_Visual.AnimPlayer);
-					else
-						_Animator = Data.Player.Character.CreateAnimator(_Visual.AnimPlayer);
-				}
+				{
+					_Animator = Data.CreateAnimator(_Visual.AnimPlayer);
+                }
 			}
 		}
 
@@ -116,5 +113,17 @@ namespace EGame
                 Quaternion = Quaternion.Slerp(basis.GetRotationQuaternion(), delta * 5.0f);
             }
 		}
-	}
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////                                 敌人AI
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////
+		
+		public void AddSensor(INSensor sensor)
+		{
+			if (Data.IsPlayer == true)
+				throw new InvalidOperationException("Player doesn't need sensor!");
+
+			sensor.Bind(_SensorParent);
+		}
+    }
 }

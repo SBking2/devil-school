@@ -8,7 +8,7 @@ namespace EGame
     {
         private readonly string _NodeID;
         private readonly List<AbstractWorldBehaviorNode> _Children = new List<AbstractWorldBehaviorNode>();
-        private int _CurrentIndex;
+        private AbstractWorldBehaviorNode _CurrentNode;
 
         public override string ID => _NodeID;
 
@@ -21,25 +21,40 @@ namespace EGame
 
         public override void OnEnter(WorldBehaviorContext context)
         {
-            _CurrentIndex = 0;
+            _CurrentNode = null;
         }
 
         protected override WorldBehaviorStatus OnTick(WorldBehaviorContext context)
         {
-            while (_CurrentIndex < _Children.Count)
+            for (int i = 0; i < _Children.Count; i++)
             {
-                var status = _Children[_CurrentIndex].Tick(context);
+                var child = _Children[i];
+                var status = child.Tick(context);
 
-                if (status == WorldBehaviorStatus.Success)
-                    return WorldBehaviorStatus.Success;
+                if (status == WorldBehaviorStatus.Failure)
+                    continue;
 
-                if (status == WorldBehaviorStatus.Running)
-                    return WorldBehaviorStatus.Running;
+                if (_CurrentNode != child)
+                {
+                    _CurrentNode?.Abort(context);
+                    _CurrentNode = child;
+                }
 
-                _CurrentIndex++;
+                if (status != WorldBehaviorStatus.Running)
+                    _CurrentNode = null;
+
+                return status;
             }
 
+            _CurrentNode?.Abort(context);
+            _CurrentNode = null;
             return WorldBehaviorStatus.Failure;
+        }
+
+        public override void OnExit(WorldBehaviorContext context)
+        {
+            _CurrentNode?.Abort(context);
+            _CurrentNode = null;
         }
 
         public void AddBranch(AbstractWorldBehaviorNode node)

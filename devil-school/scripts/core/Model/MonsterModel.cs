@@ -6,6 +6,9 @@ namespace EGame
 	[ModelCategory]
 	public abstract class MonsterModel : CharacterModel
 	{
+		public virtual float VisualLength => 10f;
+		public virtual float VisualAngle => 90f;
+
 		private TurnMoveStateMachine _TurnMoveStateMachine;
 		public TurnMoveStateMachine TurnMoveStateMachine
 		{
@@ -48,15 +51,21 @@ namespace EGame
 			return null;
 		}
 
-		public virtual WorldBehaviorTree CreateWorldBehaviorTree()
+		protected virtual WorldBehaviorTree CreateWorldBehaviorTree(NEnvCreature ncreature)
 		{
 			return null;
 		}
 
-        public override void SetUpForWorld()
+        public override void SetUpForWorld(NEnvCreature ncreature)
         {
-            base.SetUpForWorld();
-			WorldBehaviorTree = CreateWorldBehaviorTree();
+            base.SetUpForWorld(ncreature);
+			WorldBehaviorTree = CreateWorldBehaviorTree(ncreature);
+			LoadSensor(ncreature);
         }
+		
+		protected virtual void LoadSensor(NEnvCreature ncreature)
+		{
+			
+		}
     }
 }

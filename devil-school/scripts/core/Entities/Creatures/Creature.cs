@@ -1,4 +1,5 @@
 
+using Godot;
 using System;
 
 namespace EGame
@@ -106,11 +107,34 @@ namespace EGame
 			_MaxHP = monster_model.MaxHP;
 		}
 
+		public NCreatureVisual CreateVisual()
+		{
+			if (MonsterModel == null)
+				return Player.Character.CreateVisual();
+			return MonsterModel.CreateVisual();
+		}
+
+		public CreatureAnimator CreateAnimator(AnimationPlayer anim_player)
+		{
+            if (MonsterModel == null)
+                return Player.Character.CreateAnimator(anim_player);
+            return MonsterModel.CreateAnimator(anim_player);
+        }
+
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		//////										提供给World的接口
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+		public void SetUpForWorld(NEnvCreature ncreature)
+		{
+			CharacterModel.SetUpForWorld(ncreature);
+		}
+
 		public void OnWolrdProcess(double delta)
 		{
 			if(MonsterModel?.WorldBehaviorTree != null)
 			{
-				MonsterModel.WorldBehaviorTree.Update(this, delta);
+				MonsterModel.WorldBehaviorTree.Update(delta);
 			}
 		}
 
@@ -118,7 +142,7 @@ namespace EGame
 		{
 			if(MonsterModel?.WorldBehaviorTree != null)
 			{
-				MonsterModel.WorldBehaviorTree.NotifyEvent(this, event_id, payload);
+				MonsterModel.WorldBehaviorTree.NotifyEvent(event_id, payload);
 			}
 		}
 	}
