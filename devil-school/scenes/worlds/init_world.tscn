@@ -1,7 +1,9 @@
 [gd_scene format=3 uid="uid://cprrwlc4ob8vg"]
 
 [ext_resource type="PackedScene" uid="uid://dks11c81aon2h" path="res://models/worlds/test/test.fbx" id="1_rmeui"]
+[ext_resource type="Material" uid="uid://22eyivixs4e3" path="res://material/world/init_world/ground_material.tres" id="2_xyxtw"]
 [ext_resource type="Script" uid="uid://q4rtp4tvykoq" path="res://scripts/Core/Nodes/Enviroment/NMonsterSpwanPoint.cs" id="3_xyxtw"]
+[ext_resource type="ArrayMesh" uid="uid://sfy0lc88sv3n" path="res://models/characters/FieldFighter/FieldFighter.obj" id="4_a8vgt"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_rmeui"]
 
@@ -12,22 +14,31 @@ ambient_light_color = Color(0.84709084, 0.87673146, 0.99999875, 1)
 [node name="InitWorld" type="Node3D" unique_id=1678437961]
 
 [node name="test" parent="." unique_id=602417196 instance=ExtResource("1_rmeui")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 46.84336, 11.820948, 0)
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1781123623]
-transform = Transform3D(100, 0, 0, 0, 100, 0, 0, 0, 100, 0, -22.26277, 0)
+transform = Transform3D(100, 0, 0, 0, 100, 0, 0, 0, 100, 0.003, 0, -0.002)
+material_override = ExtResource("2_xyxtw")
 mesh = SubResource("PlaneMesh_rmeui")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1990076639]
 environment = SubResource("Environment_rmeui")
 
 [node name="Monster1" type="Node3D" parent="." unique_id=1334568446]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.687683, 2.5120323, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.761, 1.246, 0)
 script = ExtResource("3_xyxtw")
 MonsterID = "Zombie"
 CombatSide = 2
 
-[node name="Monster2" type="Node3D" parent="." unique_id=119722674]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.687683, 2.5120323, -3.5563145)
-script = ExtResource("3_xyxtw")
-MonsterID = "Zombie"
-CombatSide = 2
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=360729596]
+transform = Transform3D(0.70640296, 0.4434682, -0.5516618, 0, 0.77939266, 0.6265358, 0.70780987, -0.44258672, 0.5505653, 0, 0, 0)
+shadow_enabled = true
+shadow_bias = 0.0
+
+[node name="PlayerStartPoint" type="Node3D" parent="." unique_id=419480346]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.524, 1.24, -12.929)
+
+[node name="FieldFighter" type="MeshInstance3D" parent="." unique_id=1050709987]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.767331, 0, 3.3834777)
+mesh = ExtResource("4_a8vgt")

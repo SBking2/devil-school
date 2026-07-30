@@ -18,6 +18,9 @@ namespace EGame
                 var target = v as NEnvCreature;
                 if(target != null)
                 {
+                    if ((context.Owner.GlobalPosition - target.GlobalPosition).Length() < 3f)
+                        return WorldBehaviorStatus.Success;
+
                     context.Owner.TargetMoveDir = (target.GlobalPosition - context.Owner.GlobalPosition).Normalized();
                     return WorldBehaviorStatus.Running;
                 }

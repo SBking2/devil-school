@@ -5,6 +5,8 @@ namespace EGame
 {
     public class RobotModel : CharacterModel
     {
+        public override float MoveSpeed => 3f;
+
         public override CreatureAnimator CreateAnimator(AnimationPlayer anim_player)
         {
             AnimState idle_state = new AnimState("Zombie_Idle", 0.1f, true);

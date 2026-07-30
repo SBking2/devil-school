@@ -5,6 +5,8 @@ namespace EGame
 {
     public class ZombieModel : MonsterModel
     {
+        public override float MoveSpeed => 1f;
+
         public override CreatureAnimator CreateAnimator(AnimationPlayer anim_player)
         {
             AnimState idle_state = new AnimState("Zombie_Idle", 0.1f, true);
@@ -22,14 +24,17 @@ namespace EGame
             WorldNodeSequence chase_sequence = new WorldNodeSequence("chase_sequence");
             chase_sequence.AddBranch(new ZombieHasTargetNode());
             chase_sequence.AddBranch(new ZombieChaseNode());
+            chase_sequence.AddBranch(new ZombieIdleNode());
 
             WorldNodeSequence idle_patrol_sequence = new WorldNodeSequence("idle_patrol_sequence");
             idle_patrol_sequence.AddBranch(new ZombieIdleNode());
             idle_patrol_sequence.AddBranch(new ZombiePatrolNode());
 
-            WorldNodeSelector root = new WorldNodeSelector("zombie_world_ai");
-            root.AddBranch(chase_sequence);
-            root.AddBranch(idle_patrol_sequence);
+            WorldNodeSelector selector = new WorldNodeSelector("zombie_world_ai");
+            selector.AddBranch(chase_sequence);
+            selector.AddBranch(idle_patrol_sequence);
+
+            WorldNodeRepeat root = new WorldNodeRepeat("repeat", selector);
 
             var tree = new WorldBehaviorTree(root, ncreature);
 

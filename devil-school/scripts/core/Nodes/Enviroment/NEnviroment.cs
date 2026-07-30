@@ -40,11 +40,13 @@ namespace EGame
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private Node3D _WorldParent;
+        private Node3D _PlayerStartPoint;
         private void CreateWorld()
         {
             //创建场景
             var scene = Data.WorldModel.CreateWorld();
             _WorldParent.AddChild(scene);
+            _PlayerStartPoint = scene.GetNode<Node3D>("%PlayerStartPoint");
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -60,6 +62,9 @@ namespace EGame
             var n_env_creature = NEnvCreature.Create(creature);
             _NCreatures.Add(n_env_creature);
             _CreatureParent.AddChild(n_env_creature);
+
+            if (_PlayerStartPoint != null)
+                n_env_creature.GlobalPosition = _PlayerStartPoint.GlobalPosition;
 
             var model_id = creature.IsPlayer ? creature.Player.Character.ID : creature.MonsterModel.ID;
             Logger.Debug($"Create Creature : {model_id}");
