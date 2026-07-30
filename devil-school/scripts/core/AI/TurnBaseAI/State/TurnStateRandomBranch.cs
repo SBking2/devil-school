@@ -12,7 +12,7 @@ namespace EGame
         UseOnlyOnce
     }
 
-    public class TurnBaseStateRandomBrach : AbstractTurnMoveState
+    public class TurnBaseStateRandomBranch : AbstractTurnMoveState
     {
         private struct StateWeight
         {
@@ -28,7 +28,7 @@ namespace EGame
 
         private List<StateWeight> _StateWeights = new List<StateWeight>();
         
-        public TurnBaseStateRandomBrach(string id)
+        public TurnBaseStateRandomBranch(string id)
         {
             _StateID = id;
         }

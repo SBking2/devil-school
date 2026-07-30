@@ -37,7 +37,7 @@ namespace EGame
             PlayAnimation(_CurrentState);
         }
 
-        public void AddAnyBrach(string trigger, AnimState state, Func<bool> condition = null)
+        public void AddAnyBranch(string trigger, AnimState state, Func<bool> condition = null)
         {
             _AnyState.AddBranch(trigger, state, condition);
         }

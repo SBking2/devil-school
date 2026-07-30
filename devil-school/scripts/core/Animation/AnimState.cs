@@ -12,7 +12,7 @@ namespace EGame
             public Func<bool> Condition;
         }
 
-        private Dictionary<string, List<Branch>> _Braches;
+        private Dictionary<string, List<Branch>> _Branches;
         public string ID { get;}
         public bool IsLoop { get;}
         public float MixDuration { get; }
@@ -22,23 +22,23 @@ namespace EGame
             this.ID = id;
             this.IsLoop = is_loop;
             this.MixDuration = mix_duration;
-            _Braches = new Dictionary<string, List<Branch>>();
+            _Branches = new Dictionary<string, List<Branch>>();
         }
 
         public void AddBranch(string trigger, AnimState state, Func<bool> condition = null)
         {
-            if(_Braches.ContainsKey(trigger) == false)
-                _Braches.Add(trigger, new List<Branch>());
+            if(_Branches.ContainsKey(trigger) == false)
+                _Branches.Add(trigger, new List<Branch>());
 
-            _Braches[trigger].Add(new Branch() { State = state, Condition = condition });
+            _Branches[trigger].Add(new Branch() { State = state, Condition = condition });
         }
 
         public AnimState CallTrigger(string trigger)
         {
-            if (_Braches.ContainsKey(trigger) == false)
+            if (_Branches.ContainsKey(trigger) == false)
                 return null;
 
-            foreach(var branch in _Braches[trigger])
+            foreach(var branch in _Branches[trigger])
             {
                 if (branch.Condition == null || branch.Condition.Invoke() == true)
                     return branch.State;

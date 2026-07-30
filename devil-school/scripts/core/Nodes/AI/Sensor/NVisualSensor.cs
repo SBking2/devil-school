@@ -9,7 +9,7 @@ namespace EGame
         public enum SensorShape
         {
             Sphere = 0,
-            Sentor = 1,
+            Sector = 1,
             Box = 2
         }
 
@@ -20,7 +20,7 @@ namespace EGame
             switch(sensor_shape)
             {
                 case SensorShape.Sphere:    instance = new NSphereSensor();     break;
-                case SensorShape.Sentor:    instance = new NSectorSensor();     break;
+                case SensorShape.Sector:    instance = new NSectorSensor();     break;
                 default:
                     throw new InvalidOperationException($"Unknow shape type : {sensor_shape.ToString()}!");
             }
@@ -51,7 +51,7 @@ namespace EGame
             this.AddChild(shape);
 
             BodyEntered += OnEnvCreatureEnter;
-            BodyExited -= OnEnvCreatureExit;
+            BodyExited += OnEnvCreatureExit;
         }
 
         private HashSet<NEnvCreature> _CreatesInShape = new HashSet<NEnvCreature>();

@@ -49,10 +49,5 @@ namespace EGame
 
             _Children.Add(node);
         }
-
-        public void AddBrach(AbstractWorldBehaviorNode node)
-        {
-            AddBranch(node);
-        }
     }
 }

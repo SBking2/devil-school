@@ -4,12 +4,12 @@ using System.Collections.Generic;
 
 namespace EGame
 {
-    public class TurnStateConditionalBrach : AbstractTurnMoveState
+    public class TurnStateConditionalBranch : AbstractTurnMoveState
     {
         /// <summary>
         /// 一条condition的分支
         /// </summary>
-        private readonly struct ConditionalBrach(string state_id, Func<bool> condition)
+        private readonly struct ConditionalBranch(string state_id, Func<bool> condition)
         {
             public readonly string StateID = state_id;
 
@@ -18,7 +18,7 @@ namespace EGame
             public bool Evaluate()
             {
                 if (ConditionalFunc == null)
-                    throw new InvalidOperationException($"Brach doesn't have condition!");
+                    throw new InvalidOperationException($"Branch doesn't have condition!");
 
                 return ConditionalFunc.Invoke();
             }
@@ -28,19 +28,19 @@ namespace EGame
 
         private readonly string _StateID;
 
-        private List<ConditionalBrach> _Brachs = new List<ConditionalBrach>();
+        private List<ConditionalBranch> _Branchs = new List<ConditionalBranch>();
 
-        public TurnStateConditionalBrach(string id)
+        public TurnStateConditionalBranch(string id)
         { 
             _StateID = id;
         }
 
         public override string GetNextState(Creature owner, Rng rng)
         {
-            for(int i = 0; i < _Brachs.Count; i++)
+            for(int i = 0; i < _Branchs.Count; i++)
             {
-                if (_Brachs[i].Evaluate())
-                    return _Brachs[i].StateID;
+                if (_Branchs[i].Evaluate())
+                    return _Branchs[i].StateID;
             }
 
             throw new InvalidOperationException($"Condition State : {ID} could not find a next state!");
@@ -49,24 +49,14 @@ namespace EGame
         /// <summary>
         /// 添加一个条件分支,越晚添加的优先级越低
         /// </summary>
-        public void AddBrach(AbstractTurnMoveState state, Func<bool> condition)
-        {
-            _Brachs.Add(new ConditionalBrach(state.ID, condition));
-        }
-
-        public void AddBrach(string state_id, Func<bool> condition)
-        {
-            _Brachs.Add(new ConditionalBrach(state_id, condition));
-        }
-
         public void AddBranch(AbstractTurnMoveState state, Func<bool> condition)
         {
-            AddBrach(state, condition);
+            _Branchs.Add(new ConditionalBranch(state.ID, condition));
         }
 
         public void AddBranch(string state_id, Func<bool> condition)
         {
-            AddBrach(state_id, condition);
+            _Branchs.Add(new ConditionalBranch(state_id, condition));
         }
     }
 }
