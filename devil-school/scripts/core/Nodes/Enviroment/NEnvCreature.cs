@@ -68,17 +68,24 @@ namespace EGame
 		///////                                 移动相关
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-		public Vector3 TargetMoveDir { get; private set; }
-
-		public void SetMoveDir(Vector3 dir)
+		private Vector3 _TargetMoveDir = Vector3.Zero;
+		public Vector3 TargetMoveDir
 		{
-			TargetMoveDir = dir;
+			get
+			{
+				return _TargetMoveDir;
+			}
 
-			if (TargetMoveDir.Length() > 0.1f)
-				SetAnimTrigger("walk");
-			else
-				SetAnimTrigger("idle");
-        }
+			set
+			{
+                _TargetMoveDir = value;
+
+                if (_TargetMoveDir.Length() > 0.1f)
+                    SetAnimTrigger("walk");
+                else
+                    SetAnimTrigger("idle");
+            }
+		}
 
 		public void SetAnimTrigger(string trigger)
 		{

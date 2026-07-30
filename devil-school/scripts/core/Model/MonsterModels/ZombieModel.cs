@@ -12,7 +12,7 @@ namespace EGame
             
             idle_state.AddBranch("walk", walk_state);
             walk_state.AddBranch("idle", idle_state);
-
+            
             CreatureAnimator animator = new CreatureAnimator(anim_player, idle_state);
             return animator;
         }
@@ -31,13 +31,41 @@ namespace EGame
             root.AddBranch(chase_sequence);
             root.AddBranch(idle_patrol_sequence);
 
-            return new WorldBehaviorTree(root);
-        }
+            var tree = new WorldBehaviorTree(root, ncreature);
 
-        protected override void LoadSensor(NEnvCreature ncreature)
-        {
-            base.LoadSensor(ncreature);
-            ncreature.AddSensor(NVisualSensor.Create(ncreature));
+            ncreature.AddSensor(NVisualSensor.Create(ncreature
+                , NVisualSensor.SensorShape.Sphere
+                , (int)LayerManager.Layer.Creature
+                , (int)LayerManager.Layer.Creature
+                ,(creatures)=>
+                {
+                    NEnvCreature closet_creature = null;
+                    float min_dis = 0f;
+                    foreach (NEnvCreature creature in creatures)
+                    {
+                        if(creature.Data.Side == CombatSide.Player)
+                        {
+                            if (closet_creature != null)
+                            {
+                                float distance = (creature.GlobalPosition - ncreature.GlobalPosition).Length();
+                                if (distance < min_dis)
+                                {
+                                    closet_creature = creature;
+                                    min_dis = distance;
+                                }
+                            }
+                            else
+                                closet_creature = creature;
+                        }
+                    }
+
+                    if(closet_creature != null)
+                        tree.NotifyEvent(WorldAIEvent.FindTarget, closet_creature as object);
+                    else
+                        tree.NotifyEvent(WorldAIEvent.MissingTarget);
+                }));
+
+            return tree;
         }
     }
 }

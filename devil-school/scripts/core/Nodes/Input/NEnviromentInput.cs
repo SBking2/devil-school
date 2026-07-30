@@ -46,7 +46,7 @@ namespace EGame
             if (_Creature != null)
             {
                 var dir = GetMoveDir();
-                _Creature.SetMoveDir(dir);
+                _Creature.TargetMoveDir = dir;
             }
         }
     }

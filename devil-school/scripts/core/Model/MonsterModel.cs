@@ -60,12 +60,6 @@ namespace EGame
         {
             base.SetUpForWorld(ncreature);
 			WorldBehaviorTree = CreateWorldBehaviorTree(ncreature);
-			LoadSensor(ncreature);
         }
-		
-		protected virtual void LoadSensor(NEnvCreature ncreature)
-		{
-			
-		}
     }
 }

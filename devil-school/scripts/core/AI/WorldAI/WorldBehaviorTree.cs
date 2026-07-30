@@ -18,7 +18,7 @@ namespace EGame
         public Dictionary<string, object> Blackboard { get; } = new Dictionary<string, object>();
         public List<string> NodeLog { get; } = new List<string>();
 
-        public WorldBehaviorTree(AbstractWorldBehaviorNode root, NEnvCreature owner = null, Rng rng = null)
+        public WorldBehaviorTree(AbstractWorldBehaviorNode root, NEnvCreature owner, Rng rng = null)
         {
             this._Root = root;
             _Owner = owner;
@@ -36,7 +36,7 @@ namespace EGame
             TickRoot(context);
         }
 
-        public void NotifyEvent(string event_id, object payload = null)
+        public void NotifyEvent(WorldAIEvent event_id, object payload = null)
         {
             if (_Owner == null)
                 return;
@@ -69,6 +69,8 @@ namespace EGame
             NodeLog.Add(node_id);
             if (NodeLog.Count > MAX_NODE_LOG_COUNT)
                 NodeLog.RemoveAt(0);
+
+            Logger.VeryDebug($"World AI Enter Node {node_id} By {_Owner.Data.CharacterModel.ID.ToString()}");
         }
 
         public void WakeUp()

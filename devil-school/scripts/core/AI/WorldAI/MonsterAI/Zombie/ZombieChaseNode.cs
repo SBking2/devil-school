@@ -12,12 +12,23 @@ namespace EGame
 
         protected override WorldBehaviorStatus OnTick(WorldBehaviorContext context)
         {
+            object v = null;
+            if(context.Blackboard.TryGetValue(ZombieAI.TargetKey, out v))
+            {
+                var target = v as NEnvCreature;
+                if(target != null)
+                {
+                    context.Owner.TargetMoveDir = (target.GlobalPosition - context.Owner.GlobalPosition).Normalized();
+                    return WorldBehaviorStatus.Running;
+                }
+            }
+
             return WorldBehaviorStatus.Failure;
         }
 
         public override void OnExit(WorldBehaviorContext context)
         {
-            
+            context.Owner.TargetMoveDir = Vector3.Zero;
         }
     }
 }

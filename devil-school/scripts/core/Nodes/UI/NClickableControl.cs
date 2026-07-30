@@ -136,22 +136,22 @@ namespace EGame
 
         protected virtual void OnPressed()
         {
-            Logger.VeyDebug($"{Name} is OnPressed!");
+            Logger.VeryDebug($"{Name} is OnPressed!");
         }
         
         protected virtual void OnReleased()
         {
-            Logger.VeyDebug($"{Name} is OnReleased!");
+            Logger.VeryDebug($"{Name} is OnReleased!");
         }
 
         protected virtual void OnFocused()
         {
-            Logger.VeyDebug($"{Name} is OnFocused!");
+            Logger.VeryDebug($"{Name} is OnFocused!");
         }
 
         protected virtual void OnUnFocused()
         {
-            Logger.VeyDebug($"{Name} is OnUnFocused!");
+            Logger.VeryDebug($"{Name} is OnUnFocused!");
         }
     }
 }

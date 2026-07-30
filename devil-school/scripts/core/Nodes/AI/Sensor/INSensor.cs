@@ -1,11 +1,13 @@
 
+using System;
+using System.Collections.Generic;
 using Godot;
 
 namespace EGame
 {
     public interface INSensor
     {
-        NEnvCreature Owner { get; }
-        void Bind(Node3D parent);
+        public NEnvCreature EnvCreatureOwner { get; }
+        public void Bind(Node3D parent);
     }
 }

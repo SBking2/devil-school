@@ -31,7 +31,7 @@ namespace EGame
 		private int _HP;
 		private int _MaxHP;
 
-		private CombatSide Side { get; }
+		public CombatSide Side { get; }
 
 		public int HP
 		{
@@ -138,7 +138,7 @@ namespace EGame
 			}
 		}
 
-		public void NotifyWorldEvent(string event_id, object payload = null)
+		public void NotifyWorldEvent(WorldAIEvent event_id, object payload = null)
 		{
 			if(MonsterModel?.WorldBehaviorTree != null)
 			{

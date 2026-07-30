@@ -15,7 +15,7 @@ namespace EGame
             Error = 3
         }
 
-        public static void VeyDebug(string message, int skip_frame = 2)
+        public static void VeryDebug(string message, int skip_frame = 2)
         {
             LogMessage(LogLevel.VeryDebug, message, false, skip_frame);
         }

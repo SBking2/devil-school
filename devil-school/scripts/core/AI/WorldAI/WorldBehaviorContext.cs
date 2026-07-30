@@ -14,7 +14,7 @@ namespace EGame
         public int ActiveNodeRunningTickCount => ActiveNode?.RunningTickCount ?? 0;
 
         public double Delta { get; set; }
-        public string EventID { get; set; }
+        public WorldAIEvent EventID { get; set; }
         public object EventPayload { get; set; }
 
         public WorldBehaviorContext(NEnvCreature owner, Rng rng, WorldBehaviorTree tree)
