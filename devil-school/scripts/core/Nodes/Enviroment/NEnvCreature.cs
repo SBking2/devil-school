@@ -117,7 +117,7 @@ namespace EGame
 			if(TargetMoveDir != Vector3.Zero)
 			{
                 var basis = Basis.LookingAt(-TargetMoveDir, Vector3.Up);
-                Quaternion = Quaternion.Slerp(basis.GetRotationQuaternion(), delta * 5.0f);
+                Quaternion = Quaternion.Slerp(basis.GetRotationQuaternion(), delta * 10.0f);
             }
 		}
 
