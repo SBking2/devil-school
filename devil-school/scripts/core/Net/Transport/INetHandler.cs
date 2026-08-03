@@ -6,6 +6,6 @@ namespace EGame
     /// </summary>
     public interface INetHandler
     {
-        
+        public void OnPacketReceived();
     }
 }
