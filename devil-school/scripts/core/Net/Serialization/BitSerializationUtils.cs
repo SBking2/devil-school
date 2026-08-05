@@ -62,10 +62,21 @@ namespace EGame
             }
         }
        
-        //同Write，就算把source s_start_pos开始的长度为read_length的数据，写到destination_buffer里
+        //同Write，同样是一个写，一个读
         public static void ReadBits(byte[] source_buffer, byte[] destination_buffer, int s_start_pos, int read_length)
         {
+            int can_read_length;
+            for(int i = 0; i < read_length; i += can_read_length)
+            {
+                int index = i / 8;
+                int low_length = i % 8;
+                can_read_length = Mathf.Min(read_length - i, 8 - low_length);
 
+                var data = GetBitInByte(source_buffer, s_start_pos + i, can_read_length);
+
+                var clear_des_byte = (byte)(destination_buffer[index] & GetBitMask(low_length, 0));
+                destination_buffer[index] = (byte)(clear_des_byte | (data << low_length));
+            }
         }
     }
 }
