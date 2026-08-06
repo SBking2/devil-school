@@ -7,7 +7,7 @@ namespace EGame
     {
         protected override async Task GetActionTask()
         {
-            Logger.Debug("Delay Action !");
+            //Log.Debug("Delay Action !");
             await Task.Delay(1000);
         }
     }

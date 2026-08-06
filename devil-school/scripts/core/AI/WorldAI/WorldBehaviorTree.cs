@@ -1,6 +1,7 @@
 
 using System;
 using System.Collections.Generic;
+using Godot;
 
 namespace EGame
 {
@@ -12,6 +13,8 @@ namespace EGame
         private readonly NEnvCreature _Owner;
         private readonly Rng _Rng;
         private bool _NeedTick = true;
+
+        private Log.Logger _Logger = new Log.Logger(Log.LogType.World);
 
         public AbstractWorldBehaviorNode Root => _Root;
         public WorldBehaviorStatus LastStatus { get; private set; } = WorldBehaviorStatus.Failure;
@@ -70,7 +73,7 @@ namespace EGame
             if (NodeLog.Count > MAX_NODE_LOG_COUNT)
                 NodeLog.RemoveAt(0);
 
-            Logger.VeryDebug($"World AI Enter Node {node_id} By {_Owner.Data.CharacterModel.ID.ToString()}");
+            _Logger.VeryDebug($"World AI Enter Node {node_id} By {_Owner.Data.CharacterModel.ID.ToString()}");
         }
 
         public void WakeUp()

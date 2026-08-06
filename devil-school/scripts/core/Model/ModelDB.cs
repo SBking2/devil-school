@@ -11,6 +11,8 @@ namespace EGame
     {
         private static Dictionary<ModelID, AbstractModel> _ModelInstance = new Dictionary<ModelID, AbstractModel>();
 
+        private static Log.Logger _Logger = new Log.Logger(Log.LogType.Generic);
+
         public static void OnInit()
         {
             var all_subtypes = AbstractModelSubtypes.AllSubTypes;
@@ -19,7 +21,7 @@ namespace EGame
                 var instance = (AbstractModel)Activator.CreateInstance(type);
                 var id = ToModelID(type);
                 _ModelInstance.Add(id, instance);
-                Logger.Debug($"Loaded Model : {id.ToString()}");
+                _Logger.Debug($"Loaded Model : {id.ToString()}");
             }
         }
 

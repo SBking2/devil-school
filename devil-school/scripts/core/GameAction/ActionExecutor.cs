@@ -9,8 +9,8 @@ namespace EGame
 	public class ActionExecutor
 	{
 		private ActionQueueSet _QueueSet;
-
 		private TaskCompletionSource _RunningTCS;   //用于给外部await ActionExectuor执行命令的信号
+		private Log.Logger _Logger = new Log.Logger(Log.LogType.Combat);
 
 		public ActionQueueSet QueueSet
 		{
@@ -58,13 +58,13 @@ namespace EGame
 				ready_game_action = _QueueSet.GetReadyAction();
 			}
 			_RunningTCS.SetResult();
-			Logger.Debug("Action Exectuor Stop!");
+            _Logger.Debug("Action Exectuor Stop!");
 		}
 		private void Run()
 		{
 			if(IsRunning == false)
 			{
-				Logger.Debug("Action Exectuor Execute!");
+                _Logger.Debug("Action Exectuor Execute!");
 				TaskHelper.RunSafely(Execute());
 			}
 		}

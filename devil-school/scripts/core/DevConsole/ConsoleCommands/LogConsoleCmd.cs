@@ -16,8 +16,8 @@ namespace EGame
             else
             {
                 var level = args[0].ToLowerInvariant();
-                Logger.LogLevel new_level;
-                if(fun.TryGetEnum<Logger.LogLevel>(level, out new_level))
+                Log.LogLevel new_level;
+                if(fun.TryGetEnum<Log.LogLevel>(level, out new_level))
                 {
                     Settins.LogLevel = new_level;
                     return new CmdResult(true, $"Set log level to {new_level}");

@@ -22,7 +22,6 @@ namespace EGame
             var user_data_header = "user://";
             var start_index = _HistoryFilePath.IndexOf(user_data_header);
             var console_file_path = _HistoryFilePath.Remove(start_index, user_data_header.Length);
-            Logger.VeryDebug($"DevConsole history file path: {OS.GetUserDataDir() + "/" + console_file_path}");
             _Historys = new FixedSizeQueue<string>(40);
             _HistoryIndex = -1;
             LoadHistory();

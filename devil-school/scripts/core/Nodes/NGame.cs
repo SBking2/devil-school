@@ -21,7 +21,7 @@ namespace EGame
 			Instance = this;
 
 			ModelDB.OnInit();
-			Settins.LogLevel = Logger.LogLevel.Debug;
+			Settins.LogLevel = Log.LogLevel.Debug;
 		}
 
 		public override void _Ready()
