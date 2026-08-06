@@ -3,7 +3,8 @@ namespace EGame
 {
     public enum NetTransferMode
     {
-        UnReliable = 0,
-        Reliable = 1
+        None = 0,
+        UnReliable = 1,
+        Reliable = 2
     }
 }

@@ -13,7 +13,7 @@ namespace EGame
 
         public virtual ulong HostID { get; }
 
-        protected List<ulong> _ClientIDs = new List<ulong>();
+        public virtual IEnumerable<ulong> ClientIDs => new List<ulong>();
 
         public abstract void Update();
         public abstract void SendMessage();

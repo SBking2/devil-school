@@ -13,7 +13,8 @@ namespace EGame
 
         public ENetPacketPeer Peer;
 
-        public uint Channel;
+        //通道是指包体的通道，可以自己指定
+        public int Channel;
 
         public NetTransferMode Mode;
 
