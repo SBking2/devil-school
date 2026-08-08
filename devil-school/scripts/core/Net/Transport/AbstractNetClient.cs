@@ -14,7 +14,7 @@ namespace EGame
         public virtual ulong ClientID { get; }
         public virtual ulong HostID { get; }
         public abstract void Update();
-        public abstract void SendMessage();
-        public abstract void DisConnectFromHost();
+        public abstract void SendMessage(byte[] data);
+        public abstract void DisConnectFromHost(bool immediately);
     }
 }

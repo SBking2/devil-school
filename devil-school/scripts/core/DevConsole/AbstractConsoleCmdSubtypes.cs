@@ -13,6 +13,7 @@ namespace EGame
             typeof(RunControlCmd),
             typeof(CombatEncounterCmd),
             typeof(WorldCmd),
+            typeof(NetTransportTestCmd),
         };
     }
 }

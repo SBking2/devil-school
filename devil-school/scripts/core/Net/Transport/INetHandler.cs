@@ -6,6 +6,6 @@ namespace EGame
     /// </summary>
     public interface INetHandler
     {
-        public void OnPacketReceived();
+        public void OnPacketReceived(ulong sender_id, byte[] data);
     }
 }

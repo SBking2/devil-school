@@ -1,4 +1,3 @@
-
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Godot;
@@ -6,7 +5,11 @@ using Godot;
 namespace EGame
 {
     public class ENetClient : AbstractNetClient
-    {        
+    {
+        private const int ConnectTimeoutMsec = 10000;
+        private const int HandShakeTimeoutMsec = 10000;
+        private const int PollRateMsec = 100;
+
         public override ulong HostID => 1uL;
         public override ulong ClientID => _NetID;
 
@@ -14,111 +17,253 @@ namespace EGame
         private Log.Logger _Logger = new Log.Logger(Log.LogType.NetWork);
         private ENetConnection _Connection;
         private ENetPacketPeer _Peer;
+
         public ENetClient(INetClientHandler handler) : base(handler)
         {
-
         }
 
-        public async Task ConnectToHost(ulong net_id)
+        public async Task<ENetConnectResult> ConnectToHost(ulong net_id)
         {
+            CleanupConnection();
+
             _NetID = net_id;
             _Connection = new ENetConnection();
-            _Peer = _Connection.ConnectToHost("0.0.0.0", 8080);     //向Host发送请求，此时Host会响应Connect事件
-
-            //发送了底层连接之后，并不会立马连接成功，需要等到连接建立了才能发送HandShakeRequest
-            ENetServiceData? data = null;
-            int total_delay = 0;
-            while(data.HasValue == false || data.Value.Event != ENetConnection.EventType.Connect)
+            Error createResult = _Connection.CreateHost();
+            if(createResult != Error.Ok)
             {
-                await Task.Delay(100);
-                total_delay += 100;
-
-                if(total_delay > 10000)
-                {
-                    //TODO:关闭Client
-                    _Logger.Error("failed to connect host!");
-                    return;
-                }
+                _Logger.Error($"failed to create client host! {createResult}");
+                CleanupConnection();
+                return ENetConnectResult.ConnectionFailed;
             }
 
-            //到这里算是连接成功了，要开始HandShake环节了
-            List<ENetServiceData> data_buffer = new List<ENetServiceData>();
-            await SendHandShakeAndWait(data_buffer);
-
-            //处理提前到来的包
-            if(_IsConnected)
+            _Peer = _Connection.ConnectToHost("127.0.0.1", 8080);
+            ENetConnectResult connectResult = await WaitForConnectEvent();
+            if(connectResult != ENetConnectResult.Success)
             {
-                foreach (var msg_service_data in data_buffer)
-                    HandleServiceDataReceive(msg_service_data);
+                CleanupConnection();
+                return connectResult;
             }
+
+            List<ENetServiceData> dataBuffer = new List<ENetServiceData>();
+            ENetConnectResult handShakeResult = await SendHandShakeAndWait(dataBuffer);
+            if(handShakeResult != ENetConnectResult.Success)
+            {
+                CleanupConnection();
+                return handShakeResult;
+            }
+
+            foreach (ENetServiceData msgServiceData in dataBuffer)
+                HandleReceiveMessage(msgServiceData);
+
+            return ENetConnectResult.Success;
         }
 
-        /// <summary>
-        /// 发送HandShake包，并等到Host给出请求
-        /// </summary>
-        private async Task SendHandShakeAndWait(List<ENetServiceData> message_buffer)
+        private async Task<ENetConnectResult> WaitForConnectEvent()
+        {
+            int totalDelay = 0;
+            while(totalDelay <= ConnectTimeoutMsec)
+            {
+                if(_Connection.TryGetServiceData(out ENetServiceData? data))
+                {
+                    if(data.Value.Event == ENetConnection.EventType.Connect)
+                        return ENetConnectResult.Success;
+
+                    if(data.Value.Event == ENetConnection.EventType.Disconnect)
+                    {
+                        _Logger.Error("disconnected while connecting to host!");
+                        return ENetConnectResult.ConnectionFailed;
+                    }
+
+                    _Logger.Error($"unexpected ENet event while connecting: {data.Value.Event}");
+                    return ENetConnectResult.ConnectionFailed;
+                }
+
+                await Task.Delay(PollRateMsec);
+                totalDelay += PollRateMsec;
+            }
+
+            _Logger.Error("failed to connect host!");
+            return ENetConnectResult.Timeout;
+        }
+
+        //发送HandShake包，并等待Host的Ack
+        private async Task<ENetConnectResult> SendHandShakeAndWait(List<ENetServiceData> messageBuffer)
         {
             ENetHandShakeRequest request = new ENetHandShakeRequest()
             {
                 ClientID = _NetID
             };
 
-            var packet = ENetPacket.FromHandShakeRequest(request);
+            ENetPacket packet = ENetPacket.FromHandShakeRequest(request);
             _Peer.Send(0, packet.Data, ENetUtils.FlagsFromMode(NetTransferMode.Reliable));
-            
-            //包发出去后，要开始等Ack
-            ENetServiceData? data = null;
-            int total_delay = 0;
-            bool receive_ack = false;
-            while(!receive_ack)
+
+            int totalDelay = 0;
+            while(totalDelay <= HandShakeTimeoutMsec)
             {
-                if(_Connection.TryGetServiceData(out data) && data.Value.Event == ENetConnection.EventType.Receive)
+                if(_Connection.TryGetServiceData(out ENetServiceData? data))
                 {
-                    ENetPacket receive_packet = new ENetPacket(data.Value.Data);
-                    var packet_type = receive_packet.PacketType;
-                    if(packet_type == ENetPacketType.HandShakeResponse)
+                    if(data.Value.Event == ENetConnection.EventType.Receive)
                     {
-                        receive_ack = true;
-                        break;
+                        ENetPacket receivePacket = new ENetPacket(data.Value.Data);
+                        ENetPacketType packetType = receivePacket.PacketType;
+                        if(packetType == ENetPacketType.HandShakeResponse)
+                        {
+                            ENetHandShakeResponse handShakeResponse = receivePacket.AsHandShakeResponse();
+                            if(handShakeResponse.ResponseType == ENetHandShakeResponseType.Sucess)
+                            {
+                                _IsConnected = true;
+                                _NetHandler.OnConnected();
+                                return ENetConnectResult.Success;
+                            }
+
+                            _Logger.Error("client ID collision!");
+                            _Peer.PeerDisconnectLater();
+                            _Connection.Flush();
+                            return ENetConnectResult.IdCollision;
+                        }
+
+                        //在接收到ack之前，服务器发的包可能会先到                                 
+                        if(packetType == ENetPacketType.AppMessage)
+                        {
+                            messageBuffer.Add(data.Value);
+                            continue;
+                        }
+
+                        _Logger.Error($"unexpected packet while waiting for handshake ack: {packetType}");
+                        return ENetConnectResult.HandshakeFailed;
                     }
-                    //此处存储，是因为HandShakeRequest到达后，Ack到达前，Host可以向Client发信息
-                    else if(packet_type == ENetPacketType.AppMessage)
+
+                    if(data.Value.Event == ENetConnection.EventType.Disconnect)
                     {
-                        message_buffer.Add(data.Value);
-                    }    
+                        _Logger.Error("disconnected while waiting for host handshake ack!");
+                        return ENetConnectResult.ConnectionFailed;
+                    }
+
+                    _Logger.Error($"unexpected ENet event while waiting for handshake ack: {data.Value.Event}");
+                    return ENetConnectResult.HandshakeFailed;
                 }
 
-                await Task.Delay(100);
-                total_delay += 100;
-                if(total_delay > 100)
-                {
-                    //TODO : 关闭Client
-                    _Logger.Error("failed recive host handshake ack!");
-                    return;
-                }
+                await Task.Delay(PollRateMsec);
+                totalDelay += PollRateMsec;
             }
 
-            _IsConnected = true;
+            _Logger.Error("failed receive host handshake ack!");
+            return ENetConnectResult.Timeout;
         }
 
-        public override void DisConnectFromHost()
+        public override void DisConnectFromHost(bool immediately)
         {
-            throw new System.NotImplementedException();
+            if(!_IsConnected)
+            {
+                CleanupConnection();
+                return;
+            }
+
+            if(immediately)
+            {
+                _Peer?.PeerDisconnectNow();
+            }
+            else
+            {
+                ENetDisconnect disconnect = new ENetDisconnect()
+                {
+                    Error = Error.Ok,
+                    ClientID = _NetID
+                };
+                ENetPacket packet = ENetPacket.FromDisconnect(disconnect);
+                _Peer?.Send(0, packet.Data, ENetUtils.FlagsFromMode(NetTransferMode.Reliable));
+                _Peer?.PeerDisconnectLater();
+                _Connection?.Flush();
+            }
+
+            NotifyDisconnected();
         }
 
-        public override void SendMessage()
+        public override void SendMessage(byte[] data)
         {
-            throw new System.NotImplementedException();
+            if(!_IsConnected || _Peer == null)
+            {
+                _Logger.Warn("client tried to send message before connected");
+                return;
+            }
+
+            if(data == null)
+            {
+                _Logger.Warn("client tried to send null message");
+                return;
+            }
+
+            ENetPacket packet = ENetPacket.FromAppMessage(new ENetAppMessage()
+            {
+                Message = data
+            });
+
+            _Peer.Send(0, packet.Data, ENetUtils.FlagsFromMode(NetTransferMode.Reliable));
+            _Connection?.Flush();
         }
 
         public override void Update()
         {
-            throw new System.NotImplementedException();
+            if(_Connection == null)
+                return;
+
+            ENetServiceData? data = null;
+            while(_Connection != null && _Connection.TryGetServiceData(out data))
+            {
+                if(data.Value.Event == ENetConnection.EventType.Receive)
+                {
+                    HandleReceiveMessage(data.Value);
+                }
+                else if(data.Value.Event == ENetConnection.EventType.Disconnect)
+                {
+                    NotifyDisconnected();
+                }
+                else
+                {
+                    _Logger.Error($"unexpected ENet event on client update: {data.Value.Event}");
+                    NotifyDisconnected();
+                }
+            }
         }
 
-        private void HandleServiceDataReceive(ENetServiceData data)
+        private void HandleReceiveMessage(ENetServiceData data)
         {
+            ENetPacket packet = new ENetPacket(data.Data);
+            if(packet.PacketType == ENetPacketType.AppMessage)
+            {
+                _NetHandler.OnPacketReceived(HostID, packet.Message);
+            }
+            else if(packet.PacketType == ENetPacketType.Disconnect)
+            {
+                NotifyDisconnected();
+            }
+        }
 
+        /// <summary>
+        /// 已经连接成功后断开连接
+        /// </summary>
+        private void NotifyDisconnected()
+        {
+            bool wasConnected = _IsConnected;
+            _IsConnected = false;
+            _Connection?.Destroy();
+            _Connection = null;
+            _Peer = null;
+
+            if(wasConnected)
+                _NetHandler.OnDisconnected();
+        }
+
+        /// <summary>
+        /// 连接成功前断开连接
+        /// </summary>
+        private void CleanupConnection()
+        {
+            _IsConnected = false;
+            _Peer?.Reset();     //强制丢弃这个连接
+            _Connection?.Destroy();
+            _Connection = null;
+            _Peer = null;
         }
     }
 }

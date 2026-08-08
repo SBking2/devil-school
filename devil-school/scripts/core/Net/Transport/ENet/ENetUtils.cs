@@ -1,10 +1,8 @@
-
 using Godot;
 using Godot.Collections;
 
 namespace EGame
 {
-    //用于表示自己的自定义包体
     public enum ENetPacketType : byte
     {
         HandShakeRequest = 0,
@@ -24,9 +22,17 @@ namespace EGame
         IdCollision = 1
     }
 
+    public enum ENetConnectResult
+    {
+        Success,
+        ConnectionFailed,
+        Timeout,
+        IdCollision,
+        HandshakeFailed
+    }
+
     public struct ENetHandShakeResponse
     {
-        public ulong ClientID;
         public ENetHandShakeResponseType ResponseType;
     }
 
@@ -36,14 +42,11 @@ namespace EGame
         public Error Error;
     }
 
-    public struct ENetReceive
+    public struct ENetAppMessage
     {
-        public byte[] Data;
+        public byte[] Message;
     }
 
-    /// <summary>
-    /// 封装ENet的事件
-    /// </summary>
     public static class ENetConnectionExtension
     {
         public static bool TryGetServiceData(this ENetConnection connection, out ENetServiceData? data)
@@ -51,20 +54,19 @@ namespace EGame
             Array array = connection.Service();
             data = null;
             if (array == null)
-            {
                 return false;
-            }
+
             ENetConnection.EventType eventType = array[0].As<ENetConnection.EventType>();
             if (eventType == ENetConnection.EventType.None)
-            {
                 return false;
-            }
+
             ENetServiceData value = new ENetServiceData
             {
                 Event = eventType,
                 Peer = array[1].As<ENetPacketPeer>(),
                 OriginalData = array
             };
+
             if (eventType == ENetConnection.EventType.Receive)
             {
                 value.Channel = array[3].As<int>();
@@ -72,6 +74,7 @@ namespace EGame
                 value.Error = value.Peer.GetPacketError();
                 value.Mode = NetTransferMode.None;
             }
+
             data = value;
             return true;
         }
@@ -92,13 +95,11 @@ namespace EGame
         public static NetTransferMode ModeFromFlags(int flags)
         {
             if ((long)((ulong)flags & 1uL) > 0L)
-            {
                 return NetTransferMode.Reliable;
-            }
+
             if ((long)((ulong)flags & 8uL) > 0L)
-            {
                 return NetTransferMode.UnReliable;
-            }
+
             throw new System.ArgumentOutOfRangeException($"Flags {flags} cannot be mapped to NetTransferMode!");
         }
     }

@@ -1,4 +1,5 @@
 
+using Godot;
 using System;
 using System.Buffers.Binary;
 
@@ -16,13 +17,13 @@ namespace EGame
         }
 
         public byte[] Data => _Data;
+        public byte[] Message => _Data[1..];
         public ENetPacketType PacketType => (ENetPacketType)_Data[0];
-
         public static ENetPacket FromHandShakeRequest(ENetHandShakeRequest handshake_request)
         {
             byte[] data = new byte[9];
             data[0] = (byte)ENetPacketType.HandShakeRequest;
-            BinaryPrimitives.WriteUInt64BigEndian(data[1..].AsSpan(), handshake_request.ClientID);
+            BinaryPrimitives.WriteUInt64BigEndian(data.AsSpan(1), handshake_request.ClientID);
             ENetPacket packet = new ENetPacket(data);
             return packet;
         }
@@ -30,16 +31,15 @@ namespace EGame
         public ENetHandShakeRequest AsHandShakeRequest()
         {
             ENetHandShakeRequest ans = new ENetHandShakeRequest();
-            ulong client_id = BinaryPrimitives.ReadUInt64BigEndian(_Data[1..].AsSpan());
+            ulong client_id = BinaryPrimitives.ReadUInt64BigEndian(_Data.AsSpan(1));
             ans.ClientID = client_id;
             return ans;
         }
         public static ENetPacket FromHandShakeResponse(ENetHandShakeResponse handshake_response)
         {
             byte[] data = new byte[10];
-            data[0] = (byte)ENetPacketType.HandShakeRequest;
+            data[0] = (byte)ENetPacketType.HandShakeResponse;
             data[1] = (byte)handshake_response.ResponseType;
-            BinaryPrimitives.WriteUInt64BigEndian(data[2..].AsSpan(), handshake_response.ClientID);
             ENetPacket packet = new ENetPacket(data);
             return packet;
         }
@@ -47,17 +47,16 @@ namespace EGame
         public ENetHandShakeResponse AsHandShakeResponse()
         {
             ENetHandShakeResponse ans = new ENetHandShakeResponse();
-            ulong client_id = BinaryPrimitives.ReadUInt64BigEndian(_Data[2..].AsSpan());
-            ans.ClientID = client_id;
             ans.ResponseType = (ENetHandShakeResponseType)_Data[1];
             return ans;
         }
 
         public static ENetPacket FromDisconnect(ENetDisconnect disconnect)
         {
-            byte[] data = new byte[9];
+            byte[] data = new byte[10];
             data[0] = (byte)ENetPacketType.Disconnect;
-            BinaryPrimitives.WriteUInt64BigEndian(data[1..].AsSpan(), disconnect.ClientID);
+            data[1] = (byte)disconnect.Error;
+            BinaryPrimitives.WriteUInt64BigEndian(data.AsSpan(2), disconnect.ClientID);
             ENetPacket packet = new ENetPacket(data);
             return packet;
         }
@@ -65,8 +64,8 @@ namespace EGame
         public ENetDisconnect AsDisconnect()
         {
             ENetDisconnect ans = new ENetDisconnect();
-            ulong client_id = BinaryPrimitives.ReadUInt64BigEndian(_Data[1..].AsSpan());
-            ans.ClientID = client_id;
+            ans.Error = (Error)_Data[1];
+            ans.ClientID = BinaryPrimitives.ReadUInt64BigEndian(_Data.AsSpan(2));
             return ans;
         }
 

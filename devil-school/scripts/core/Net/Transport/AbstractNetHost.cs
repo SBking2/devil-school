@@ -16,8 +16,8 @@ namespace EGame
         public virtual IEnumerable<ulong> ClientIDs => new List<ulong>();
 
         public abstract void Update();
-        public abstract void SendMessage();
-        public abstract void SendMessageAll();
-        public abstract void DisConnectClient();
+        public abstract void SendMessage(ulong client_id, byte[] data);
+        public abstract void SendMessageAll(byte[] data);
+        public abstract void DisConnectClient(ulong client_id, bool immediately);
     }
 }
