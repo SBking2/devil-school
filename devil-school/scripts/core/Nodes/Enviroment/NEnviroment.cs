@@ -32,7 +32,8 @@ namespace EGame
                 CreateCreature(player.Creature);
             
             AddController(_NCreatures[0]);
-            NRun.Instance.CameraController.SetCamera(NThirdPersonCamera.Create(_NCreatures[0]));
+            NRun.Instance.CameraController.SetCamera(NFirstPersonCamera.Create(_NCreatures[0]));
+            //NRun.Instance.CameraController.SetCamera(NThirdPersonCamera.Create(_NCreatures[0]));
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////

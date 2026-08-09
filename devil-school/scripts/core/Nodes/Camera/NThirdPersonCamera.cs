@@ -48,7 +48,7 @@ namespace EGame
             _YawPoint.AddChild(_RealCamera);
             _RealCamera.Position = new Vector3(0.0f, 0.0f, ArmLength);
         }
-
+        
         public override void _Input(InputEvent @event)
         {
             base._Input(@event);
