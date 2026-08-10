@@ -1,6 +1,7 @@
 
 using Godot;
 using System;
+using static EGame.Log;
 
 namespace EGame
 {
@@ -15,6 +16,7 @@ namespace EGame
         private AnimState _CurrentState;
 
         private readonly AnimState _AnyState;   //CallTrigger的时候优先查这个状态
+        private Log.Logger _Logger = new Log.Logger(Log.LogType.World);
 
         //直接使用State引用连线，利于编译检查
         public CreatureAnimator(EGSpineSprite owner, AnimState init_state)
@@ -54,18 +56,23 @@ namespace EGame
         
         private void PlayAnimation(AnimState state)
         {
-            _CurrentState = state;
+            if(state == null)
+                return;
             
             if(_SpineController != null)
             {
+                _CurrentState = state;
                 var anim_state = _SpineController.GetAnimationState();
                 var track = anim_state.SetAnimation(_CurrentState.ID, _CurrentState.IsLoop);
                 track.SetMixDuration(_CurrentState.MixDuration);
             }
             else
             {
+                if(TryGetAnimation(state, out Animation anim) == false)
+                    return;
+
+                _CurrentState = state;
                 _AnimPlayer.Play(_CurrentState.ID, _CurrentState.MixDuration);
-                Animation anim = _AnimPlayer.GetAnimation(_CurrentState.ID);
                 anim.LoopMode = _CurrentState.IsLoop ? Animation.LoopModeEnum.Linear : Animation.LoopModeEnum.None;
             }
 
@@ -76,6 +83,9 @@ namespace EGame
         
         private void AddNextAnimation(AnimState state)
         {
+            if(state == null)
+                return;
+
             if(_SpineController != null)
             {
                 var anim_state = _SpineController.GetAnimationState();
@@ -83,14 +93,39 @@ namespace EGame
             }
             else
             {
+                if(TryGetAnimation(state, out Animation anim) == false)
+                    return;
+
                 _AnimPlayer.Queue(state.ID);
-                Animation anim = _AnimPlayer.GetAnimation(state.ID);
                 anim.LoopMode = state.IsLoop ? Animation.LoopModeEnum.Linear : Animation.LoopModeEnum.None;
             }
 
             //递归添加下一状态
             if (state.NextState != null)
                 AddNextAnimation(state.NextState);
+        }
+
+        private bool TryGetAnimation(AnimState state, out Animation anim)
+        {
+            anim = null;
+
+            if(_AnimPlayer == null || state == null)
+                return false;
+            
+            if(_AnimPlayer.HasAnimation(state.ID) == false)
+            {
+                _Logger.Warn($"AnimationPlayer missing animation: {state.ID}");
+                return false;
+            }
+
+            anim = _AnimPlayer.GetAnimation(state.ID);
+            if(anim == null)
+            {
+                _Logger.Warn($"AnimationPlayer animation is null: {state.ID}");
+                return false;
+            }
+
+            return true;
         }
 
         /// <summary>

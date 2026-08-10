@@ -1,11 +1,11 @@
 [gd_scene format=3 uid="uid://b5b6w4y64f0pu"]
 
 [ext_resource type="Script" uid="uid://bftk3rmnrxvas" path="res://scripts/Core/Nodes/Combat/NCreatureVisual.cs" id="1_c7ydh"]
-[ext_resource type="PackedScene" uid="uid://725b0ffd1asp" path="res://models/characters/test/UAL2_Standard.glb" id="2_c7ydh"]
+[ext_resource type="PackedScene" uid="uid://c6y2axq6smnxv" path="res://models/characters/fps/arms_rig.fbx" id="2_7df0x"]
 
 [node name="CreatureVisual" type="Node3D" unique_id=1810010319]
 script = ExtResource("1_c7ydh")
 
-[node name="ModelRoot" parent="." unique_id=625916314 instance=ExtResource("2_c7ydh")]
+[node name="ModelRoot" parent="." unique_id=2075942963 instance=ExtResource("2_7df0x")]
 unique_name_in_owner = true
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, -1.2495266, 0)
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, -1.6476325, -0.09023517)

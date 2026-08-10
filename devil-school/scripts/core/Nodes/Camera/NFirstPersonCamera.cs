@@ -32,6 +32,7 @@ namespace EGame
             if (_RealCamera == null)
                 throw new InvalidOperationException("FirstPersonCamera is null!");
             _RealCamera.MakeCurrent();
+            Input.MouseMode = Input.MouseModeEnum.Hidden;
         }
 
         /// <summary>
@@ -53,6 +54,11 @@ namespace EGame
 
             _WeaponViewRoot = new Node3D();
             _CameraEffectPos.AddChild(_WeaponViewRoot);
+
+            if(_FolloTarget != null)
+            {
+                (_FolloTarget as NEnvCreature).SetVisualParent(_WeaponViewRoot);
+            }
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -63,10 +69,9 @@ namespace EGame
 
         private float _CurrentVerticalAngle;
 
-        public float VerticalSence { get; set; } = 1f;
-        public float HorizontalSence { get; set; } = 1f;
-
-        private float YOffset = 0.3f;
+        public float VerticalSence { get; set; } = 0.55f;
+        public float HorizontalSence { get; set; } = 0.5f;
+        public Vector3 CameraPosOffset { get; } = new Vector3(0.0f, 0.15f, 0.0f);
 
         public override void _Input(InputEvent @event)
         {
@@ -98,7 +103,7 @@ namespace EGame
         public override void _Process(double delta)
         {
             base._Process(delta);
-            this.GlobalPosition = _FolloTarget.GlobalPosition + new Vector3(0.0f, YOffset, 0.0f);
+            this.GlobalPosition = _FolloTarget.GlobalPosition + CameraPosOffset;
             _FolloTarget.Quaternion = _PitchPivot.Quaternion;
             ProcessCameraBob((float)delta);
         }
@@ -107,9 +112,9 @@ namespace EGame
         ////////                           CameraBob
         /////////////////////////////////////////////////////////////////////////////////////////////////////
         private bool CameraBobEnabled { get; } = true;
-        private float CameraBobFrequency { get; } = 8.0f;
-        private float CameraBobVerticalAmplitude { get; } = 0.03f;
-        private float CameraBobHorizontalAmplitude { get; } = 0.012f;
+        private float CameraBobFrequency { get; } = 2.0f;
+        private float CameraBobVerticalAmplitude { get; } = 0.05f;
+        private float CameraBobHorizontalAmplitude { get; } = 0.03f;
         private float CameraBobReferenceSpeed { get; } = 4.0f;
         private float CameraBobReturnSpeed { get; } = 10.0f;
 
@@ -148,6 +153,17 @@ namespace EGame
             var target_offset = new Vector3(horizontal, vertical, 0.0f);
             _CameraBobOffset = _CameraBobOffset.Lerp(target_offset, GetLerpWeight(CameraBobReturnSpeed, delta));
             _CameraEffectPos.Position = _CameraBobOffset;
+
+            _CameraEffectPos.LookAt(GetLookAtPos());
+        }
+
+        /// <summary>
+        /// CameraBob在上下晃动的时候需要调节相机角度，让玩家焦点始终不变
+        /// </summary>
+        private Vector3 GetLookAtPos()
+        {
+            var forward_dir = -_YawPivot.GlobalTransform.Basis.Z.Normalized();
+            return _YawPivot.GlobalPosition + forward_dir * 15f;
         }
 
         private float GetLerpWeight(float speed, float delta)

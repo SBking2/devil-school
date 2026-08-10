@@ -124,6 +124,17 @@ namespace EGame
             }
 		}
 
+		public void SetVisualParent(Node3D parent)
+		{
+			if(_Visual != null)
+			{
+				_VisualParent.RemoveChild(_Visual);
+				parent.AddChild(_Visual);
+				_Visual.Position = Vector3.Zero;
+				_Visual.Quaternion = Quaternion.Identity;
+			}
+		}
+
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
         ///////                                 敌人AI
         /////////////////////////////////////////////////////////////////////////////////////////////////////////

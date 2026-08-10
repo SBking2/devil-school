@@ -15,8 +15,8 @@ namespace EGame
 		public override void _Ready()
 		{
 			base._Ready();
-			_ModelRoot = GetNode<Node3D>("%ModelRoot");
-
+			_ModelRoot = GetNodeOrNull<Node3D>("%ModelRoot");
+			
 			if(_ModelRoot != null)
 			{
 				_AnimPlayer = _ModelRoot.GetNode<AnimationPlayer>("AnimationPlayer");
