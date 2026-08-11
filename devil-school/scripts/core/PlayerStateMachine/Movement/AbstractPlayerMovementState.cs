@@ -7,7 +7,7 @@ namespace EGame
         
         public virtual void OnEnter(PlayerMovementContext context)
         {
-
+            
         }
 
         public virtual void OnUpdate(PlayerMovementContext context, double delta)

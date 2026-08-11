@@ -12,8 +12,9 @@ namespace EGame
         private Node3D _YawPivot;
         private Node3D _CameraEffectPos;    //这个用来作Bob、Landing、Recoil等效果
 
+        private Node3D _WeaponBobPos;     //武器的Bob、Sway等
+        private Node3D _WeaponSwayPos;
         private Node3D _WeaponViewRoot;
-        private Node3D _WeaponEffectPos;     //武器的Bob、Sway等
 
         public Quaternion HorizontalQuaternion => _PitchPivot.Quaternion;
         public Quaternion VerticalQuaternion => _YawPivot.Quaternion;
@@ -52,8 +53,14 @@ namespace EGame
             _RealCamera = new Camera3D();
             _CameraEffectPos.AddChild(_RealCamera);
 
+            _WeaponBobPos = new Node3D();
+            _CameraEffectPos.AddChild(_WeaponBobPos);
+
+            _WeaponSwayPos = new Node3D();
+            _WeaponBobPos.AddChild(_WeaponSwayPos);
+
             _WeaponViewRoot = new Node3D();
-            _CameraEffectPos.AddChild(_WeaponViewRoot);
+            _WeaponSwayPos.AddChild(_WeaponViewRoot);
 
             if(_FolloTarget != null)
             {
@@ -106,6 +113,7 @@ namespace EGame
             this.GlobalPosition = _FolloTarget.GlobalPosition + CameraPosOffset;
             _FolloTarget.Quaternion = _PitchPivot.Quaternion;
             ProcessCameraBob((float)delta);
+            ProcessWeaponBob((float)delta);
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -181,6 +189,62 @@ namespace EGame
             }
 
             return 0.0f;
+        }
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                           WeaponBob(Position)
+        /////////////////////////////////////////////////////////////////////////////////////////////////////
+        private bool WeaponBobEnabled { get; } = true;
+        private float WeaponBobFrequency { get; } = 2.0f;
+        private float WeaponBobVerticalAmplitude { get; } = 0.05f;
+        private float WeaponBobHorizontalAmplitude { get; } = 0.03f;
+        private float WeaponBobReferenceSpeed { get; } = 4.0f;
+        private float WeaponBobReturnSpeed { get; } = 10.0f;
+
+        private float _WeaponBobTime;
+
+        private Vector3 _WeaponBobOffset = Vector3.Zero;
+        private void ProcessWeaponBob(float delta)
+        {
+            if (_WeaponBobPos == null)
+                return;
+
+            if (WeaponBobEnabled == false)
+            {
+                _WeaponBobTime = 0.0f;
+                _WeaponBobOffset = _WeaponBobOffset.Lerp(Vector3.Zero, GetLerpWeight(WeaponBobReturnSpeed, delta));
+                _WeaponBobPos.Position = _WeaponBobOffset;
+                return;
+            }
+
+            float speed = GetTargetHorizontalSpeed();
+            float weight = Mathf.Clamp(speed / WeaponBobReferenceSpeed, 0.0f, 1.0f);
+
+            if (weight <= 0.01f)
+            {
+                _WeaponBobTime = 0.0f;
+                _WeaponBobOffset = _WeaponBobOffset.Lerp(Vector3.Zero, GetLerpWeight(WeaponBobReturnSpeed, delta));
+                _WeaponBobPos.Position = _WeaponBobOffset;
+                return;
+            }
+
+            _WeaponBobTime += delta * WeaponBobFrequency * weight;
+
+            float vertical = Mathf.Sin(_WeaponBobTime * Mathf.Tau) * WeaponBobVerticalAmplitude * weight;
+            float horizontal = Mathf.Cos(_WeaponBobTime * Mathf.Tau * 0.5f) * WeaponBobHorizontalAmplitude * weight;
+
+            var target_offset = new Vector3(horizontal, vertical, 0.0f);
+            _WeaponBobOffset = _WeaponBobOffset.Lerp(target_offset, GetLerpWeight(WeaponBobReturnSpeed, delta));
+            _WeaponBobPos.Position = _WeaponBobOffset;
+        }
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                           WeaponSway(Rotation)
+        /////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private void ProcessWeaponSway(double delta)
+        {
+
         }
     }
 }

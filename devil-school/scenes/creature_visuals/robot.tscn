@@ -6,6 +6,6 @@
 [node name="CreatureVisual" type="Node3D" unique_id=1810010319]
 script = ExtResource("1_c7ydh")
 
-[node name="ModelRoot" parent="." unique_id=2075942963 instance=ExtResource("2_7df0x")]
+[node name="ModelRoot" parent="." unique_id=1301901003 instance=ExtResource("2_7df0x")]
 unique_name_in_owner = true
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, -1.6476325, -0.09023517)
