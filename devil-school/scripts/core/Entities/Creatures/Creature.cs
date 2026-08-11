@@ -17,7 +17,7 @@ namespace EGame
 			get
 			{
 				if (IsPlayer)
-					return Player.Character;
+					return Player.PlayerModel;
 				return MonsterModel;
 			}
 		}
@@ -110,14 +110,14 @@ namespace EGame
 		public NCreatureVisual CreateVisual()
 		{
 			if (MonsterModel == null)
-				return Player.Character.CreateVisual();
+				return Player.PlayerModel.CreateVisual();
 			return MonsterModel.CreateVisual();
 		}
 
 		public CreatureAnimator CreateAnimator(AnimationPlayer anim_player)
 		{
             if (MonsterModel == null)
-                return Player.Character.CreateAnimator(anim_player);
+                return Player.PlayerModel.CreateAnimator(anim_player);
             return MonsterModel.CreateAnimator(anim_player);
         }
 
@@ -132,18 +132,7 @@ namespace EGame
 
 		public void OnWolrdProcess(double delta)
 		{
-			if(MonsterModel?.WorldBehaviorTree != null)
-			{
-				MonsterModel.WorldBehaviorTree.Update(delta);
-			}
-		}
-
-		public void NotifyWorldEvent(WorldAIEvent event_id, object payload = null)
-		{
-			if(MonsterModel?.WorldBehaviorTree != null)
-			{
-				MonsterModel.WorldBehaviorTree.NotifyEvent(event_id, payload);
-			}
+			this.CharacterModel.OnWorldProcess(delta);
 		}
 	}
 }

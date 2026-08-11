@@ -45,9 +45,9 @@ namespace EGame
             return Get($"Monster.{name}") as MonsterModel;
         }
 
-        public static CharacterModel Character<T>() where T : CharacterModel
+        public static PlayerModel Player<T>() where T : PlayerModel
         {
-            return Get<T>() as CharacterModel;
+            return Get<T>() as PlayerModel;
         }
 
         public static EncounterModel Encounter<T>() where T : EncounterModel

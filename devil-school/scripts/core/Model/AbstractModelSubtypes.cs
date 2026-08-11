@@ -13,7 +13,7 @@ namespace EGame
 			//Monster
 			typeof(ZombieModel),
 
-			//Character
+			//PlayerModel
 			typeof(RobotModel),
 
 			//Encounter

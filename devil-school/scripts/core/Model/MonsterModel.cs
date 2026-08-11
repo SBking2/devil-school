@@ -61,5 +61,11 @@ namespace EGame
             base.SetUpForWorld(ncreature);
 			WorldBehaviorTree = CreateWorldBehaviorTree(ncreature);
         }
+
+		public override void OnWorldProcess(double delta)
+		{
+			if (_WorldBehaviorTree != null)
+				_WorldBehaviorTree.Update(delta);
+		}
     }
 }

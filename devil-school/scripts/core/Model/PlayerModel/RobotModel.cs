@@ -3,7 +3,7 @@ using Godot;
 
 namespace EGame
 {
-    public class RobotModel : CharacterModel
+    public class RobotModel : PlayerModel
     {
         public override float MoveSpeed => 3f;
 

@@ -45,7 +45,7 @@ namespace EGame
 				throw new InvalidOperationException($"{Name} already has CreatureVisual!");
 
 			if (Data.IsPlayer)
-				_Visual = Data.Player.Character.CreateVisual();
+				_Visual = Data.Player.PlayerModel.CreateVisual();
 			else
 				_Visual = Data.MonsterModel.CreateVisual();
 
@@ -66,7 +66,7 @@ namespace EGame
                     if (Data.IsPlayer == false)
                         _SpineAnimator = Data.MonsterModel.CreateAnimator(_Visual.SpineSprite);
                     else
-                        _SpineAnimator = Data.Player.Character.CreateAnimator(_Visual.SpineSprite);
+                        _SpineAnimator = Data.Player.PlayerModel.CreateAnimator(_Visual.SpineSprite);
                 }
             }*/
         }

@@ -67,7 +67,7 @@ namespace EGame
             if (_PlayerStartPoint != null)
                 n_env_creature.GlobalPosition = _PlayerStartPoint.GlobalPosition;
 
-            var model_id = creature.IsPlayer ? creature.Player.Character.ID : creature.MonsterModel.ID;
+            var model_id = creature.IsPlayer ? creature.Player.PlayerModel.ID : creature.MonsterModel.ID;
         }
 
         public void AddMonsterCreature(NEnvCreature creature)

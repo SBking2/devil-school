@@ -21,8 +21,11 @@ namespace EGame
             CreatureAnimator animator = new CreatureAnimator(anim_player, idle_state);
             return animator;
         }
-
         public virtual void SetUpForWorld(NEnvCreature ncreature)
+        {
+
+        }
+        public virtual void OnWorldProcess(double delta)
         {
 
         }
