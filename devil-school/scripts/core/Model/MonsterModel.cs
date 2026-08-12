@@ -56,6 +56,23 @@ namespace EGame
 			return null;
 		}
 
+		protected override CharacterMovementStateMachine CreateMovementStateMachine(NEnvCreature creature)
+		{
+			MonsterMovementStateIdle idle_state = new MonsterMovementStateIdle();
+			MonsterMovementStateWalk walk_state = new MonsterMovementStateWalk();
+
+			CharacterMovementStateMachine state_machine = new CharacterMovementStateMachine(
+				creature
+				, new AbstractCharacterMovementState[]
+				{
+					idle_state,
+					walk_state
+				}
+				, idle_state);
+
+			return state_machine;
+		}
+
         public override void SetUpForWorld(NEnvCreature ncreature)
         {
             base.SetUpForWorld(ncreature);
@@ -64,6 +81,8 @@ namespace EGame
 
 		public override void OnWorldProcess(double delta)
 		{
+			base.OnWorldProcess(delta);
+
 			if (_WorldBehaviorTree != null)
 				_WorldBehaviorTree.Update(delta);
 		}

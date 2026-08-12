@@ -18,7 +18,7 @@ namespace EGame
             var x = Rng.RealRandom.RangeFloat(-20f, 20f);
             var z = Rng.RealRandom.RangeFloat(-20f, 20f);
             _PatrolTargetPoint = new Vector3(x, 0.0f, z);
-
+            
             context.Owner.TargetMoveDir = (_PatrolTargetPoint - context.Owner.GlobalPosition).Normalized();
         }
         

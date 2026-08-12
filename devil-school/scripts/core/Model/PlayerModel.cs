@@ -1,47 +1,24 @@
 
-using System;
-
 namespace EGame
 {
     [ModelCategory]
     public class PlayerModel : CharacterModel
     {
-        public PlayerMovementStateMachine MovementStateMachine
+        protected override CharacterMovementStateMachine CreateMovementStateMachine(NEnvCreature creature)
         {
-            get
-            {
-                return _MovementStateMachine;
-            }
-            
-            set
-            {
-                AssertMutable();
-                if(_MovementStateMachine != null)
+            PlayerMovementStateIdle idle_state = new PlayerMovementStateIdle();
+            PlayerMovementStateWalk walk_state = new PlayerMovementStateWalk();
+
+            CharacterMovementStateMachine state_machine = new CharacterMovementStateMachine(
+                creature
+                , new AbstractCharacterMovementState[]
                 {
-                    throw new InvalidOperationException("player model already has the movement state-machine");
+                    idle_state,
+                    walk_state
                 }
-                _MovementStateMachine = value;
-            }
-        }
+                , idle_state);
 
-        private PlayerMovementStateMachine _MovementStateMachine;
-        
-        public override void SetUpForWorld(NEnvCreature ncreature)
-        {
-            base.SetUpForWorld(ncreature);
-            MovementStateMachine = CreateMovementStateMachine(ncreature);
-        }
-
-        public override void OnWorldProcess(double delta)
-        {
-            base.OnWorldProcess(delta);
-            if(_MovementStateMachine != null)
-                _MovementStateMachine.OnUpdate(delta);
-        }
-
-        protected virtual PlayerMovementStateMachine CreateMovementStateMachine(NEnvCreature creature)
-        {
-            return null;
+            return state_machine;
         }
     }
 }

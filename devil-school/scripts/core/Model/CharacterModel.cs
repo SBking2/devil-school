@@ -1,5 +1,6 @@
 
 using Godot;
+using System;
 
 namespace EGame
 {
@@ -9,6 +10,26 @@ namespace EGame
         public virtual float MoveSpeed => 3;
 
         protected virtual string _VisualsPath => $"creature_visuals/" + ID.Entry.ToLowerInvariant();
+
+        public CharacterMovementStateMachine MovementStateMachine
+        {
+            get
+            {
+                return _MovementStateMachine;
+            }
+            
+            set
+            {
+                AssertMutable();
+                if(_MovementStateMachine != null)
+                {
+                    throw new InvalidOperationException("character model already has the movement state-machine");
+                }
+                _MovementStateMachine = value;
+            }
+        }
+
+        private CharacterMovementStateMachine _MovementStateMachine;
 
         public NCreatureVisual CreateVisual()
         {
@@ -23,11 +44,21 @@ namespace EGame
         }
         public virtual void SetUpForWorld(NEnvCreature ncreature)
         {
-
+            MovementStateMachine = CreateMovementStateMachine(ncreature);
         }
         public virtual void OnWorldProcess(double delta)
         {
-
+            if (MovementStateMachine != null)
+                MovementStateMachine.OnUpdate(delta);
+        }
+        public virtual void OnWorldPhysicalProcess(double delta)
+        {
+            if (MovementStateMachine != null)
+                MovementStateMachine.OnPhysicalUpdate(delta);
+        }
+        protected virtual CharacterMovementStateMachine CreateMovementStateMachine(NEnvCreature creature)
+        {
+            return null;
         }
     }
 }

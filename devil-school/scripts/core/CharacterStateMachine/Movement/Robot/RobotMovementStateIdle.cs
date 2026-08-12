@@ -1,7 +1,6 @@
-
 namespace EGame
 {
-    public class RobotMovementStateIdle : AbstractPlayerMovementState
+    public class RobotMovementStateIdle : AbstractCharacterMovementState
     {
         public override string StateName => "idle";
     }

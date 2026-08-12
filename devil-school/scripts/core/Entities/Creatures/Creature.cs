@@ -134,5 +134,10 @@ namespace EGame
 		{
 			this.CharacterModel.OnWorldProcess(delta);
 		}
+
+		public void OnWorldPhysicalProcess(double delta)
+		{
+			this.CharacterModel.OnWorldPhysicalProcess(delta);
+		}
 	}
 }

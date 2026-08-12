@@ -21,6 +21,8 @@ namespace EGame
 
         private Camera3D _RealCamera;
 
+        public float FOV { get; private set; } = 70f;
+
         public static NFirstPersonCamera Create(NEnvCreature target)
         {
             NFirstPersonCamera camera = new NFirstPersonCamera();
@@ -33,7 +35,7 @@ namespace EGame
             if (_RealCamera == null)
                 throw new InvalidOperationException("FirstPersonCamera is null!");
             _RealCamera.MakeCurrent();
-            Input.MouseMode = Input.MouseModeEnum.Hidden;
+            Input.MouseMode = Input.MouseModeEnum.Captured;
         }
 
         /// <summary>
@@ -66,6 +68,8 @@ namespace EGame
             {
                 (_FolloTarget as NEnvCreature).SetVisualParent(_WeaponViewRoot);
             }
+
+            _RealCamera.Fov = this.FOV;
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -76,8 +80,8 @@ namespace EGame
 
         private float _CurrentVerticalAngle;
 
-        public float VerticalSence { get; set; } = 0.55f;
-        public float HorizontalSence { get; set; } = 0.5f;
+        public float VerticalSence { get; set; } = 0.04f;
+        public float HorizontalSence { get; set; } = 0.04f;
         public Vector3 CameraPosOffset { get; } = new Vector3(0.0f, 0.15f, 0.0f);
 
         public override void _Input(InputEvent @event)
@@ -104,6 +108,7 @@ namespace EGame
 
                 //水平方向旋转
                 float pitch_delta = -delta.X * HorizontalSence;
+                _WeaponSwayHorizontalViewDelta += pitch_delta;
                 RotateY(Mathf.DegToRad(pitch_delta));
             }
         }
@@ -114,6 +119,7 @@ namespace EGame
             _FolloTarget.Quaternion = _PitchPivot.Quaternion;
             ProcessCameraBob((float)delta);
             ProcessWeaponBob((float)delta);
+            ProcessWeaponSway((float)delta);
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -242,9 +248,71 @@ namespace EGame
         ////////                           WeaponSway(Rotation)
         /////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        private void ProcessWeaponSway(double delta)
-        {
+        private bool WeaponSwayEnabled { get; } = true;
+        private float WeaponSwayZAnglePerViewAngle { get; } = 1.0f;
+        private float WeaponSwayMouseMaxZAngle { get; } = 6.0f;
+        private float WeaponSwayMoveZAnglePerSpeed { get; } = -1.5f;
+        private float WeaponSwayMoveMaxZAngle { get; } = 4.0f;
+        private float WeaponSwayFollowSpeed { get; } = 18.0f;
+        private float WeaponSwayReturnSpeed { get; } = 10.0f;
 
+        private float _WeaponSwayHorizontalViewDelta;
+        private float _WeaponSwayMouseZAngle;
+        private float _WeaponSwayMoveZAngle;
+
+        private void ProcessWeaponSway(float delta)
+        {
+            if (_WeaponSwayPos == null)
+                return;
+
+            if (WeaponSwayEnabled == false)
+            {
+                _WeaponSwayHorizontalViewDelta = 0.0f;
+                _WeaponSwayMouseZAngle = Mathf.Lerp(_WeaponSwayMouseZAngle, 0.0f, GetLerpWeight(WeaponSwayReturnSpeed, delta));
+                _WeaponSwayMoveZAngle = Mathf.Lerp(_WeaponSwayMoveZAngle, 0.0f, GetLerpWeight(WeaponSwayReturnSpeed, delta));
+                ApplyWeaponSwayRotation();
+                return;
+            }
+
+            float target_mouse_z_angle = Mathf.Clamp(
+                _WeaponSwayHorizontalViewDelta * WeaponSwayZAnglePerViewAngle,
+                -WeaponSwayMouseMaxZAngle,
+                WeaponSwayMouseMaxZAngle
+            );
+
+            _WeaponSwayHorizontalViewDelta = 0.0f;
+
+            float target_move_z_angle = Mathf.Clamp(
+                GetTargetLocalVelocityX() * WeaponSwayMoveZAnglePerSpeed,
+                -WeaponSwayMoveMaxZAngle,
+                WeaponSwayMoveMaxZAngle
+            );
+
+            float mouse_lerp_speed = Mathf.Abs(target_mouse_z_angle) > 0.01f ? WeaponSwayFollowSpeed : WeaponSwayReturnSpeed;
+            float move_lerp_speed = Mathf.Abs(target_move_z_angle) > 0.01f ? WeaponSwayFollowSpeed : WeaponSwayReturnSpeed;
+
+            _WeaponSwayMouseZAngle = Mathf.Lerp(_WeaponSwayMouseZAngle, target_mouse_z_angle, GetLerpWeight(mouse_lerp_speed, delta));
+            _WeaponSwayMoveZAngle = Mathf.Lerp(_WeaponSwayMoveZAngle, target_move_z_angle, GetLerpWeight(move_lerp_speed, delta));
+
+            ApplyWeaponSwayRotation();
+        }
+
+        private void ApplyWeaponSwayRotation()
+        {
+            float z_angle = _WeaponSwayMouseZAngle + _WeaponSwayMoveZAngle;
+            _WeaponSwayPos.Rotation = new Vector3(0.0f, 0.0f, Mathf.DegToRad(z_angle));
+        }
+
+        private float GetTargetLocalVelocityX()
+        {
+            if (_FolloTarget is CharacterBody3D body)
+            {
+                var velocity = body.Velocity;
+                velocity.Y = 0.0f;
+                return velocity.Dot(_PitchPivot.GlobalTransform.Basis.X.Normalized());
+            }
+
+            return 0.0f;
         }
     }
 }

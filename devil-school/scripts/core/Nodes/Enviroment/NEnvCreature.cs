@@ -79,11 +79,6 @@ namespace EGame
 			set
 			{
                 _TargetMoveDir = value;
-
-                if (_TargetMoveDir.Length() > 0.1f)
-                    SetAnimTrigger("walk");
-                else
-                    SetAnimTrigger("idle");
             }
 		}
 
@@ -95,8 +90,7 @@ namespace EGame
 		public override void _PhysicsProcess(double delta)
 		{
 			base._PhysicsProcess(delta);
-			ProcessMove();
-			ProcessRotation((float)delta);
+			Data.OnWorldPhysicalProcess(delta);
         }
 
         public override void _Process(double delta)
@@ -104,25 +98,6 @@ namespace EGame
             base._Process(delta);
 			Data.OnWolrdProcess(delta);
         }
-
-		private void ProcessMove()
-		{
-            var move = TargetMoveDir;
-            Velocity = move.Normalized() * Data.CharacterModel.MoveSpeed;
-            MoveAndSlide();
-		}
-		
-		private void ProcessRotation(float delta)
-		{
-            if (Data.IsPlayer == false)
-            {
-                if (TargetMoveDir != Vector3.Zero)
-                {
-                    var basis = Basis.LookingAt(-TargetMoveDir, Vector3.Up);
-                    Quaternion = Quaternion.Slerp(basis.GetRotationQuaternion(), delta * 10.0f);
-                }
-            }
-		}
 
 		public void SetVisualParent(Node3D parent)
 		{
