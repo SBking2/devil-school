@@ -10,5 +10,8 @@ namespace EGame
         public const string DOWN = "down";
         public const string LEFT = "left";
         public const string RIGHT = "right";
+
+        //姿态
+        public const string CROUCH = "crouch";
     }
 }

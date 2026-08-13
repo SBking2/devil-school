@@ -21,7 +21,7 @@ namespace EGame
                     if ((context.Owner.GlobalPosition - target.GlobalPosition).Length() < 3f)
                         return WorldBehaviorStatus.Success;
 
-                    context.Owner.TargetMoveDir = (target.GlobalPosition - context.Owner.GlobalPosition).Normalized();
+                    context.Owner.Intent.MoveDir = (target.GlobalPosition - context.Owner.GlobalPosition).Normalized();
                     return WorldBehaviorStatus.Running;
                 }
             }
@@ -31,7 +31,7 @@ namespace EGame
 
         public override void OnExit(WorldBehaviorContext context)
         {
-            context.Owner.TargetMoveDir = Vector3.Zero;
+            context.Owner.Intent.MoveDir = Vector3.Zero;
         }
     }
 }

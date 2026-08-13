@@ -19,7 +19,7 @@ namespace EGame
             var z = Rng.RealRandom.RangeFloat(-20f, 20f);
             _PatrolTargetPoint = new Vector3(x, 0.0f, z);
             
-            context.Owner.TargetMoveDir = (_PatrolTargetPoint - context.Owner.GlobalPosition).Normalized();
+            context.Owner.Intent.MoveDir = (_PatrolTargetPoint - context.Owner.GlobalPosition).Normalized();
         }
         
         protected override WorldBehaviorStatus OnTick(WorldBehaviorContext context)
@@ -32,7 +32,7 @@ namespace EGame
 
         public override void OnExit(WorldBehaviorContext context)
         {
-            context.Owner.TargetMoveDir = Vector3.Zero;
+            context.Owner.Intent.MoveDir = Vector3.Zero;
         }
     }
 }

@@ -11,6 +11,9 @@
 ambient_light_source = 2
 ambient_light_color = Color(0.84709084, 0.87673146, 0.99999875, 1)
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_a8vgt"]
+size = Vector3(200, 0.13, 200)
+
 [node name="InitWorld" type="Node3D" unique_id=1678437961]
 
 [node name="test" parent="." unique_id=602417196 instance=ExtResource("1_rmeui")]
@@ -42,3 +45,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.524, 1.24, -12.929)
 [node name="FieldFighter" type="MeshInstance3D" parent="." unique_id=1050709987]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.767331, 0, 3.3834777)
 mesh = ExtResource("4_a8vgt")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="." unique_id=1668030683]
+collision_layer = 4
+collision_mask = 2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D" unique_id=810556509]
+shape = SubResource("BoxShape3D_a8vgt")

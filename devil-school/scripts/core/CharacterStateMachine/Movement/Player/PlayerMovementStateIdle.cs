@@ -13,7 +13,13 @@ namespace EGame
         {
             base.OnUpdate(context, delta);
 
-            if (context.Owner.TargetMoveDir.Length() > 0.1f)
+            if (context.Owner.Intent.WantsCrouch)
+            {
+                context.StateMachine.ChangeState("crouch");
+                return;
+            }
+
+            if (context.Owner.Intent.MoveDir.Length() > 0.1f)
                 context.StateMachine.ChangeState("walk");
         }
     }

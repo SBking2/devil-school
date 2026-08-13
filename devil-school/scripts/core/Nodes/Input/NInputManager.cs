@@ -11,7 +11,8 @@ namespace EGame
             { EGInput.UP,             Key.W },
             { EGInput.DOWN,           Key.S },
             { EGInput.LEFT,           Key.A },
-            { EGInput.RIGHT,          Key.D }
+            { EGInput.RIGHT,          Key.D },
+            { EGInput.CROUCH,         Key.Ctrl },
         };
         
         private void ProcessKeyInput(InputEvent e)

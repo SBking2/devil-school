@@ -10,7 +10,7 @@ namespace EGame
 
         public override void OnEnter(WorldBehaviorContext context)
         {
-            context.Owner.TargetMoveDir = Vector3.Zero;
+            context.Owner.Intent.MoveDir = Vector3.Zero;
         }
 
         protected override WorldBehaviorStatus OnTick(WorldBehaviorContext context)

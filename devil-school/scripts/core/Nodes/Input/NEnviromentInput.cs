@@ -45,8 +45,8 @@ namespace EGame
 
             if (_Creature != null)
             {
-                var dir = GetMoveDir();
-                _Creature.TargetMoveDir = dir;
+                _Creature.Intent.MoveDir = GetMoveDir();
+                _Creature.Intent.WantsCrouch = Input.IsActionPressed(EGInput.CROUCH);
             }
         }
     }

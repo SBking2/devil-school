@@ -1,12 +1,12 @@
 [gd_scene format=3 uid="uid://ccnu0j5r3f5l"]
 
-[ext_resource type="Script" uid="uid://bqip20tgbwkyy" path="res://scripts/core/Nodes/Enviroment/NEnvCreature.cs" id="1_j7lxi"]
+[ext_resource type="Script" uid="uid://bqip20tgbwkyy" path="res://scripts/Core/Nodes/Enviroment/NEnvCreature.cs" id="1_j7lxi"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_j7lxi"]
 
 [node name="NEnvCreature" type="CharacterBody3D" unique_id=1872172080]
 collision_layer = 2
-collision_mask = 2
+collision_mask = 6
 script = ExtResource("1_j7lxi")
 
 [node name="VisualParent" type="Node3D" parent="." unique_id=1857170920]

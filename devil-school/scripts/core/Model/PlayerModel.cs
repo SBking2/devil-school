@@ -8,13 +8,15 @@ namespace EGame
         {
             PlayerMovementStateIdle idle_state = new PlayerMovementStateIdle();
             PlayerMovementStateWalk walk_state = new PlayerMovementStateWalk();
+            PlayerMovementStateCrouch crouch_state = new PlayerMovementStateCrouch();
 
             CharacterMovementStateMachine state_machine = new CharacterMovementStateMachine(
                 creature
                 , new AbstractCharacterMovementState[]
                 {
                     idle_state,
-                    walk_state
+                    walk_state,
+                    crouch_state
                 }
                 , idle_state);
 
