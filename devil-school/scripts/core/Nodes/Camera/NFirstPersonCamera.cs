@@ -82,7 +82,6 @@ namespace EGame
 
         public float VerticalSence { get; set; } = 0.04f;
         public float HorizontalSence { get; set; } = 0.04f;
-        public Vector3 CameraPosOffset { get; } = new Vector3(0.0f, 0.15f, 0.0f);
 
         public override void _Input(InputEvent @event)
         {
@@ -115,7 +114,7 @@ namespace EGame
         public override void _Process(double delta)
         {
             base._Process(delta);
-            this.GlobalPosition = _FolloTarget.GlobalPosition + CameraPosOffset;
+            this.GlobalPosition = _FolloTarget.GlobalPosition + new Vector3(0f, _FolloTarget.EyeOffset, 0f);
             _FolloTarget.Quaternion = _PitchPivot.Quaternion;
             ProcessCameraBob((float)delta);
             ProcessWeaponBob((float)delta);

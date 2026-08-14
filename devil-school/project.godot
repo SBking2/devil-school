@@ -41,6 +41,14 @@ crouch={
 "deadzone": 0.2,
 "events": []
 }
+run={
+"deadzone": 0.2,
+"events": []
+}
+jump={
+"deadzone": 0.2,
+"events": []
+}
 
 [layer_names]
 

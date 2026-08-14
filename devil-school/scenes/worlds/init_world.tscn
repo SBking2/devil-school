@@ -2,7 +2,7 @@
 
 [ext_resource type="PackedScene" uid="uid://dks11c81aon2h" path="res://models/worlds/test/test.fbx" id="1_rmeui"]
 [ext_resource type="Material" uid="uid://22eyivixs4e3" path="res://material/world/init_world/ground_material.tres" id="2_xyxtw"]
-[ext_resource type="Script" uid="uid://q4rtp4tvykoq" path="res://scripts/Core/Nodes/Enviroment/NMonsterSpwanPoint.cs" id="3_xyxtw"]
+[ext_resource type="Script" uid="uid://q4rtp4tvykoq" path="res://scripts/core/Nodes/Enviroment/NMonsterSpwanPoint.cs" id="3_xyxtw"]
 [ext_resource type="ArrayMesh" uid="uid://sfy0lc88sv3n" path="res://models/characters/FieldFighter/FieldFighter.obj" id="4_a8vgt"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_rmeui"]

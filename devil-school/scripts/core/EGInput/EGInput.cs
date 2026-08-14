@@ -13,5 +13,7 @@ namespace EGame
 
         //姿态
         public const string CROUCH = "crouch";
+        public const string RUN = "run";
+        public const string JUMP = "jump";
     }
 }

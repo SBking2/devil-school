@@ -1,12 +1,12 @@
 namespace EGame
 {
-    public class PlayerMovementStateWalk : PlayerMovementStateMoveBase
+    public class PlayerMovementStateRun : PlayerMovementStateMoveBase
     {
-        public override string StateName => "walk";
+        public override string StateName => "run";
 
         public override void OnEnter(CharacterMovementContext context)
         {
-            context.Owner.SetAnimTrigger("walk");
+            context.Owner.SetAnimTrigger("run");
         }
 
         public override void OnUpdate(CharacterMovementContext context, double delta)
@@ -31,8 +31,15 @@ namespace EGame
                 return;
             }
 
-            if (context.Owner.Intent.WantsRun && context.Owner.IsCrouching == false)
-                context.StateMachine.ChangeState("run");
+            // 蹲下会取消疾跑，回退到走路（钻蹲这件事本身由 NEnvCreature 统一处理，跟这里在哪个状态无关）
+            if (context.Owner.IsCrouching || context.Owner.Intent.WantsRun == false)
+                context.StateMachine.ChangeState("walk");
+        }
+
+        protected override float GetMoveSpeed(CharacterMovementContext context)
+        {
+            float speed = context.Owner.Data.CharacterModel.RunSpeed;
+            return ApplyCrouchMultiplier(context, speed);
         }
     }
 }

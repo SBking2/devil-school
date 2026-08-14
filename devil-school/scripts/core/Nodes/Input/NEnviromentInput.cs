@@ -47,6 +47,8 @@ namespace EGame
             {
                 _Creature.Intent.MoveDir = GetMoveDir();
                 _Creature.Intent.WantsCrouch = Input.IsActionPressed(EGInput.CROUCH);
+                _Creature.Intent.WantsRun = Input.IsActionPressed(EGInput.RUN);
+                _Creature.Intent.WantsJump = Input.IsActionPressed(EGInput.JUMP);
             }
         }
     }
