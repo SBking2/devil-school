@@ -981,6 +981,189 @@ public partial class WeaponManager : Node3D
 
 第 4 章、第 6 章里 `Weapon.Fire()`/`Melee()` 目前没有检查 `State` 是不是 `Idle`——回头把这两处开头加一行 `if (State != WeaponState.Idle) return;`，防止武器还在收起/举起过程中就能开火。
 
+### 5.3 投射物武器：火箭筒——直接命中和范围伤害是两件独立的事
+
+到现在为止，`Weapon.Fire()` 只有一种打法：一条射线，打中即判定，没有飞行时间。这在手枪/步枪上没问题，但火箭筒、等离子炮这类武器不该是"瞬间命中"——它们需要一个真的在世界里飞行、会被躲开、命中后炸出范围伤害的**投射物实体**。
+
+这一节要"完全参考"的是 DOOM 3 `neo/d3xp/Projectile.cpp` 里 `idProjectile::Collide()`（约 554-724 行）和 `Explode()` 的设计，核心是一个容易被忽略的点：**直接命中伤害和范围爆炸伤害，是两次独立的判定，不是二选一**。一发火箭打中一个怪物，会先对这个怪物单独算一次"直接命中"伤害，然后**无论有没有命中任何东西**都会引爆，再对爆炸半径内的所有实体算一遍范围伤害——已经吃过直接命中的那个目标要从范围伤害里排除掉，不然会被炸两次。
+
+先做投射物本体，新建场景 `Rocket.tscn`：
+
+```
+Rocket (Area3D)
+├── CollisionShape3D (SphereShape3D，半径很小，比如 0.1，够用来触发碰撞检测就行)
+└── MeshInstance3D (占位：一个小圆柱体或者胶囊)
+```
+
+用 `Area3D` 而不是 `RigidBody3D`——火箭的飞行轨迹通常是"匀速直线飞向发射方向"，不需要真的参与物理仿真（不会被别的物体撞飞、不受碰撞反弹力影响），`Area3D` 的 `body_entered`/`area_entered` 信号足够检测"飞行路径上撞到了什么"，比接一整套刚体物理简单得多，也更容易保证命中判定稳定（`RigidBody3D` 高速穿过薄物体时容易发生"隧穿"漏检，`Area3D` 配合下面这种"每帧自己挪动 + 检测"的写法能避开这个问题）。
+
+```csharp
+// Rocket.cs
+using Godot;
+using System.Collections.Generic;
+
+public partial class Rocket : Area3D
+{
+    [Export] public float Speed = 25.0f;
+    [Export] public float DirectDamage = 60.0f;
+    [Export] public float SplashDamage = 40.0f;
+    [Export] public float SplashRadius = 4.0f;
+    [Export] public float DirectPushForce = 8.0f;
+    [Export] public float SplashPushForce = 12.0f;
+    [Export] public float LifeTime = 5.0f;   // 飞出去太远还没撞到东西，超时自毁，防止永远飞下去
+
+    public Node3D Owner3D;   // 发射者，范围伤害要排除它自己（不能自己炸自己）
+    private Vector3 _direction;
+    private double _spawnTime;
+
+    public void Launch(Vector3 direction, Node3D owner)
+    {
+        _direction = direction.Normalized();
+        Owner3D = owner;
+        _spawnTime = Time.GetTicksMsec() / 1000.0;
+        LookAt(GlobalPosition + _direction, Vector3.Up);
+    }
+
+    public override void _Ready()
+    {
+        BodyEntered += OnBodyEntered;
+    }
+
+    public override void _PhysicsProcess(double delta)
+    {
+        GlobalPosition += _direction * Speed * (float)delta;
+
+        if (Time.GetTicksMsec() / 1000.0 - _spawnTime > LifeTime)
+        {
+            Explode(GlobalPosition, null);   // 超时自毁，没有直接命中目标，null 表示范围伤害不用排除任何人
+        }
+    }
+
+    private void OnBodyEntered(Node3D body)
+    {
+        if (body == Owner3D) return;   // 排除发射者自己（比如爆炸半径够大、火箭贴脸炸的情况）
+
+        // 步骤一：直接命中伤害，只作用于撞上的这一个目标
+        if (body.HasMethod("TakeDamage"))
+        {
+            body.Call("TakeDamage", DirectDamage);
+        }
+        if (body is RigidBody3D rigidBody)
+        {
+            rigidBody.ApplyImpulse(_direction * DirectPushForce, GlobalPosition - rigidBody.GlobalPosition);
+        }
+
+        // 步骤二：不管上面有没有命中，都要引爆——直接命中和范围伤害是两回事
+        Explode(GlobalPosition, body);
+    }
+
+    private void Explode(Vector3 explodePosition, Node3D directHitTarget)
+    {
+        GD.Print($"爆炸于 {explodePosition}");   // 占位：这里之后接第 6 章讲过的 SpawnImpactEffect 思路，换成真正的爆炸特效
+
+        var spaceState = GetWorld3D().DirectSpaceState;
+        var query = new PhysicsShapeQueryParameters3D
+        {
+            Shape = new SphereShape3D { Radius = SplashRadius },
+            Transform = new Transform3D(Basis.Identity, explodePosition),
+            CollisionMask = 0b0110   // 检测 Enemy(第3层) + Projectile(第4层)，按你项目实际的层规划调整
+        };
+
+        var results = spaceState.IntersectShape(query);
+        var alreadyDamaged = new HashSet<Node3D>();
+        if (directHitTarget != null) alreadyDamaged.Add(directHitTarget);   // 已经直接命中过的目标，范围伤害要排除，不能炸两次
+
+        foreach (var result in results)
+        {
+            Node3D hitObject = (Node3D)result["collider"];
+            if (alreadyDamaged.Contains(hitObject)) continue;
+            alreadyDamaged.Add(hitObject);
+
+            // 简单的距离衰减：越靠近爆心伤害越高，边缘接近 0——DOOM 3 的 RadiusDamage 也是同一个思路
+            float distance = hitObject.GlobalPosition.DistanceTo(explodePosition);
+            float falloff = 1.0f - Mathf.Clamp(distance / SplashRadius, 0.0f, 1.0f);
+
+            if (hitObject.HasMethod("TakeDamage"))
+            {
+                hitObject.Call("TakeDamage", SplashDamage * falloff);
+            }
+            if (hitObject is RigidBody3D rigidBody)
+            {
+                Vector3 pushDir = (rigidBody.GlobalPosition - explodePosition).Normalized();
+                rigidBody.ApplyImpulse(pushDir * SplashPushForce * falloff, rigidBody.GlobalPosition - explodePosition);
+            }
+        }
+
+        QueueFree();
+    }
+}
+```
+
+`Weapon.cs` 这边不需要为投射物武器另开一套开火函数——沿用 DOOM 3 的思路（第 1 节提过的"一个通用发射逻辑 + 数据决定是子弹还是投射物"），给 `Weapon` 加一个开关：
+
+```csharp
+// Weapon.cs 追加
+[Export] public bool IsHitscan = true;
+[Export] public PackedScene ProjectileScene;   // 拖入 Rocket.tscn，IsHitscan = false 时使用
+[Export] public float ProjectileSpeed = 25.0f;
+
+private void Fire()
+{
+    if (IsHitscan)
+    {
+        FireHitscan();   // 原来 4.2/4.3 节的射线判定逻辑，改个名字
+    }
+    else
+    {
+        FireProjectile();
+    }
+}
+
+private void FireProjectile()
+{
+    var rocket = ProjectileScene.Instantiate<Rocket>();
+    GetTree().Root.AddChild(rocket);
+    rocket.GlobalPosition = Muzzle.GlobalPosition;
+    Vector3 direction = -Camera.GlobalTransform.Basis.Z;
+    rocket.Launch(direction, GetParent().GetParent().GetParent<CharacterBody3D>());   // 传入发射者，用于排除自伤
+}
+```
+
+在编辑器里把火箭筒的 `IsHitscan` 打勾去掉、`ProjectileScene` 拖入 `Rocket.tscn`，手枪/步枪保持 `IsHitscan = true` 不用改任何代码——**这就是"武器差异是数据配置的差异，不是代码分支的差异"这条原则的具体体现**，跟第 4 章开始就在强调的"鸭子类型式调用"是同一种设计取向：让尽量多的差异落在 Inspector 面板能调的字段上，而不是散落在一堆 `if (weaponType == ...)` 分支里。
+
+### 5.4（可选进阶）追踪导弹：会自己转向的投射物
+
+如果想要一把"追踪导弹"武器，在 `Rocket.cs` 基础上加一个转向逻辑就够了，不需要另起一个类——这是 DOOM 3 `idGuidedProjectile::Think()`（`Projectile.cpp:1651-1721`）的简化版：每帧朝目标方向转一点，转向速率有上限（不能瞬间掉头，不然追踪导弹的飞行轨迹会显得很假）：
+
+```csharp
+// Rocket.cs 追加
+[Export] public bool IsGuided = false;
+[Export] public float TurnRateDegreesPerSec = 90.0f;
+public Node3D Target;   // 发射时指定要追踪的目标（比如玩家开火时，锁定准星下最近的怪物）
+
+public override void _PhysicsProcess(double delta)
+{
+    float dt = (float)delta;
+
+    if (IsGuided && Target != null && IsInstanceValid(Target))
+    {
+        Vector3 toTarget = (Target.GlobalPosition - GlobalPosition).Normalized();
+        float maxRadians = Mathf.DegToRad(TurnRateDegreesPerSec) * dt;
+        _direction = _direction.Slerp(toTarget, Mathf.Min(1.0f, maxRadians / _direction.AngleTo(toTarget)));
+        LookAt(GlobalPosition + _direction, Vector3.Up);
+    }
+
+    GlobalPosition += _direction * Speed * dt;
+
+    if (Time.GetTicksMsec() / 1000.0 - _spawnTime > LifeTime)
+    {
+        Explode(GlobalPosition, null);
+    }
+}
+```
+
+`Vector3.Slerp` 配合按最大转向角度限制插值比例这一段写法有点绕，逐字拆开看：`_direction.AngleTo(toTarget)` 是当前方向和目标方向之间的夹角（弧度），`maxRadians / 夹角` 算出"这一帧允许转过的角度占总夹角的比例"，`Mathf.Min(1.0f, ...)` 防止这个比例超过 1（夹角本身很小、一帧就能转完的情况）——效果就是"匀速转向，转到位为止，不会转过头"。这个模式不止能用在导弹上，第 9 章讲怪物转身面向玩家时如果想要更平滑的转向（而不是瞬间 `LookAt`），也是同一个写法。
+
 ---
 
 ## 6. 武器手感：后坐力、摇摆、近战
@@ -2197,6 +2380,112 @@ private async void TickIdle()
 ```
 
 这段协程式的巡逻循环，和第 5.1 节介绍过的 `async`/`await`（"方法执行到 `await` 那一行会暂停，但不阻塞游戏其他部分"）是同一套机制，只是这里用 `while` 循环 + `await get_tree().physics_frame` 表达一段跨越多帧、能被外部条件随时打断的行为——`while (_state == State.Idle)` 这个循环条件，一旦怪物发现玩家、`_state` 被外部改成 `Combat`，下一次循环检查就会自然退出，不需要专门写一段"打断巡逻"的清理代码。
+
+### 9.8 远程攻击：不是所有怪物都该贴脸近战
+
+第 8.3 节给怪物做的攻击只有一种：贴近了才能打的近战判定。真实的 DOOM 3 里，一只怪物到底是近战还是远程、发射的是子弹还是会爆炸的火球，靠的是 `idAI::LaunchProjectile(jointname, target, clampToAttackCone)`（`neo/d3xp/ai/AI.h:532`）这**同一个**方法——区别只在于传给它的投射物定义是哪一份。这一节把这个思路搬过来：怪物的近战和远程攻击不该是两套互相独立的系统，而是"攻击方式"这个字段的两种取值。
+
+先把攻击方式拆成一个独立方法，复用第 5.3 节做的 `Rocket.tscn`：
+
+```csharp
+// Enemy.cs 追加
+public enum AttackType { Melee, Ranged }
+[Export] public AttackType MyAttackType = AttackType.Melee;
+[Export] public PackedScene ProjectileScene;   // 远程怪物才需要拖入，比如 Rocket.tscn
+[Export] public Node3D ProjectileSpawnPoint;   // 投射物从哪里生成，通常是怪物的"嘴"或"手"位置
+[Export] public float RangedAttackRange = 12.0f;   // 远程攻击的有效距离，通常比近战 AttackRange 大得多
+[Export] public float AttackConeDegrees = 30.0f;   // 对应 idAI 的 attack_cone：目标偏出这个角度就不发射，避免"背对着打中"的怪异画面
+
+private void TryAttack()
+{
+    if (_player == null) return;
+    float distance = GlobalPosition.DistanceTo(_player.GlobalPosition);
+    float effectiveRange = MyAttackType == AttackType.Melee ? AttackRange : RangedAttackRange;
+    if (distance > effectiveRange) return;
+
+    // 攻击锥角检测：目标是否大致在怪物面朝的方向上，不是随便什么角度都能开火
+    Vector3 toTarget = (_player.GlobalPosition - GlobalPosition); toTarget.Y = 0;
+    float angle = Mathf.RadToDeg(GlobalTransform.Basis.Z.AngleTo(toTarget.Normalized()));
+    if (180.0f - angle > AttackConeDegrees) return;   // GlobalTransform.Basis.Z 是"身后"方向，这里换算成"正面偏离角度"
+
+    double now = Time.GetTicksMsec() / 1000.0;
+    if (now - _lastAttackTime < AttackCooldown) return;
+    _lastAttackTime = now;
+
+    if (MyAttackType == AttackType.Melee)
+    {
+        AttackMelee();   // 原来 8.3/9.4 节的近战判定逻辑
+    }
+    else
+    {
+        AttackRanged();
+    }
+}
+
+private void AttackRanged()
+{
+    if (ProjectileScene == null || ProjectileSpawnPoint == null) return;
+
+    var projectile = ProjectileScene.Instantiate<Rocket>();
+    GetTree().Root.AddChild(projectile);
+    projectile.GlobalPosition = ProjectileSpawnPoint.GlobalPosition;
+
+    Vector3 direction = (_player.GlobalPosition - ProjectileSpawnPoint.GlobalPosition).Normalized();
+    projectile.Launch(direction, this);   // this：把怪物自己传进去当 Owner3D，防止爆炸伤到自己
+    GD.Print($"{Name} 发射了一枚投射物");
+}
+```
+
+**这一节真正的重点不是这段代码本身，是它带来的设计结果**：想做一只近战僵尸和一只远程暴风兵，不需要写两个不同的怪物类，只需要在场景编辑器里，一个的 `MyAttackType` 选 `Melee`，另一个选 `Ranged` 并拖入一个投射物场景——**甚至可以把 `ProjectileScene` 换成不同配置的投射物场景**（改小 `SplashRadius`、换成 `IsGuided = true` 的追踪弹版本），做出"近战怪、普通远程怪、会追踪的远程怪"三种手感完全不同的敌人，`Enemy.cs` 一行都不用改。这正是第 14 章要系统讲的"数据驱动"的一次提前预演。
+
+### 9.9（可选进阶）冲锋攻击：不是所有攻击都能站着放
+
+有些怪物的攻击不是"站在原地打"，而是主动冲向你——DOOM 3 里这类攻击靠 `Event_ChargeAttack`/`Event_TestChargeAttack`（`neo/d3xp/ai/AI_events.cpp:1743-1802`）实现，冲锋前会先用寻路系统验证"冲过去这条路线走不走得通"，避免怪物一头冲进墙里卡住。用本教程已经搭好的 `NavigationAgent3D` 复刻同样的验证步骤：
+
+```csharp
+// Enemy.cs 追加
+[Export] public float ChargeSpeed = 10.0f;
+[Export] public float ChargeAttackRange = 6.0f;
+private bool _isCharging;
+
+private async void TryChargeAttack()
+{
+    if (_isCharging || _player == null) return;
+    float distance = GlobalPosition.DistanceTo(_player.GlobalPosition);
+    if (distance > ChargeAttackRange || distance < AttackRange) return;   // 太远冲不到、太近没必要冲，直接近战就行
+
+    // 对应 TestChargeAttack：冲锋前先问寻路系统这条路能不能走通，走不通就放弃这次冲锋
+    _navAgent.TargetPosition = _player.GlobalPosition;
+    await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);   // 等一帧，让 NavigationAgent3D 把新目标点的路径算好
+    if (!_navAgent.IsTargetReachable())
+    {
+        GD.Print($"{Name}：冲锋路线走不通，放弃");
+        return;
+    }
+
+    _isCharging = true;
+    GD.Print($"{Name} 开始冲锋！");
+    double chargeStart = Time.GetTicksMsec() / 1000.0;
+
+    while (Time.GetTicksMsec() / 1000.0 - chargeStart < 1.5 && _isCharging)
+    {
+        Vector3 direction = (_player.GlobalPosition - GlobalPosition); direction.Y = 0;
+        direction = direction.Normalized();
+        Velocity = new Vector3(direction.X * ChargeSpeed, Velocity.Y, direction.Z * ChargeSpeed);
+
+        if (GlobalPosition.DistanceTo(_player.GlobalPosition) < AttackRange)
+        {
+            AttackMelee();   // 冲到贴脸距离，直接按近战判定收尾，冲锋本身不额外算一次伤害
+            break;
+        }
+        await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+    }
+
+    _isCharging = false;
+}
+```
+
+这一节标"可选"不是因为它不重要，是因为不是每种怪物都需要这个攻击方式——跟 9.8 节一样，`MyAttackType` 枚举完全可以再加一个 `Charge` 分支，`TryAttack()` 里按类型分派到 `AttackMelee()`/`AttackRanged()`/`TryChargeAttack()`，这三种攻击方式互相独立、可以按怪物类型任意组合，不需要为每一种组合单独写一个怪物类——这跟 5.3/9.8 节反复强调的"差异应该落在配置上，不是代码分支上"是同一条原则的第三次应用，读到这里这个模式应该已经很熟悉了。
 
 ---
 
