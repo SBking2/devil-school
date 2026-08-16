@@ -36,7 +36,11 @@ namespace EGame
             _SensorParent = GetNode<Node3D>("%SensorParent");
 
 			_MoveCollider = GetNode<CollisionShape3D>("MoveCollider");
-			_CapsuleShape = (CapsuleShape3D)_MoveCollider.Shape;
+
+			// 场景里内嵌的 Shape 资源默认是所有实例共享的（没勾 Local to Scene），
+			// 这里 Duplicate 一份专属自己的，不然一个生物蹲下会连带改到其他生物的碰撞体高度
+			_CapsuleShape = (CapsuleShape3D)_MoveCollider.Shape.Duplicate();
+			_MoveCollider.Shape = _CapsuleShape;
 			_StandHeight = _CapsuleShape.Height;
 
 			//创建Visual
@@ -104,20 +108,26 @@ namespace EGame
 		//谁想知道"现在是不是蹲着"直接查 IsCrouching
 		public const float CROUCH_SPEED_MULTIPLIER = 0.5f;
 		private const float CROUCH_HEIGHT = 1.2f;
-		private const float CROUCH_HEIGHT_CHANGE_SPEED = 8.0f;
+		private const float CROUCH_HEIGHT_CHANGE_SPEED = 12.0f;
 
 		// 站立时视角相对Origin的高度偏移，摄像机就读这个，不再是写死的常量
-		private const float STAND_EYE_OFFSET = 0.15f;
+		private const float EYE_OFFSET_FROM_HEAD_TOP = 0.2f;
 
 		private float _StandHeight;
 		public bool IsCrouching { get; private set; }
-		public float EyeOffset { get; private set; } = STAND_EYE_OFFSET;
+
+		// 胶囊体围绕 Origin 对称，头顶相对 Origin 的距离永远是 ColliderHeight/2，
+		// 直接拿这个算，不依赖"身体这一帧有没有精确下沉到位"，就不会因为漏掉某一帧的补偿而累积误差
+		public float EyeOffset => ColliderHeight / 2f - EYE_OFFSET_FROM_HEAD_TOP;
 
 		private void UpdateCrouch(double delta)
 		{
-			float target_height = (Intent.WantsCrouch || !CanStandUp()) ? CROUCH_HEIGHT : _StandHeight;
-
+			// 空中也允许蹲下（比如缩小体积做空中动作）；已经蹲着的时候（哪怕脚离地了）如果头顶没地方站，也不能强行弹起来
+			bool already_crouched = !Mathf.IsEqualApprox(ColliderHeight, _StandHeight);
+			bool should_crouch = Intent.WantsCrouch || (already_crouched && !CanStandUp());
+			float target_height = should_crouch ? CROUCH_HEIGHT : _StandHeight;
 			float cur_height = ColliderHeight;
+
 			if (Mathf.IsEqualApprox(cur_height, target_height) == false)
 			{
 				float max_delta = CROUCH_HEIGHT_CHANGE_SPEED * (float)delta;
@@ -125,11 +135,6 @@ namespace EGame
 				float height_delta = new_height - cur_height;
 
 				ColliderHeight = new_height;
-
-				// 胶囊体是围绕自身中心对称收缩的，蹲下时收缩量有一半会体现为"底部往上抬"，
-				// 重力是逐帧累加的追不上这个收缩速度，不补偿的话脚底会悬空一下再被拽回地面。
-				// 但这个补偿只在贴地的时候有意义——在空中根本没有地面可贴，硬加这个向下速度
-				// 只会变成"蹲一下就加速下坠"，所以只在 IsGround 为真时才补偿
 				if (height_delta < 0f && IsGround)
 				{
 					var velocity = Velocity;
@@ -138,16 +143,8 @@ namespace EGame
 				}
 			}
 
-			// 胶囊体围绕Origin对称收缩，头顶相对Origin掉了半个收缩量，视角跟着头顶走
-			EyeOffset = STAND_EYE_OFFSET - (_StandHeight - ColliderHeight) / 2f;
-
 			bool was_crouching = IsCrouching;
 			IsCrouching = Mathf.IsEqualApprox(ColliderHeight, CROUCH_HEIGHT);
-
-			if (IsCrouching && was_crouching == false)
-				SetAnimTrigger("crouch");
-			else if (IsCrouching == false && was_crouching)
-				SetAnimTrigger(Intent.MoveDir.Length() > 0.1f ? (Intent.WantsRun ? "run" : "walk") : "idle");
 		}
 
 		private bool CanStandUp()
@@ -171,7 +168,7 @@ namespace EGame
 		// 贴地时给一个很小的向下速度而不是直接清零，这样下一帧 IsOnFloor() 才能持续判定为真，避免在台阶/斜坡交界处反复起跳
 		private const float GROUND_STICK_SPEED = -0.5f;
 
-		private static readonly float _Gravity = (float)ProjectSettings.GetSetting("physics/3d/default_gravity");
+		private static readonly float _Gravity = 15f;
 
 		public bool IsGround { get; private set; }
 

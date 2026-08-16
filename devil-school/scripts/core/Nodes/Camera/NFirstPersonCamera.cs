@@ -111,6 +111,7 @@ namespace EGame
                 RotateY(Mathf.DegToRad(pitch_delta));
             }
         }
+        
         public override void _Process(double delta)
         {
             base._Process(delta);

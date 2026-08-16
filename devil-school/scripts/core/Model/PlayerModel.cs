@@ -4,7 +4,7 @@ namespace EGame
     [ModelCategory]
     public class PlayerModel : CharacterModel
     {
-        public virtual float JumpSpeed => 3;
+        public virtual float JumpSpeed => 6;
 
         protected override CharacterMovementStateMachine CreateMovementStateMachine(NEnvCreature creature)
         {

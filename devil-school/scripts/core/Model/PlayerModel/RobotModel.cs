@@ -5,8 +5,8 @@ namespace EGame
 {
     public class RobotModel : PlayerModel
     {
-        public override float MoveSpeed => 3f;
-
+        public override float MoveSpeed => 5f;
+        public override float RunSpeed => 8f;
         public override CreatureAnimator CreateAnimator(AnimationPlayer anim_player)
         {
             AnimState idle_state = new AnimState("ArmsRig|finger_gun_idle", 0.1f, true);

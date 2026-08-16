@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://b5b6w4y64f0pu"]
 
-[ext_resource type="Script" uid="uid://bftk3rmnrxvas" path="res://scripts/core/Nodes/Combat/NCreatureVisual.cs" id="1_c7ydh"]
+[ext_resource type="Script" uid="uid://bftk3rmnrxvas" path="res://scripts/Core/Nodes/Combat/NCreatureVisual.cs" id="1_c7ydh"]
 [ext_resource type="PackedScene" uid="uid://c6y2axq6smnxv" path="res://models/characters/fps/arms_rig.fbx" id="2_7df0x"]
 
 [node name="CreatureVisual" type="Node3D" unique_id=1810010319]
