@@ -871,7 +871,7 @@ public partial class Weapon : Node3D
 
 ```csharp
 // Weapon.cs 追加
-public enum WeaponState { Holstered, Raising, Idle, Firing, Reloading, Lowering }
+public enum WeaponState { Holstered, Raising, Idle, Firing, Reloading, OutOfAmmo, Lowering }
 public WeaponState State { get; private set; } = WeaponState.Holstered;
 
 [Export] public float RaiseTime = 0.4f;
@@ -979,7 +979,69 @@ public partial class WeaponManager : Node3D
 
 同样记得加 `weapon_1`/`weapon_2` 输入映射（建议绑数字键 1/2）。这个版本和"直接切换"的区别，运行起来才能真正感受到：切枪时会先看到当前武器收下去、再看到新武器举起来，而不是瞬间换脸。**这个"意图状态和当前状态分离、靠每帧轮询推进过渡"的模式**，本教程后面第 9 章做怪物移动目标（`NavigationAgent3D.TargetPosition` 表达意图，实际移动每 tick 逐步逼近）用的是同一个思路——这不是巧合，是"任何一个不能瞬间完成、需要一段真实过渡时间的状态改变"的通用解法。
 
-第 4 章、第 6 章里 `Weapon.Fire()`/`Melee()` 目前没有检查 `State` 是不是 `Idle`——回头把这两处开头加一行 `if (State != WeaponState.Idle) return;`，防止武器还在收起/举起过程中就能开火。
+第 6 章的 `Melee()` 目前没有检查 `State` 是不是 `Idle`——回头在开头加一行 `if (State != WeaponState.Idle) return;`，防止武器还在收起/举起过程中就能开火（这一步教程后面到 6.3 节会替你补上）。
+
+### 5.2.1 收编 5.1 节的换弹逻辑：`_isReloading` 应该并入 `State`，不该是独立字段
+
+5.1 节的 `TryFire()`/`TryReload()` 是在状态机出现之前写的，用了一个孤立的 `_isReloading` 布尔字段自己管"是不是在装弹"，跟这一节刚建好的 `State` 完全是两套独立的东西——这是本教程故意先留的一个"债"：**先让读者用最直白的方式做出装弹能用的效果，等状态机这个更完整的模型出现之后，再回头把之前的临时方案收编进来**，而不是一开始就要求你理解一整套状态机才能实现装弹。现在状态机有了，是收编的时候了。
+
+删掉 `_isReloading` 字段，`TryFire()`/`TryReload()` 改成全部走 `State`，顺带把 DOOM3 `WP_OUTOFAMMO` 对应的"没弹药"状态也正式接进来（而不是只在 `TryFire()` 里做一次性判断）：
+
+```csharp
+// Weapon.cs —— 用这一版替换 5.1 节的 TryFire()/TryReload()，删掉 _isReloading 字段
+private void TryFire()
+{
+    if (State != WeaponState.Idle && State != WeaponState.OutOfAmmo) return;
+    double now = Time.GetTicksMsec() / 1000.0;
+    if (now - _lastFireTime < FireRate) return;
+
+    if (CurrentAmmo <= 0)
+    {
+        State = WeaponState.OutOfAmmo;
+        TryReload();
+        return;
+    }
+
+    _lastFireTime = now;
+    CurrentAmmo--;
+    State = WeaponState.Firing;
+    Fire();
+
+    // Firing 是一个短暂状态，撑满一次开火间隔之后自动回到 Idle——复用 FireRate 这个已有数值当
+    // "开火动作占用多久"，不需要为这一件事再单独引入一个新的计时字段
+    GetTree().CreateTimer(FireRate).Timeout += () =>
+    {
+        if (State == WeaponState.Firing) State = WeaponState.Idle;
+    };
+}
+
+private async void TryReload()
+{
+    if (State == WeaponState.Reloading || CurrentAmmo >= ClipSize || ReserveAmmo <= 0) return;
+
+    State = WeaponState.Reloading;
+    GD.Print("装弹中...");
+
+    await ToSignal(GetTree().CreateTimer(ReloadTime), SceneTreeTimer.SignalName.Timeout);
+
+    int needed = ClipSize - CurrentAmmo;
+    int taken = Mathf.Min(needed, ReserveAmmo);
+    CurrentAmmo += taken;
+    ReserveAmmo -= taken;
+
+    // 跟 Raise()/PutAway() 里同样的防御性判断：装弹这几百毫秒里，如果武器已经被切走
+    // （State 变成了 Lowering），不能在这里把它硬掰回 Idle，覆盖掉切枪逻辑已经做的事
+    if (State == WeaponState.Reloading)
+    {
+        State = WeaponState.Idle;
+    }
+    GD.Print($"装弹完成：{CurrentAmmo}/{ReserveAmmo}");
+}
+```
+
+`TryFire()` 开头 `State != WeaponState.Idle && State != WeaponState.OutOfAmmo` 这个判断值得多看一眼：**没弹药也允许触发 `TryFire()`**（因为它自己会转去 `TryReload()`），但 `Raising`/`Lowering`/`Reloading` 这几个状态一律拒绝——你按开火键，武器正在收起过程中，这一枪就该被吃掉，不该排队等切枪动画播完再补开一枪，这跟 DOOM3 `WP_HOLSTERED`/`WP_RISING`/`WP_LOWERING` 状态下开火请求被直接忽略是同一个设计。
+
+这一步做完之后，`Weapon` 全部的"我现在在干嘛"都只有 `State` 这一个真相来源，不会再出现"状态机说是 Idle，但其实还在装弹"这种两套状态互相打架的情况。
 
 ### 5.3 投射物武器：火箭筒——直接命中和范围伤害是两件独立的事
 
