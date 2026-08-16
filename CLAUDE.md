@@ -7,7 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 git 仓库根目录（`DevilSchool/`）只是一个外层容器；真正的 Godot 项目在 `devil-school/` 子目录下。下文所有路径除非特别说明，都是相对于 `devil-school/` 的。仓库根目录下的其他文件夹不参与构建：
 - `Excel/` — 源数据表（角色/物品/技能/对话等）的 `.xlsx` 文件。目前**没有**接入游戏（见下方 Model 数据系统）。
 - `Tool/Excel2Csv/` — 一个独立的 C++ 工具，用于把这些 `.xlsx` 转成 CSV。它的 `config.txt` 目前指向另一个无关项目（`2DGame`），说明这条流水线当前并未真正连到本仓库。
-- `ModelProject/`、`Doc/`、`GPTDev/` — Blender 资产、一张图、以及一个游离的草稿脚本，构建不会用到。
+- `ModelProject/`、`GPTDev/` — Blender 资产、以及一个游离的草稿脚本，构建不会用到。
+- `Doc/` — 一张架构图（`style.drawio`）,以及几份 FPS 相关的设计文档：`FPS_Camera_Tutorial.md`（第一人称相机/武器手感的设计参考,见下方"摄像机"一节）、`FPS_Architecture_Design.md`（FPS 底层框架改造方案）、`FPS_Combat_Refactor_Plan.md`。这些文档只是设计参考,不代表已经实现——具体哪些已经落地要看下面"架构"里的实际描述。
 
 ## 常用命令
 
@@ -64,7 +65,7 @@ git 仓库根目录（`DevilSchool/`）只是一个外层容器；真正的 Godo
 
 ### 摄像机 / 第一人称手感
 
-`INCamera` 是接口（`MakeCurrent()`、水平/垂直 `Quaternion`）；`NCameraController` 负责切换当前生效的 `INCamera` 节点。`NFirstPersonCamera` 在代码里（不是在场景文件里）搭建了 `PitchPivot → YawPivot → CameraEffectPos → Camera3D` 的层级，以及并行的武器视角链，用指数衰减平滑（`1 - exp(-speed*delta)`）实现了 Camera Bob / Weapon Bob / Weapon Sway，对应 [FPS_Camera_Tutorial.md](devil-school/FPS_Camera_Tutorial.md) 里描述的方案。这份文档是完整功能列表的设计/工程参考（ADS、视觉后坐力与实际瞄准后坐力的拆分、镜头晃动、探头/倾身、武器防穿墙、网络同步边界等），**要当成一份对照清单，而不是"已实现功能的说明"**——`NFirstPersonCamera` 目前只实现了其中一部分。
+`INCamera` 是接口（`MakeCurrent()`、水平/垂直 `Quaternion`）；`NCameraController` 负责切换当前生效的 `INCamera` 节点。`NFirstPersonCamera` 在代码里（不是在场景文件里）搭建了 `PitchPivot → YawPivot → CameraEffectPos → Camera3D` 的层级，以及并行的武器视角链，用指数衰减平滑（`1 - exp(-speed*delta)`）实现了 Camera Bob / Weapon Bob / Weapon Sway，对应 [FPS_Camera_Tutorial.md](Doc/FPS_Camera_Tutorial.md) 里描述的方案。这份文档是完整功能列表的设计/工程参考（ADS、视觉后坐力与实际瞄准后坐力的拆分、镜头晃动、探头/倾身、武器防穿墙、网络同步边界等），**要当成一份对照清单，而不是"已实现功能的说明"**——`NFirstPersonCamera` 目前只实现了其中一部分。
 
 ### 日志
 

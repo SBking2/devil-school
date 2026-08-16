@@ -1,0 +1,82 @@
+<mxfile host="Electron">
+  <diagram name="第 1 页" id="6Pxj3FXU0uszeFAnYPEx">
+    <mxGraphModel dx="1237" dy="1413" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-23" edge="1" parent="1" source="RTA6YR3TxzjY9ogQ9x-q-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="RTA6YR3TxzjY9ogQ9x-q-22" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-29" edge="1" parent="1" source="RTA6YR3TxzjY9ogQ9x-q-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="RTA6YR3TxzjY9ogQ9x-q-21">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="PlayerController : Node3D" vertex="1">
+          <mxGeometry height="60" width="180" x="680" y="-330" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="ApplyAcceleration&lt;br&gt;计算出当前速度在wishdir上的投影，得出要加的速度" vertex="1">
+          <mxGeometry height="60" width="180" x="-500" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-5" edge="1" parent="1" source="RTA6YR3TxzjY9ogQ9x-q-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="RTA6YR3TxzjY9ogQ9x-q-2" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="ApplyFriction&lt;div&gt;速度减量:speed * dt * friction&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="200" x="-510" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-6" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="一定要先减再加，这样才有维持在WishSpeed这里" vertex="1">
+          <mxGeometry height="60" width="200" x="-280" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="地面移动和空中移动" vertex="1">
+          <mxGeometry height="60" width="120" x="-335" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-9" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="蹲伏" vertex="1">
+          <mxGeometry height="60" width="120" x="55" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-10" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="以角色脚底为原点，常规蹲伏" vertex="1">
+          <mxGeometry height="60" width="200" x="15" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-11" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="水下运动" vertex="1">
+          <mxGeometry height="60" width="120" x="345" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-15" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="爬梯子" vertex="1">
+          <mxGeometry height="60" width="120" x="615" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-17" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="降低摩擦系数" vertex="1">
+          <mxGeometry height="60" width="200" x="305" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-19" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="楼梯一顿一顿处理" vertex="1">
+          <mxGeometry height="60" width="120" x="855" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-21" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="相机" vertex="1">
+          <mxGeometry height="60" width="120" x="1110" y="-330" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-24" edge="1" parent="1" source="RTA6YR3TxzjY9ogQ9x-q-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="RTA6YR3TxzjY9ogQ9x-q-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-25" edge="1" parent="1" source="RTA6YR3TxzjY9ogQ9x-q-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="RTA6YR3TxzjY9ogQ9x-q-9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-26" edge="1" parent="1" source="RTA6YR3TxzjY9ogQ9x-q-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="RTA6YR3TxzjY9ogQ9x-q-11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-27" edge="1" parent="1" source="RTA6YR3TxzjY9ogQ9x-q-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="RTA6YR3TxzjY9ogQ9x-q-15">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-28" edge="1" parent="1" source="RTA6YR3TxzjY9ogQ9x-q-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="RTA6YR3TxzjY9ogQ9x-q-19">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-22" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="移动" vertex="1">
+          <mxGeometry height="60" width="120" x="340" y="-50" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-30" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="ViewBob" vertex="1">
+          <mxGeometry height="60" width="120" x="1340" y="-330" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-31" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="检测+手动移动位置" vertex="1">
+          <mxGeometry height="60" width="120" x="855" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="RTA6YR3TxzjY9ogQ9x-q-32" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="出去水平方向，增加竖直方向" vertex="1">
+          <mxGeometry height="60" width="120" x="615" y="220" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
