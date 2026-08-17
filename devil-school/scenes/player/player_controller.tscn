@@ -1,0 +1,31 @@
+[gd_scene format=3 uid="uid://buqwigxw4vjjt"]
+
+[ext_resource type="Script" uid="uid://178hfjpqvqsc" path="res://scripts/n_core/Nodes/NPlayerController.cs" id="1_4q5nu"]
+[ext_resource type="PackedScene" uid="uid://c6y2axq6smnxv" path="res://models/characters/fps/arms_rig.fbx" id="2_iivv4"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_dcsok"]
+resource_local_to_scene = true
+
+[node name="PlayerController" type="CharacterBody3D" unique_id=1502327299]
+collision_layer = 2
+collision_mask = 6
+script = ExtResource("1_4q5nu")
+
+[node name="Yaw" type="Node3D" parent="." unique_id=830619802]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
+
+[node name="Pitch" type="Node3D" parent="Yaw" unique_id=1427491888]
+unique_name_in_owner = true
+
+[node name="RealCamera" type="Camera3D" parent="Yaw/Pitch" unique_id=1806356304]
+unique_name_in_owner = true
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, 0)
+
+[node name="arms_rig" parent="Yaw/Pitch/RealCamera" unique_id=1301901003 instance=ExtResource("2_iivv4")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 1.4404417e-08, -1.7593261, -0.16476732)
+
+[node name="MoveCollider" type="CollisionShape3D" parent="." unique_id=745978355]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+shape = SubResource("CapsuleShape3D_dcsok")

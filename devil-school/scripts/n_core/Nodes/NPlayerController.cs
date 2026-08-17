@@ -9,22 +9,26 @@ namespace EGame
         //////                                      人物移动
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        private readonly float _WalkSpeed = 3.0f;
-        private readonly float _MinStopSpeed = 1.0f;
-        private readonly float _Friction = 1.0f;
-
+        private readonly float _WalkSpeed = 8f;
+        private readonly float _MinStopSpeed = 2.54f;
+        private readonly float _Friction = 6f;
+        private readonly float _AccelerationRate = 10f;
+        
         private Vector3 GroundMove(Vector3 source, Vector3 wish_dir, double dt)
         {
-            return ApplyAcceleration(source, wish_dir, 0.3f, _WalkSpeed, dt);
+            return ApplyAcceleration(source, wish_dir, _AccelerationRate, _WalkSpeed, dt);
         }
 
         private Vector3 AirMove(Vector3 source, Vector3 wish_dir, double dt)
         {
-            return ApplyAcceleration(source, wish_dir, 0.03f, _WalkSpeed, dt);
+            return ApplyAcceleration(source, wish_dir, _AccelerationRate * 0.1f, _WalkSpeed, dt);
         }
 
         private Vector3 ApplyAcceleration(Vector3 source, Vector3 wish_dir, float acceleration_rate, float move_speed, double dt)
         {
+            if (wish_dir.LengthSquared() < 0.0001f)
+                return source;
+
             float vel_proj = source.Dot(wish_dir) / wish_dir.Length();
             
             float add_speed = move_speed - vel_proj;    //计算出当前速度距离目标速度还差多少
@@ -54,7 +58,7 @@ namespace EGame
         private readonly float _UpGravity = -9.8f;
         private readonly float _DownGravity = -15.0f;
 
-        private readonly float _JumpSpeed = 5.0f;
+        private readonly float _JumpSpeed = 4.6f;
 
         private Vector3 ApplyGravity(Vector3 source, double dt)
         {
@@ -72,19 +76,20 @@ namespace EGame
         //////                                      蹲伏相关
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        private readonly float _StandHeight = 2.0f;
+        private readonly float _StandHeight = 1.8f;
         private readonly float _CrouchHeight = 1.2f;
-        private readonly float _CrouchChangeSpeed = 3.0f;
+        private readonly float _CrouchChangeSpeed = 12.0f;
 
+        private readonly float _EyeOffsetFromTop = 0.4f;
         private float _EyesPos = 0.0f;
 
-        private readonly CollisionShape3D _MoveCollisionShape;
+        private CollisionShape3D _MoveCollisionShape;
         
         private bool _IsWantCrouch
         {
             get
             {
-                return false;
+                return Input.IsActionPressed(EGInput.CROUCH);
             }
         }
 
@@ -96,8 +101,36 @@ namespace EGame
             capsule.Height = target_crouch_height;
             _MoveCollisionShape.Position = new Vector3(0.0f, target_crouch_height * 0.5f, 0.0f);
 
-            float target_eyes_offset = target_crouch_height - 0.15f;
-            _EyesPos = (_EyesPos * _CrouchChangeSpeed + (1 - _CrouchChangeSpeed) * target_crouch_height) * (float)dt;
+            float target_eyes_offset = target_crouch_height - _EyeOffsetFromTop;
+            float weight = 1f - Mathf.Exp(-_CrouchChangeSpeed * (float)dt);
+            _EyesPos = Mathf.Lerp(_EyesPos, target_eyes_offset, weight);
+
+            _YawNode.Position = new Vector3(0.0f, _EyesPos, 0.0f);
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //////                                      相机上下左右旋转相关
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private Node3D _YawNode;
+        private Node3D _PitchNode;
+        private Camera3D _RealCamera;
+
+        //x为yaw, y为pitch
+        private Vector2 _RotateSensity = new Vector2(0.1f, 0.1f);
+
+        private readonly Vector2 _PitchLimit = new Vector2(-90f, 90f);
+        private float _PitchAngle = 0f;
+
+        private void HandleCameraRotation(Vector2 mouse_delta)
+        {
+            float x_delta = -mouse_delta.X * _RotateSensity.X;
+            _YawNode.Rotate(Vector3.Up, Mathf.DegToRad(x_delta));
+
+            float y_delta = mouse_delta.Y * _RotateSensity.Y;
+            _PitchAngle += y_delta;
+            _PitchAngle = Mathf.Clamp(_PitchAngle, _PitchLimit.X, _PitchLimit.Y);
+            _PitchNode.Quaternion = Quaternion.FromEuler(new Vector3(Mathf.DegToRad(_PitchAngle), 0.0f, 0.0f));
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -109,44 +142,19 @@ namespace EGame
             var dir = Vector3.Zero;
 
             if (Input.IsActionPressed(EGInput.UP))
-                dir.Z -= 1f;
-
-            if (Input.IsActionPressed(EGInput.DOWN))
                 dir.Z += 1f;
 
+            if (Input.IsActionPressed(EGInput.DOWN))
+                dir.Z -= 1f;
+
             if (Input.IsActionPressed(EGInput.RIGHT))
-                dir.X += 1f;
+                dir.X -= 1f;
 
             if (Input.IsActionPressed(EGInput.LEFT))
-                dir.X -= 1f;
+                dir.X += 1f;
 
             dir = dir.Normalized();
             return dir;
-        }
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //////                                      相机上下左右旋转相关
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        private readonly Node3D _YawNode;
-        private readonly Node3D _PitchNode;
-        private readonly Camera3D _RealCamera;
-
-        //x为yaw, y为pitch
-        private Vector2 _RotateSensity = new Vector2(0.03f, 0.03f);
-
-        private readonly Vector2 _PitchLimit = new Vector2(-90f, 90f);
-        private float _PitchAngle = 0f;
-
-        private void HandleCameraRotation(Vector2 mouse_delta)
-        {
-            float x_delta = mouse_delta.X * _RotateSensity.X;
-            _YawNode.Rotate(Vector3.Up, Mathf.DegToRad(x_delta));
-
-            float y_delta = mouse_delta.Y * _RotateSensity.Y;
-            _PitchAngle += y_delta;
-            _PitchAngle = Mathf.Clamp(_PitchAngle, _PitchLimit.X, _PitchLimit.Y);
-            _PitchNode.Quaternion = Quaternion.FromEuler(new Vector3(_PitchAngle, 0.0f, 0.0f));
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -154,6 +162,16 @@ namespace EGame
         public override void _Ready()
         {
             base._Ready();
+
+            Input.MouseMode = Input.MouseModeEnum.Captured;
+
+            _MoveCollisionShape = GetNode<CollisionShape3D>("%MoveCollider");
+            _YawNode = GetNode<Node3D>("%Yaw");
+            _PitchNode = GetNode<Node3D>("%Pitch");
+            _RealCamera = GetNode<Camera3D>("%RealCamera");
+
+            _EyesPos = _StandHeight - _EyeOffsetFromTop;
+            _YawNode.Position = new Vector3(0.0f, _EyesPos, 0.0f);
         }
 
         public override void _Input(InputEvent @event)
@@ -178,10 +196,10 @@ namespace EGame
             if (IsOnFloor() && !justJumped)
             {
                 Velocity = ApplyFriction(Velocity, _Friction, delta);
-                Velocity = GroundMove(Velocity, GetMoveDir(), delta);
+                Velocity = GroundMove(Velocity, _YawNode.Quaternion * GetMoveDir(), delta);
             }
             else
-                Velocity = AirMove(Velocity, GetMoveDir(), delta);
+                Velocity = AirMove(Velocity, _YawNode.Quaternion * GetMoveDir(), delta);
 
             Velocity = ApplyGravity(Velocity, delta);
             UpdateCrouch(delta);

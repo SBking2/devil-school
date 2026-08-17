@@ -1,9 +1,11 @@
 [gd_scene format=3 uid="uid://dge3avc7g1le2"]
 
-[ext_resource type="Script" uid="uid://bgg7dp3nm278q" path="res://scripts/core/Nodes/NGame.cs" id="1_uwrxv"]
-[ext_resource type="Script" uid="uid://dsy8h32r4tgwf" path="res://scripts/core/Nodes/Input/NInputManager.cs" id="3_lbhrr"]
-[ext_resource type="Script" uid="uid://bxw63hwdl8rpg" path="res://scripts/core/Nodes/NSceneContainer.cs" id="3_lnu2h"]
+[ext_resource type="Script" uid="uid://bgg7dp3nm278q" path="res://scripts/Core/Nodes/NGame.cs" id="1_uwrxv"]
+[ext_resource type="PackedScene" uid="uid://cprrwlc4ob8vg" path="res://scenes/worlds/init_world.tscn" id="3_iywne"]
+[ext_resource type="Script" uid="uid://dsy8h32r4tgwf" path="res://scripts/Core/Nodes/Input/NInputManager.cs" id="3_lbhrr"]
+[ext_resource type="Script" uid="uid://bxw63hwdl8rpg" path="res://scripts/Core/Nodes/NSceneContainer.cs" id="3_lnu2h"]
 [ext_resource type="PackedScene" uid="uid://drjgdl7h8yx3o" path="res://scenes/dev_console/dev_console.tscn" id="4_lbhrr"]
+[ext_resource type="PackedScene" uid="uid://buqwigxw4vjjt" path="res://scenes/player/player_controller.tscn" id="4_p57ef"]
 
 [node name="NGame" type="Node" unique_id=943147096]
 script = ExtResource("1_uwrxv")
@@ -11,6 +13,10 @@ script = ExtResource("1_uwrxv")
 [node name="RootSceneContainer" type="Node" parent="." unique_id=54595737]
 unique_name_in_owner = true
 script = ExtResource("3_lnu2h")
+
+[node name="InitWorld" parent="RootSceneContainer" unique_id=1678437961 instance=ExtResource("3_iywne")]
+
+[node name="PlayerController" parent="RootSceneContainer/InitWorld" unique_id=1502327299 instance=ExtResource("4_p57ef")]
 
 [node name="InputManager" type="Node" parent="." unique_id=2078358983]
 script = ExtResource("3_lbhrr")
