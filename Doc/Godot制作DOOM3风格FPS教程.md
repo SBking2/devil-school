@@ -255,6 +255,8 @@ public override void _Ready()
 }
 ```
 
+> **一个跟 DOOM3 源码无关、纯 Godot 的坑**：下面 `UpdateCrouch()` 会直接改 `_collisionShape.Shape` 上的 `Height`，而场景里内嵌的 Shape 资源默认是所有实例共享的——如果这个 `Player.tscn` 在场景里摆了不止一个实例，一个角色蹲下会连带改到其他实例的碰撞体高度。修法不用写代码：选中 `CollisionShape3D` 的 `Shape` 资源，在检查器面板右下角把它勾成 **Local to Scene**，Godot 在每次实例化这个场景时就会自动各给一份独立拷贝，不用手动 `Duplicate()`。
+
 > **这一节第一版也写错了**，直接去读 `Physics_Player.cpp::CheckDuck()`（1070-1113 行）和 `Player.cpp` 里眼睛高度插值那段代码（约 6955-6974 行）才发现：**碰撞体的高度切换是瞬间完成的，完全没有平滑**——`CheckDuck()` 只是判断"该不该蹲"（按了蹲下键就蹲，站起来之前要先做一次向上 trace 确认没被挡住才允许站起），一旦判断结果变化，碰撞体高度直接改成新的目标值，中间没有任何插值。**真正被平滑处理的，只有摄像机的眼睛高度**——`pm_crouchrate` 是专门用在这一步的：`SetEyeHeight(EyeHeight()*pm_crouchrate + newEyeOffset*(1-pm_crouchrate))`，这是一个逐帧固定权重混合，不是我之前写的"拿这个数字去插值碰撞体高度"。上一版把这两件事混在一起、用同一个 `Lerp` 处理，是错的。改正版本：
 
 ```csharp
@@ -286,11 +288,12 @@ private void UpdateCrouch()
     capsule.Height = targetHeight;
     _collisionShape.Position = new Vector3(0, targetHeight * 0.5f, 0);
 
-    // 只有眼睛高度（摄像机位置）才平滑——用源码里那种逐帧固定权重混合，
-    // 不是 dt 缩放的插值：Godot 的 _PhysicsProcess 本身就是固定步长跑的，
-    // 这里直接照抄字面公式反而更贴近原版，不需要额外除以 dt
+    // 只有眼睛高度（摄像机位置）才平滑：每个物理帧固定往目标值靠近一点，
+    // 不随dt缩放——Godot的_PhysicsProcess本身就是固定步长跑的，效果跟DOOM3原版一致。
+    // DOOM3源码字面写的是 a*rate + b*(1-rate) 这种加权平均，本质就是 Lerp，
+    // 这里直接用Lerp写，比照抄那个写法好懂
     float targetEyeOffset = targetHeight - 0.15f;
-    _currentEyeOffset = _currentEyeOffset * CrouchTransitionRate + targetEyeOffset * (1f - CrouchTransitionRate);
+    _currentEyeOffset = Mathf.Lerp(_currentEyeOffset, targetEyeOffset, 1f - CrouchTransitionRate);
     _head.Position = new Vector3(0, _currentEyeOffset, 0);
 }
 ```
@@ -438,7 +441,278 @@ private void ApplyStepUp(Vector3 horizontalMotion, float dt)
 
 在 `_PhysicsProcess` 里 `MoveAndSlide()` **之前**、算完地面加速度之后调用 `ApplyStepUp(horizontalVelocity, dt);`——三步走完之后，只有真正遇到台阶时角色才会被垫高并贴回台阶表面，平地上完全不会触发，也不会凭空往上飘。注意 `ApplyStepUp` 里读写的都是 `Velocity`（`CharacterBody3D` 自带的那个属性），传进来的 `horizontalVelocity` 参数只是用来做碰撞测试用的一份拷贝，函数末尾清空的是真正驱动 `MoveAndSlide()` 的那个 `Velocity`。
 
-到这里，第 2 章的移动状态机已经完整覆盖了 DOOM 3 `idPhysics_Player` 的全部移动模式（走/跑/蹲/空中/游泳/爬梯/台阶步进），是时候进入视角部分了。
+### 2.8 跳跃：一个大家都以为很简单、其实藏了好几个坑的动作
+
+> 前面 2.1、2.2 节里，跳跃只用了一行代码搪塞过去：`velocity.Y = JumpVelocity`。跟 2.4/2.5/2.6 节一样的剧本——先给一个能跑的最简版本让你能看到效果，欠的账现在还。直接读 `Physics_Player.cpp::CheckJump()`（1174-1206 行）和它在 `WalkMove()`（644-669 行）里的调用点，会发现这一行代码背后至少漏了四件事。
+
+**1. 起跳是叠加到当前速度上的，不是直接覆盖**
+
+```cpp
+current.velocity += addVelocity;
+```
+
+不是 `current.velocity = addVelocity`。平时感觉不出区别（起跳前 `velocity.Y` 通常本来就接近 0），但只要垂直方向上已经有别的东西在起作用（比如台阶步进残留的一点速度、或者别的系统在同一帧也想改 `velocity.Y`），用 `=` 会把那部分直接吃掉。改正：
+
+```csharp
+velocity.Y += JumpVelocity;
+```
+
+**2. 跳跃速度不该是一个手调的数字，该由"想跳多高"反推出来**
+
+DOOM3 从不直接写死一个跳跃速度常量。真正的输入是 `maxJumpHeight`（对应 cvar `pm_jumpheight`，默认 48 个世界单位），起跳速度是每次现算的：
+
+```cpp
+addVelocity = 2.0f * maxJumpHeight * -gravityVector;
+addVelocity *= idMath::Sqrt( addVelocity.Normalize() );
+current.velocity += addVelocity;
+```
+
+`-gravityVector` 是重力的反方向（"上"）；`idTech4` 里 `Normalize()` 的返回值是"归一化前的原始长度"（副作用才是真正做归一化），所以 `addVelocity.Normalize()` 拿到的其实是 `2gh`，开根号、乘回已经变成单位向量的 `addVelocity`，整个式子就是最基础的抛体公式 **v = √(2gh)**：给定"想跳多高"，反推起跳瞬间该给多大的垂直速度。好处是改跳跃高度只需要改一个直觉数字，重力变了跳跃高度也不用重新配平——而且这套写法用的是活的 `gravityVector` 而不是写死的坐标轴，DOOM3 里有些区域重力方向不常规，这个公式一样成立。
+
+Godot 项目通常不需要"任意方向重力"，可以简化成假设重力沿 -Y：
+
+```csharp
+[Export] public float JumpHeight = 1.1f;   // 想跳多高（米），不是速度
+[Export] public float Gravity = 20.0f;
+
+private float JumpVelocity => Mathf.Sqrt(2f * Gravity * JumpHeight);
+```
+
+把 2.1/2.2 节里 `[Export] public float JumpVelocity = 6.0f;` 换成上面这两行——`JumpVelocity` 变成一个只读的计算属性，`JumpHeight` 才是真正该调的旋钮。
+
+**3. 不能在蹲着的时候起跳**
+
+```cpp
+if ( current.movementFlags & PMF_DUCKED ) {
+    return false;
+}
+```
+
+`CheckJump()` 开头就把这条堵死了，跟 2.4 节的 `_isDucked` 是同一个状态：
+
+```csharp
+if (Input.IsActionJustPressed("jump") && !_isDucked)
+```
+
+**4. 起跳那一帧，水平移动要立刻按"空中"算，不能等下一帧**
+
+这条最容易漏。`WalkMove()` 的调用顺序（644-669 行）：`CheckJump()` 是这个函数最先做的事，一旦成功，**立刻**分支进 `AirMove()` 并直接返回，根本不会走到后面地面摩擦力/加速度那部分代码——起跳这一帧，水平移动从头到尾都是按空中规则算的，不存在"这一帧先按地面走、下一帧才切到空中"的过渡。
+
+而 2.2 节现在的写法是拿 `IsOnFloor()` 去判断该走哪个分支——问题是 Godot 的 `IsOnFloor()` 是"上一次 `MoveAndSlide()` 算出来的结果"，起跳这一帧你还没调用这次的 `MoveAndSlide()`，读到的还是跳之前那次的 `true`，结果水平方向会先走一次地面分支，跟 DOOM3 对不上。修法是自己记一个"这一帧刚跳了"的标志，覆盖掉这一帧的地面判断：
+
+```csharp
+bool useAirMove = !IsOnFloor() || justJumped;
+```
+
+**完整版**：把 2.2 节的 `_PhysicsProcess` 换成这个版本，四处修正全部合并进去了（`ApplyFriction`/`ApplyAcceleration` 内容不变，见 2.2 节；`_isDucked` 是 2.4 节引入的字段）：
+
+```csharp
+[Export] public float WalkSpeed = 4.0f;
+[Export] public float RunSpeed = 7.0f;
+[Export] public float JumpHeight = 1.1f;
+[Export] public float Gravity = 20.0f;
+
+private const float Accelerate = 10.0f;
+private const float AirAccelerate = 1.0f;
+private const float Friction = 6.0f;
+private const float StopSpeed = 1.0f;
+
+private float JumpVelocity => Mathf.Sqrt(2f * Gravity * JumpHeight);
+
+public override void _PhysicsProcess(double delta)
+{
+    float dt = (float)delta;
+    Vector3 velocity = Velocity;
+    bool justJumped = false;
+
+    if (IsOnFloor())
+    {
+        if (Input.IsActionJustPressed("jump") && !_isDucked)
+        {
+            velocity.Y += JumpVelocity;
+            justJumped = true;
+        }
+    }
+    else
+    {
+        velocity.Y -= Gravity * dt;
+    }
+
+    Vector2 inputDir = Input.GetVector("move_left", "move_right", "move_forward", "move_back");
+    Vector3 wishDir = (Transform.Basis * new Vector3(inputDir.X, 0, inputDir.Y)).Normalized();
+    float wishSpeed = Input.IsActionPressed("sprint") ? RunSpeed : WalkSpeed;
+
+    Vector3 horizontalVelocity = new Vector3(velocity.X, 0, velocity.Z);
+    bool useAirMove = !IsOnFloor() || justJumped;
+
+    if (useAirMove)
+    {
+        horizontalVelocity = ApplyAcceleration(horizontalVelocity, wishDir, wishSpeed, AirAccelerate, dt);
+    }
+    else
+    {
+        horizontalVelocity = ApplyFriction(horizontalVelocity, dt);
+        horizontalVelocity = ApplyAcceleration(horizontalVelocity, wishDir, wishSpeed, Accelerate, dt);
+    }
+
+    velocity.X = horizontalVelocity.X;
+    velocity.Z = horizontalVelocity.Z;
+
+    Velocity = velocity;
+    MoveAndSlide();
+}
+```
+
+**DOOM3 里不存在、但你可能会想加的东西**：二段跳、跳跃消耗体力、跳跃打断后摇——`CheckJump()` 里完全没有这些，而且它只能从 `WalkMove()`（地面状态）进入，意味着**在空中再按跳跃键什么都不会发生**，没有"还剩几次跳跃机会"这种计数器。想要二段跳是你在 DOOM3 基础上主动做的设计延伸，不是教程漏写了，加的时候记得别让二段跳的判断也去卡 `IsOnFloor()`（二段跳的定义就是在空中也能跳一次）。
+
+**兔子跳成立还有第三个原因，藏在这一节的代码顺序里**：2.3 节讲过兔跳依赖两个条件（空中摩擦力为0、加速度用投影而不是矢量差值），但这两条只解释了"空中怎么持续加速"，没解释另一半——**为什么落地之后立刻再跳一次，水平速度不会被地面摩擦力先咬掉一口**。答案在 `WalkMove()`（644-669行）的调用顺序本身：
+
+```cpp
+void idPhysics_Player::WalkMove() {
+    ...
+    if ( idPhysics_Player::CheckJump() ) {
+        // jumped away
+        ...
+        return;
+    }
+
+    idPhysics_Player::Friction();
+    ...
+}
+```
+
+`CheckJump()` 在 `Friction()` **前面**调用，一旦这一帧起跳成功，函数立刻 `return`，`Friction()` 根本没有机会执行。也就是说：**只要你是在贴地的这一帧按下跳跃键，这一帧就完全不会经过摩擦力计算**，水平速度原封不动地带进空中；但凡你晚个几帧才按跳跃键，这几帧里 `Friction()` 已经在正常吃你的速度了，只是没落地时那一下摔停得那么狠。这也是为什么高手连跳讲究"落地那一刻就按下一次跳跃"，不是"落地之后随便什么时候跳都一样"——每晚一帧，摩擦力就多啃一点。
+
+这一点你在 2.8 节写的完整版 `_PhysicsProcess` 里已经是对的，不用再改代码，只是要理解**为什么** `useAirMove = !IsOnFloor() || justJumped;` 这一行必须把 `justJumped` 也算进去：`justJumped` 为真的时候强制走 `AirAccelerate` 那个分支，跳过了 `ApplyFriction()`——这正是在复刻 `WalkMove()` 里"`CheckJump()` 成功就直接 `return`、绕开 `Friction()`"这个顺序。如果当初写成"先摩擦力、再判断跳不跳"，这一帧的水平速度就会先被削一刀，兔跳会明显没那么跟手。
+
+（Source 引擎——Half-Life 2、CS:GO 这条线——的玩家移动代码是同一个 Quake 血统的另一分支，`gamemovement.cpp` 公开资料里描述的也是同一个原理：跳跃检测在摩擦力计算之前处理，成功起跳就跳过地面摩擦这一步。这里没有 Source 引擎的源码可以逐行核对，只能说这是同一条技术脉络下的通用做法，不像上面 DOOM3 那部分是直接读代码验证过的。）
+
+### 2.9 弹板与连续起跳：DOOM3 的离地检测还藏着这两手
+
+想做弹板（踩上去把人弹飞）和连续起跳（落地立刻能再跳，手感要脆），光靠 2.7 节的 `IsOnFloor()` 判断是不够的。直接读 `Physics_Player.cpp::CheckGround()`（959-1061行）会发现，DOOM3 在"贴地/离地"这件事上，比一句 `IsOnFloor()` 多想了两层：
+
+**第一层：离地够快，直接判定"被弹飞"，不等下一帧**
+
+```cpp
+// 检查是不是正在被弹开
+if ( (current.velocity * -gravityNormal) > 0.0f && ( current.velocity * groundTrace.c.normal ) > 10.0f ) {
+    groundPlane = false;
+    walking = false;
+    return;
+}
+```
+
+这段在 `CheckGround()` 里，每帧都会跑：如果角色正在往"上"（重力反方向）移动、且速度沿地面法线方向的分量够大，立刻把 `groundPlane` 清成 `false`，不管这一帧碰撞检测本身有没有把它判成"贴地"。为什么需要这个：弹板给玩家一个瞬间的向上冲量之后，玩家的**位置**这一帧可能还没真正离开弹板的碰撞体积，如果这时候还按"贴地"处理，重力/摩擦力那一套逻辑会立刻把刚给出去的冲量吃掉一部分，弹起来的力道会打折扣。
+
+Godot 的 `IsOnFloor()` 天生没有这个机制——它是**上一次 `MoveAndSlide()` 的缓存结果**，弹板给速度的那一帧，这次的 `MoveAndSlide()` 还没跑，`IsOnFloor()` 读到的还是弹起来之前的 `true`。解决办法不是在 `IsOnFloor()` 上做文章（做不到），而是**弹起的瞬间由弹板自己主动把"贴地"状态清掉**，不指望引擎下一帧自己反应过来：
+
+```csharp
+// PlayerController.cs 追加
+public void ApplyLaunch(Vector3 velocity)
+{
+    Velocity = velocity;
+    _isGrounded = false;   // 立刻清掉，不等下一帧IsOnFloor()自己更新
+}
+```
+
+`_isGrounded` 是你自己在 `_PhysicsProcess` 里缓存的"这一帧是不是在地面"的字段（2.2-2.8 节的判断逻辑都可以统一改成读这个字段，而不是每处都单独调用一次 `IsOnFloor()`）。
+
+**第二层：摔得够狠，短时间内不让再跳**
+
+```cpp
+// 如果上一帧没有地面接触
+if ( !hadGroundContacts ) {
+    // 如果只是顺着斜坡滑下来的，不算硬着陆
+    if ( (current.velocity * -gravityNormal) < -200.0f ) {
+        current.movementFlags |= PMF_TIME_LAND;
+        current.movementTime = 250;
+    }
+}
+```
+
+刚落地（上一帧不是贴地、这一帧是）那一刻，如果下落速度超过阈值，标记 `PMF_TIME_LAND`，250 毫秒内不能再跳——这是**硬着陆的缓冲**，防止从高处摔下来的瞬间还能立刻弹起来，视觉/手感上会显得很假。注意这条**只在摔得够狠的时候才触发**，顺着缓坡走下来、或者小台阶落地，不会被误伤。
+
+Godot 版本，两层写法可以一起放进角色控制器：
+
+```csharp
+// PlayerController.cs 追加
+[Export] public float HardLandVelocity = -8.0f;      // 触发硬着陆的下落速度阈值
+[Export] public float LandRecoveryTime = 0.25f;       // 硬着陆之后多久不能跳
+
+private bool _isGrounded;
+private float _fallVelocity;
+private float _landRecoveryTimer;
+private bool CanJump => _landRecoveryTimer <= 0f;
+
+private void UpdateGround(float dt)
+{
+    bool wasGrounded = _isGrounded;
+    _isGrounded = IsOnFloor();
+
+    if (_isGrounded)
+    {
+        // 刚落地：按摔之前积累的下落速度判定是不是硬着陆
+        if (!wasGrounded)
+        {
+            if (_fallVelocity < HardLandVelocity)
+                _landRecoveryTimer = LandRecoveryTime;
+            _fallVelocity = 0f;
+        }
+    }
+    else
+    {
+        _fallVelocity = Mathf.Min(_fallVelocity, Velocity.Y);
+    }
+
+    if (_landRecoveryTimer > 0f)
+        _landRecoveryTimer = Mathf.Max(0f, _landRecoveryTimer - dt);
+}
+
+public void ApplyLaunch(Vector3 velocity)
+{
+    Velocity = velocity;
+    _isGrounded = false;
+    _fallVelocity = Mathf.Min(0f, velocity.Y);   // 弹起来的瞬间不该被当成"正在硬摔"
+}
+```
+
+`UpdateGround(dt)` 放在 `_PhysicsProcess` 最前面调用（在 2.2/2.8 节的重力/跳跃判断之前），把后面所有原本直接调 `IsOnFloor()` 的地方统一换成读 `_isGrounded`；跳跃那一行的判断从 `Input.IsActionJustPressed("jump")` 改成 `Input.IsActionJustPressed("jump") && CanJump`。
+
+**弹板本身**：一个 `Area3D`，进碰撞区域就调用玩家身上的 `ApplyLaunch`：
+
+```csharp
+// LaunchPad.cs
+using Godot;
+
+public partial class LaunchPad : Area3D
+{
+    [Export] public float LaunchSpeed = 12f;
+    [Export] public Vector3 LaunchDirection = Vector3.Up;
+    [Export] public float Cooldown = 0.3f;   // 避免角色还没完全离开触发区域就被连续弹射
+
+    private double _lastLaunchTime = -999.0;
+
+    public override void _Ready()
+    {
+        BodyEntered += OnBodyEntered;
+    }
+
+    private void OnBodyEntered(Node3D body)
+    {
+        if (body is not PlayerController player) return;
+
+        double now = Time.GetTicksMsec() / 1000.0;
+        if (now - _lastLaunchTime < Cooldown) return;
+
+        _lastLaunchTime = now;
+        player.ApplyLaunch(LaunchDirection.Normalized() * LaunchSpeed);
+    }
+}
+```
+
+**连续跳跃/弹板链**为什么能直接成立，不需要额外处理：`ApplyLaunch` 走的是 `Area3D` 触发，跟落地缓冲计时、地面判定完全是两条独立的路径——角色被弹起、还没落地就飞进下一个弹板的触发区域，第二次 `ApplyLaunch` 照样会执行，不会被"上一次落地还没缓冲完"卡住（因为角色压根还没落地，`_landRecoveryTimer` 根本没被触发过）。真正会限制连续弹跳手感的，只有 `Cooldown` 这一个参数——调小一点，弹板之间挨得近也能连续弹起来。
+
+到这里，第 2 章的移动状态机已经完整覆盖了 DOOM 3 `idPhysics_Player` 的全部移动模式（走/跑/蹲/跳跃/弹飞/空中/游泳/爬梯/台阶步进），是时候进入视角部分了。
 
 ---
 
