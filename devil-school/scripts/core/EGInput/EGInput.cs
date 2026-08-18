@@ -15,5 +15,8 @@ namespace EGame
         public const string CROUCH = "crouch";
         public const string RUN = "run";
         public const string JUMP = "jump";
+
+        //攻击
+        public const string FIRE = "fire";
     }
 }

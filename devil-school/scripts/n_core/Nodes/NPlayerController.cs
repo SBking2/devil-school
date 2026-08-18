@@ -62,6 +62,13 @@ namespace EGame
 
         private Vector3 ApplyGravity(Vector3 source, double dt)
         {
+            if (IsOnFloor())
+            {
+                if (source.Y < 0f)
+                    source.Y = -0.5f;
+                return source;
+            }
+
             float gravity = source.Y > 0f ? _UpGravity : _DownGravity;
             source.Y += (float)(gravity * dt);
             return source;
@@ -117,7 +124,7 @@ namespace EGame
         private Camera3D _RealCamera;
 
         //x为yaw, y为pitch
-        private Vector2 _RotateSensity = new Vector2(0.1f, 0.1f);
+        private Vector2 _RotateSensity = new Vector2(0.05f, 0.05f);
 
         private readonly Vector2 _PitchLimit = new Vector2(-90f, 90f);
         private float _PitchAngle = 0f;
@@ -131,6 +138,131 @@ namespace EGame
             _PitchAngle += y_delta;
             _PitchAngle = Mathf.Clamp(_PitchAngle, _PitchLimit.X, _PitchLimit.Y);
             _PitchNode.Quaternion = Quaternion.FromEuler(new Vector3(Mathf.DegToRad(_PitchAngle), 0.0f, 0.0f));
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //////                                       相机Bob
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private Node3D _CameraBobNode;
+
+        private readonly float _WalkBobRate = 0.6f;      // 对应 pm_walkbob
+        private readonly float _RunBobRate = 0.8f;       // 对应 pm_runbob
+        private readonly float _CrouchBobRate = 1.0f;    // 对应 pm_crouchbob
+        private readonly float _BobUpAmount = 0.01f;     // 对应 pm_bobup，垂直位置起伏幅度
+        private readonly float _BobPitchAmount = 0.004f; // 对应 pm_bobpitch，点头角度幅度
+        private readonly float _BobRollAmount = 0.004f;  // 对应 pm_bobroll，左右摇摆角度幅度
+        private readonly float _RunPitchAmount = 0.004f; // 对应 pm_runpitch，纯速度驱动的前后倾（非周期性）
+        private readonly float _RunRollAmount = 0.006f;   // 对应 pm_runroll，纯速度驱动的左右倾（非周期性）
+        private readonly float _MinBobSpeed = 0.3f;      // 对应 MIN_BOB_SPEED：低于这个速度直接清零，不产生 bob
+
+        private float _BobCycle;
+        private Vector3 _ViewBobOffset;
+        private Vector3 _ViewBobAngles;
+
+        private void UpdateViewBob(double dt)
+        {
+            var horizontal_vel = new Vector3(Velocity.X, 0f, Velocity.Z);
+            float xy_speed = horizontal_vel.Length();
+
+            if (!IsOnFloor() || xy_speed <= _MinBobSpeed)
+            {
+                // 腾空或几乎静止时直接清零、不是渐隐——DOOM3 原版就是这样处理的，保证玩家站定瞄准时摄像机绝对静止
+                _BobCycle = 0f;
+                _ViewBobOffset = _ViewBobOffset.Lerp(Vector3.Zero, (float)dt * 10f);
+                _ViewBobAngles = _ViewBobAngles.Lerp(Vector3.Zero, (float)dt * 10f);
+                ApplyBobToCamera();
+                return;
+            }
+
+            bool is_crouching = IsCrouch;
+
+            float bob_rate = is_crouching ? _CrouchBobRate : (Input.IsActionPressed(EGInput.RUN) ? _RunBobRate : _WalkBobRate);
+            _BobCycle += bob_rate * (float)dt * Mathf.Tau;
+
+            float bob_frac_sin = Mathf.Abs(Mathf.Sin(_BobCycle));
+            bool second_half = Mathf.Sin(_BobCycle) < 0f;            // 对应 bobFoot 的奇偶——决定这一步是"左脚"还是"右脚"
+
+            // 位置：垂直起伏，钳制上限
+            float vertical = Mathf.Min(bob_frac_sin * xy_speed * _BobUpAmount, 0.08f);
+
+            float pitch_bob = bob_frac_sin * _BobPitchAmount * xy_speed;
+            float roll_bob = bob_frac_sin * _BobRollAmount * xy_speed;
+            if (second_half)
+                roll_bob = -roll_bob;
+
+            var local_vel = Transform.Basis.Inverse() * Velocity;   // 角色本体现在自己就是 Yaw，直接用自己的 Transform 转到局部坐标
+            float run_pitch = local_vel.Z * _RunPitchAmount;
+            float run_roll = -local_vel.X * _RunRollAmount;
+
+            _ViewBobOffset = new Vector3(0f, vertical, 0f);
+            _ViewBobAngles = new Vector3(pitch_bob + run_pitch, 0f, roll_bob + run_roll);
+
+            ApplyBobToCamera();
+        }
+        private void ApplyBobToCamera()
+        {
+            _CameraBobNode.Position = _ViewBobOffset;
+            _CameraBobNode.Rotation = new Vector3(_ViewBobAngles.X, 0f, _ViewBobAngles.Z);
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //////                                       落地时的冲击力
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private Node3D _CameraLandNode;
+
+        private float _LandOffset;
+        private float _LandStregth = 0f;
+        private double _LandStartTimer = 0.0f;
+        private readonly float _LandDeflectTime = 0.03f;     //下沉时间
+        private readonly float _LandReturnTime = 0.3f;       //回弹时间
+        private float _LastFallSpeed;
+
+        private void TrachFallSpeed()
+        {
+            if (!IsOnFloor())
+            {
+                _LastFallSpeed = Mathf.Min(_LastFallSpeed, Velocity.Y);
+                return;
+            }
+            if (_LastFallSpeed < -3.0f)   // 有意义的下落速度才触发，轻微的台阶步进不该有反馈
+            {
+                // 按冲击力度分四档——对应 DOOM3 原版 -8/-16/-24/-32 那四个档位，这里按比例换算
+                float severity = Mathf.Abs(_LastFallSpeed);
+                _LandStregth = severity switch
+                {
+                    > 16f => 0.28f,
+                    > 12f => 0.22f,
+                    > 9f => 0.17f,
+                    _ => 0.13f,
+                };
+                _LandStartTimer = Time.GetTicksMsec() / 1000.0;
+            }
+            _LastFallSpeed = 0;
+        }
+
+        private void UpdateLandingOffset()
+        {
+            if (_LandStregth < 0.01f)
+                return;
+
+            double process_time = (Time.GetTicksMsec() / 1000.0) - _LandStartTimer;
+            if(process_time < _LandDeflectTime)
+            {
+                _LandOffset = (float)Mathf.Lerp(0f, -_LandStregth, process_time / _LandDeflectTime);
+            }
+            else if(process_time < _LandDeflectTime + _LandReturnTime)
+            {
+                _LandOffset = (float)Mathf.Lerp(-_LandStregth, 0f, (process_time - _LandDeflectTime) / _LandReturnTime);
+            }
+            else
+            {
+                _LandStregth = 0f;
+                _LandOffset = 0f;
+            }
+
+            _CameraLandNode.Position = new Vector3(0.0f, _LandOffset, 0.0f);
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -157,138 +289,6 @@ namespace EGame
             return dir;
         }
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //////                                       相机Bob（完整移植 DOOM3 Player.cpp::BobCycle()）
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        private Node3D _CameraBobNode;
-
-        private readonly float _WalkBobRate = 0.6f;      // 对应 pm_walkbob
-        private readonly float _RunBobRate = 0.8f;       // 对应 pm_runbob
-        private readonly float _CrouchBobRate = 1.0f;    // 对应 pm_crouchbob
-        private readonly float _BobUpAmount = 0.01f;     // 对应 pm_bobup，垂直位置起伏幅度
-        private readonly float _BobPitchAmount = 0.004f; // 对应 pm_bobpitch，点头角度幅度
-        private readonly float _BobRollAmount = 0.004f;  // 对应 pm_bobroll，左右摇摆角度幅度
-        private readonly float _RunPitchAmount = 0.004f; // 对应 pm_runpitch，纯速度驱动的前后倾（非周期性）
-        private readonly float _RunRollAmount = 0.01f;   // 对应 pm_runroll，纯速度驱动的左右倾（非周期性）
-        private readonly float _MinBobSpeed = 0.3f;      // 对应 MIN_BOB_SPEED：低于这个速度直接清零，不产生 bob
-
-        private float _BobCycle;
-        private Vector3 _ViewBobOffset;
-        private Vector3 _ViewBobAngles;
-
-        private void UpdateViewBob(double dt)
-        {
-            var horizontal_vel = new Vector3(Velocity.X, 0f, Velocity.Z);
-            float xy_speed = horizontal_vel.Length();
-
-            if (!IsOnFloor() || xy_speed <= _MinBobSpeed)
-            {
-                // 腾空或几乎静止时直接清零、不是渐隐——DOOM3 原版就是这样处理的，保证玩家站定瞄准时摄像机绝对静止
-                _BobCycle = 0f;
-                _ViewBobOffset = _ViewBobOffset.Lerp(Vector3.Zero, (float)dt * 10f);
-                _ViewBobAngles = _ViewBobAngles.Lerp(Vector3.Zero, (float)dt * 10f);
-                ApplyBobToCamera();
-                return;
-            }
-
-            bool is_crouching = IsCrouch;
-
-            // 按当前状态（蹲/走/跑）选择不同的周期速率——DOOM3 原版蹲/走/跑三档 bob 速率不同，不是同一个数字缩放
-            float bob_rate = is_crouching ? _CrouchBobRate : (Input.IsActionPressed(EGInput.RUN) ? _RunBobRate : _WalkBobRate);
-            _BobCycle += bob_rate * (float)dt * Mathf.Tau;   // 走完一个完整周期 = 2π，和三角函数的周期对齐
-
-            float bob_frac_sin = Mathf.Abs(Mathf.Sin(_BobCycle));   // 恒非负的折叠正弦波，对应 bobfracsin
-            bool second_half = Mathf.Sin(_BobCycle) < 0f;            // 对应 bobFoot 的奇偶——决定这一步是"左脚"还是"右脚"
-
-            float crouch_multiplier = is_crouching ? 3.0f : 1.0f;    // DOOM3 原版：蹲下时点头/摇摆幅度 ×3
-
-            // 位置：垂直起伏，钳制上限
-            float vertical = Mathf.Min(bob_frac_sin * xy_speed * _BobUpAmount, 0.08f);
-
-            // 角度：点头分量（恒正）+ 左右摇摆分量（按脚的奇偶翻转符号——这是把恒正的正弦波
-            // 变成真正"左右左右"交替摇摆的关键，省略这一步的话画面只会朝一个方向倾斜再回正）
-            float speed_for_angles = Mathf.Max(xy_speed, 2.0f);
-            float pitch_bob = bob_frac_sin * _BobPitchAmount * speed_for_angles * crouch_multiplier;
-            float roll_bob = bob_frac_sin * _BobRollAmount * speed_for_angles * crouch_multiplier;
-            if (second_half)
-                roll_bob = -roll_bob;
-
-            var local_vel = Velocity;
-            float run_pitch = local_vel.Z * _RunPitchAmount;
-            float run_roll = -local_vel.X * _RunRollAmount;
-
-            _ViewBobOffset = new Vector3(0f, vertical, 0f);
-            _ViewBobAngles = new Vector3(pitch_bob + run_pitch, 0f, roll_bob + run_roll);
-
-            ApplyBobToCamera();
-        }
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //////                     相机Bob（另一种实现：纯位置偏移 + LookAt看向前方远点，不单独算旋转角）
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        private readonly float _PosBobFrequency = 2.0f;
-        private readonly float _PosBobVerticalAmplitude = 0.08f;
-        private readonly float _PosBobHorizontalAmplitude = 0.06f;
-        private readonly float _PosBobReferenceSpeed = 4.0f;
-        private readonly float _PosBobReturnSpeed = 10.0f;
-        private readonly float _PosBobLookAtDistance = 15.0f;
-
-        private float _PosBobTime;
-        private Vector3 _PosBobOffset = Vector3.Zero;
-
-        private void UpdateCameraPosBob(double dt)
-        {
-            var horizontal_vel = new Vector3(Velocity.X, 0f, Velocity.Z);
-            float speed = horizontal_vel.Length();
-            float weight = Mathf.Clamp(speed / _PosBobReferenceSpeed, 0.0f, 1.0f);
-
-            if (weight <= 0.01f)
-            {
-                _PosBobTime = 0.0f;
-                _PosBobOffset = _PosBobOffset.Lerp(Vector3.Zero, GetLerpWeight(_PosBobReturnSpeed, (float)dt));
-                _CameraBobNode.Position = _PosBobOffset;
-                return;
-            }
-
-            _PosBobTime += (float)dt * _PosBobFrequency * weight;
-
-            float vertical = Mathf.Sin(_PosBobTime * Mathf.Tau) * _PosBobVerticalAmplitude * weight;
-            float horizontal = Mathf.Cos(_PosBobTime * Mathf.Tau * 0.5f) * _PosBobHorizontalAmplitude * weight;
-
-            var target_offset = new Vector3(horizontal, vertical, 0.0f);
-            _PosBobOffset = _PosBobOffset.Lerp(target_offset, GetLerpWeight(_PosBobReturnSpeed, (float)dt));
-            _CameraBobNode.Position = _PosBobOffset;
-
-            // 位置偏移之后不单独算旋转角，靠强制看向前方一个远点，反推出旋转——偏移越大、看向点越近，反推出的角度越大
-            _CameraBobNode.LookAt(GetPosBobLookAtPos());
-
-            // 纯速度驱动的非周期性前后倾/左右倾，跟 RotaBob 共用同一组 _RunPitchAmount/_RunRollAmount，
-            // 是LookAt算完朝向之后再叠加的一层局部旋转，不影响上面LookAt定的基础朝向
-            float run_pitch = Velocity.Z * _RunPitchAmount;
-            float run_roll = -Velocity.X * _RunRollAmount;
-            _CameraBobNode.RotateObjectLocal(Vector3.Right, run_pitch);
-            _CameraBobNode.RotateObjectLocal(Vector3.Forward, run_roll);
-        }
-
-        private Vector3 GetPosBobLookAtPos()
-        {
-            var forward_dir = -_PitchNode.GlobalTransform.Basis.Z.Normalized();
-            return _PitchNode.GlobalPosition + forward_dir * _PosBobLookAtDistance;
-        }
-
-        private float GetLerpWeight(float speed, float dt)
-        {
-            return 1.0f - Mathf.Exp(-speed * dt);
-        }
-
-        private void ApplyBobToCamera()
-        {
-            _CameraBobNode.Position = _ViewBobOffset;
-            _CameraBobNode.Rotation = new Vector3(_ViewBobAngles.X, 0f, _ViewBobAngles.Z);
-        }
-
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         public override void _Ready()
@@ -302,6 +302,7 @@ namespace EGame
             _PitchNode = GetNode<Node3D>("%Pitch");
             _RealCamera = GetNode<Camera3D>("%RealCamera");
             _CameraBobNode = GetNode<Node3D>("%CameraBob");
+            _CameraLandNode = GetNode<Node3D>("%CameraLand");
 
             _EyesPos = _StandHeight - _EyeOffsetFromTop;
             _PitchNode.Position = new Vector3(0.0f, _EyesPos, 0.0f);
@@ -337,7 +338,10 @@ namespace EGame
             Velocity = ApplyGravity(Velocity, delta);
             UpdateCrouch(delta);
             MoveAndSlide();
-            UpdateCameraPosBob(delta);
+            UpdateViewBob(delta);
+
+            TrachFallSpeed();
+            UpdateLandingOffset();
         }
     }
 }
