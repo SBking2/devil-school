@@ -224,6 +224,65 @@ namespace EGame
             ApplyBobToCamera();
         }
 
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //////                     相机Bob（另一种实现：纯位置偏移 + LookAt看向前方远点，不单独算旋转角）
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private readonly float _PosBobFrequency = 2.0f;
+        private readonly float _PosBobVerticalAmplitude = 0.08f;
+        private readonly float _PosBobHorizontalAmplitude = 0.06f;
+        private readonly float _PosBobReferenceSpeed = 4.0f;
+        private readonly float _PosBobReturnSpeed = 10.0f;
+        private readonly float _PosBobLookAtDistance = 15.0f;
+
+        private float _PosBobTime;
+        private Vector3 _PosBobOffset = Vector3.Zero;
+
+        private void UpdateCameraPosBob(double dt)
+        {
+            var horizontal_vel = new Vector3(Velocity.X, 0f, Velocity.Z);
+            float speed = horizontal_vel.Length();
+            float weight = Mathf.Clamp(speed / _PosBobReferenceSpeed, 0.0f, 1.0f);
+
+            if (weight <= 0.01f)
+            {
+                _PosBobTime = 0.0f;
+                _PosBobOffset = _PosBobOffset.Lerp(Vector3.Zero, GetLerpWeight(_PosBobReturnSpeed, (float)dt));
+                _CameraBobNode.Position = _PosBobOffset;
+                return;
+            }
+
+            _PosBobTime += (float)dt * _PosBobFrequency * weight;
+
+            float vertical = Mathf.Sin(_PosBobTime * Mathf.Tau) * _PosBobVerticalAmplitude * weight;
+            float horizontal = Mathf.Cos(_PosBobTime * Mathf.Tau * 0.5f) * _PosBobHorizontalAmplitude * weight;
+
+            var target_offset = new Vector3(horizontal, vertical, 0.0f);
+            _PosBobOffset = _PosBobOffset.Lerp(target_offset, GetLerpWeight(_PosBobReturnSpeed, (float)dt));
+            _CameraBobNode.Position = _PosBobOffset;
+
+            // 位置偏移之后不单独算旋转角，靠强制看向前方一个远点，反推出旋转——偏移越大、看向点越近，反推出的角度越大
+            _CameraBobNode.LookAt(GetPosBobLookAtPos());
+
+            // 纯速度驱动的非周期性前后倾/左右倾，跟 RotaBob 共用同一组 _RunPitchAmount/_RunRollAmount，
+            // 是LookAt算完朝向之后再叠加的一层局部旋转，不影响上面LookAt定的基础朝向
+            float run_pitch = Velocity.Z * _RunPitchAmount;
+            float run_roll = -Velocity.X * _RunRollAmount;
+            _CameraBobNode.RotateObjectLocal(Vector3.Right, run_pitch);
+            _CameraBobNode.RotateObjectLocal(Vector3.Forward, run_roll);
+        }
+
+        private Vector3 GetPosBobLookAtPos()
+        {
+            var forward_dir = -_PitchNode.GlobalTransform.Basis.Z.Normalized();
+            return _PitchNode.GlobalPosition + forward_dir * _PosBobLookAtDistance;
+        }
+
+        private float GetLerpWeight(float speed, float dt)
+        {
+            return 1.0f - Mathf.Exp(-speed * dt);
+        }
+
         private void ApplyBobToCamera()
         {
             _CameraBobNode.Position = _ViewBobOffset;
@@ -278,7 +337,7 @@ namespace EGame
             Velocity = ApplyGravity(Velocity, delta);
             UpdateCrouch(delta);
             MoveAndSlide();
-            UpdateViewBob(delta);
+            UpdateCameraPosBob(delta);
         }
     }
 }
