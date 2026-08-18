@@ -146,12 +146,12 @@ namespace EGame
 
         private Node3D _CameraBobNode;
 
-        private readonly float _WalkBobRate = 0.6f;      // 对应 pm_walkbob
+        private readonly float _WalkBobRate = 0.8f;      // 对应 pm_walkbob
         private readonly float _RunBobRate = 0.8f;       // 对应 pm_runbob
         private readonly float _CrouchBobRate = 1.0f;    // 对应 pm_crouchbob
-        private readonly float _BobUpAmount = 0.01f;     // 对应 pm_bobup，垂直位置起伏幅度
-        private readonly float _BobPitchAmount = 0.004f; // 对应 pm_bobpitch，点头角度幅度
-        private readonly float _BobRollAmount = 0.004f;  // 对应 pm_bobroll，左右摇摆角度幅度
+        private readonly float _BobUpAmount = 0.02f;     // 对应 pm_bobup，垂直位置起伏幅度
+        private readonly float _BobPitchAmount = 0.003f; // 对应 pm_bobpitch，点头角度幅度
+        private readonly float _BobRollAmount = 0.0015f;  // 对应 pm_bobroll，左右摇摆角度幅度
         private readonly float _RunPitchAmount = 0.004f; // 对应 pm_runpitch，纯速度驱动的前后倾（非周期性）
         private readonly float _RunRollAmount = 0.006f;   // 对应 pm_runroll，纯速度驱动的左右倾（非周期性）
         private readonly float _MinBobSpeed = 0.3f;      // 对应 MIN_BOB_SPEED：低于这个速度直接清零，不产生 bob
