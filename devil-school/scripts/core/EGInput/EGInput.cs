@@ -18,5 +18,7 @@ namespace EGame
 
         //攻击
         public const string FIRE = "fire";
+
+        public const string EXIT = "exit";
     }
 }

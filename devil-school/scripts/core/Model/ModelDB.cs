@@ -49,17 +49,6 @@ namespace EGame
         {
             return Get<T>() as PlayerModel;
         }
-
-        public static EncounterModel Encounter<T>() where T : EncounterModel
-        {
-            return Get<T>() as EncounterModel;
-        }
-        
-        public static WorldModel World<T>() where T : WorldModel
-        {
-            return Get<T>() as WorldModel;
-        }
-
         private static AbstractModel Get<T>() where T : AbstractModel
         {
             return Get(typeof(T));

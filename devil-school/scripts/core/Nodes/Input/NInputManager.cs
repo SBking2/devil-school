@@ -15,6 +15,7 @@ namespace EGame
             { EGInput.CROUCH,           Key.Ctrl  },
             { EGInput.RUN,              Key.Shift },
             { EGInput.JUMP,             Key.Space },
+            { EGInput.EXIT,             Key.Escape },
         };
         
         private void ProcessKeyInput(InputEvent e)

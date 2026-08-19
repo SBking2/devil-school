@@ -10,17 +10,6 @@ namespace EGame
 
 		private static Type[] _ModelSubtypes = new Type[]
 		{
-			//Monster
-			typeof(ZombieModel),
-
-			//PlayerModel
-			typeof(RobotModel),
-
-			//Encounter
-			typeof(DebugEncounterModel),
-			
-			//World
-			typeof(InitWorldModel)
 		};
 	}
 }

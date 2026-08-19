@@ -1,20 +1,60 @@
 [gd_scene format=3 uid="uid://dge3avc7g1le2"]
 
 [ext_resource type="Script" uid="uid://bgg7dp3nm278q" path="res://scripts/Core/Nodes/NGame.cs" id="1_uwrxv"]
-[ext_resource type="PackedScene" uid="uid://cprrwlc4ob8vg" path="res://scenes/worlds/init_world.tscn" id="3_iywne"]
+[ext_resource type="PackedScene" uid="uid://dks11c81aon2h" path="res://models/worlds/test/test.fbx" id="3_gee14"]
 [ext_resource type="Script" uid="uid://dsy8h32r4tgwf" path="res://scripts/Core/Nodes/Input/NInputManager.cs" id="3_lbhrr"]
-[ext_resource type="Script" uid="uid://bxw63hwdl8rpg" path="res://scripts/Core/Nodes/NSceneContainer.cs" id="3_lnu2h"]
+[ext_resource type="Material" uid="uid://22eyivixs4e3" path="res://material/world/init_world/ground_material.tres" id="4_0tnpc"]
 [ext_resource type="PackedScene" uid="uid://drjgdl7h8yx3o" path="res://scenes/dev_console/dev_console.tscn" id="4_lbhrr"]
 [ext_resource type="PackedScene" uid="uid://buqwigxw4vjjt" path="res://scenes/player/player_controller.tscn" id="4_p57ef"]
+[ext_resource type="ArrayMesh" uid="uid://sfy0lc88sv3n" path="res://models/characters/FieldFighter/FieldFighter.obj" id="5_vtaks"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_rmeui"]
+
+[sub_resource type="Environment" id="Environment_rmeui"]
+ambient_light_source = 2
+ambient_light_color = Color(0.84709084, 0.87673146, 0.99999875, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_a8vgt"]
+size = Vector3(200, 0.13, 200)
 
 [node name="NGame" type="Node" unique_id=943147096]
 script = ExtResource("1_uwrxv")
 
 [node name="RootSceneContainer" type="Node" parent="." unique_id=54595737]
 unique_name_in_owner = true
-script = ExtResource("3_lnu2h")
 
-[node name="InitWorld" parent="RootSceneContainer" unique_id=1678437961 instance=ExtResource("3_iywne")]
+[node name="InitWorld" type="Node3D" parent="RootSceneContainer" unique_id=1678437961]
+
+[node name="test" parent="RootSceneContainer/InitWorld" unique_id=602417196 instance=ExtResource("3_gee14")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 46.84336, 11.820948, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld" unique_id=1781123623]
+transform = Transform3D(100, 0, 0, 0, 100, 0, 0, 0, 100, 0.003, 0, -0.002)
+material_override = ExtResource("4_0tnpc")
+mesh = SubResource("PlaneMesh_rmeui")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="RootSceneContainer/InitWorld" unique_id=1990076639]
+environment = SubResource("Environment_rmeui")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="RootSceneContainer/InitWorld" unique_id=360729596]
+transform = Transform3D(0.70640296, 0.4434682, -0.5516618, 0, 0.77939266, 0.6265358, 0.70780987, -0.44258672, 0.5505653, 0, 0, 0)
+shadow_enabled = true
+shadow_bias = 0.0
+
+[node name="PlayerStartPoint" type="Node3D" parent="RootSceneContainer/InitWorld" unique_id=419480346]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.524, 1.24, -12.929)
+
+[node name="FieldFighter" type="MeshInstance3D" parent="RootSceneContainer/InitWorld" unique_id=1050709987]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.767331, 0, 3.3834777)
+mesh = ExtResource("5_vtaks")
+
+[node name="Ground" type="StaticBody3D" parent="RootSceneContainer/InitWorld" unique_id=1668030683]
+collision_layer = 4
+collision_mask = 2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Ground" unique_id=810556509]
+shape = SubResource("BoxShape3D_a8vgt")
 
 [node name="PlayerController" parent="RootSceneContainer/InitWorld" unique_id=1502327299 instance=ExtResource("4_p57ef")]
 
