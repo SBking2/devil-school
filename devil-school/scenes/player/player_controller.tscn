@@ -29,9 +29,10 @@ transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0
 [node name="arms_rig" parent="Pitch/CameraBob/CameraLand/RealCamera" unique_id=1301901003 instance=ExtResource("2_iivv4")]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 1.4404417e-08, -1.7593261, -0.16476732)
 
-[node name="WeaponHolder" type="Node3D" parent="Pitch/CameraBob/CameraLand/RealCamera" unique_id=1469028181 node_paths=PackedStringArray("_RealCamera")]
+[node name="WeaponHolder" type="Node3D" parent="Pitch/CameraBob/CameraLand/RealCamera" unique_id=1469028181 node_paths=PackedStringArray("_RealCamera", "_Muzzle")]
 script = ExtResource("3_0cfoe")
 _RealCamera = NodePath("..")
+_Muzzle = NodePath("..")
 
 [node name="MoveCollider" type="CollisionShape3D" parent="." unique_id=745978355]
 unique_name_in_owner = true
