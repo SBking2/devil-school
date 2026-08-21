@@ -18,7 +18,8 @@ namespace EGame
 
         //攻击
         public const string FIRE = "fire";
-
         public const string EXIT = "exit";
+        public const string SWITCHLEFT = "switch_left";
+        public const string SWITCHRIGHT = "switch_right";
     }
 }

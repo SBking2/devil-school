@@ -8,14 +8,16 @@ namespace EGame
     {
         private static Dictionary<StringName, Key> _KeyMap = new Dictionary<StringName, Key>()
         {
-            { EGInput.UP,               Key.W     },
-            { EGInput.DOWN,             Key.S     },
-            { EGInput.LEFT,             Key.A     },
-            { EGInput.RIGHT,            Key.D     },
-            { EGInput.CROUCH,           Key.Ctrl  },
-            { EGInput.RUN,              Key.Shift },
-            { EGInput.JUMP,             Key.Space },
-            { EGInput.EXIT,             Key.Escape },
+            { EGInput.UP,                       Key.W     },
+            { EGInput.DOWN,                     Key.S     },
+            { EGInput.LEFT,                     Key.A     },
+            { EGInput.RIGHT,                    Key.D     },
+            { EGInput.CROUCH,                   Key.Ctrl  },
+            { EGInput.RUN,                      Key.Shift },
+            { EGInput.JUMP,                     Key.Space },
+            { EGInput.EXIT,                     Key.Escape },
+            { EGInput.SWITCHLEFT,               Key.Q },
+            { EGInput.SWITCHRIGHT,              Key.E },
         };
         
         private void ProcessKeyInput(InputEvent e)

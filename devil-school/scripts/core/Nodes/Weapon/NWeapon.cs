@@ -65,12 +65,6 @@ namespace EGame
             return false;
         }
 
-        public override void _Ready()
-        {
-            base._Ready();
-            Equip();
-        }
-
         public override void _Process(double delta)
         {
             base._Process(delta);
@@ -85,10 +79,16 @@ namespace EGame
             }
         }
 
-        private void Equip()
+        public void Equip()
         {
             _Timer = 0f;
             _CurrentState = WeaponState.Switch;
+        }
+
+        public void UnEquip()
+        {
+            _Timer = 0f;
+            _CurrentState = WeaponState.UnEquiped;
         }
 
         private void StartReload()
