@@ -324,9 +324,10 @@ private void ApplyWaterMove(Vector2 rawInput, Vector3 wishDir, float wishSpeed, 
     bool noInput = rawInput.LengthSquared() < 0.001f && !Input.IsActionPressed("jump") && !Input.IsActionPressed("crouch");
     if (noInput)
     {
-        // 完全不按任何键时被动下沉——对应源码 "wishvel = gravityNormal * 60"，
-        // 不是像陆地上那样靠摩擦力停在原地不动
-        vel += Vector3.Down * 1.0f * dt;
+        // 完全不按任何键时被动下沉——源码这里同样是走 Accelerate(wishdir, wishspeed, PM_WATERACCELERATE)，
+        // wishvel = gravityNormal * 60 只是意愿速度（wishdir），依然会被 wishSpeed * SwimSpeedScale 钳住上限，
+        // 不是脱离加速度系统、不设上限地一路往下叠加
+        vel = ApplyAcceleration(vel, Vector3.Down, wishSpeed * SwimSpeedScale, WaterAccelerate, dt);
         Velocity = vel;
         return;
     }
@@ -345,31 +346,68 @@ private void ApplyWaterMove(Vector2 rawInput, Vector3 wishDir, float wishSpeed, 
 
 ### 2.6 爬梯
 
-> 这一节的第一版写错了，写成"只要抬头就会自动往上爬，不需要按任何键"——这个说法不对，直接去读了 `neo/d3xp/physics/Physics_Player.cpp::LadderMove()`（第 852-926 行）的真实源码才发现问题：DOOM3 原版的垂直爬升速度是 `wishvel = -0.9f * gravityNormal * upscale * scale * (float)command.forwardmove;`，**乘了 `command.forwardmove`（前后移动键的输入值）**——不按 W/S，这一项恒为 0，人不会动。视角俯仰角算出来的 `upscale` 只是"调节爬升方向和快慢"的系数（水平看着梯子时它已经接近 1，低头会让它变小甚至反向），不是唯一驱动力。下面是按真实源码改正之后的版本。
+> 这一节的第一版写错了，写成"只要抬头就会自动往上爬，不需要按任何键"——这个说法不对，直接去读了 `neo/d3xp/physics/Physics_Player.cpp::LadderMove()`（第 852-926 行）的真实源码才发现问题：DOOM3 原版的垂直爬升速度是 `wishvel = -0.9f * gravityNormal * upscale * scale * (float)command.forwardmove;`，**乘了 `command.forwardmove`（前后移动键的输入值）**——不按 W/S，这一项恒为 0，人不会动。视角俯仰角算出来的 `upscale` 只是"调节爬升方向和快慢"的系数（水平看着梯子时它已经接近 1，低头会让它变小甚至反向），不是唯一驱动力。这一版当时自称"按真实源码改正"，但后来把整个 `LadderMove()` 从头到尾又完整读了一遍，发现还漏了四块东西，之前那版远没有"对齐"源码：
+>
+> 1. **磁吸贴墙**：源码每帧都执行 `wishvel = -100.0f*ladderNormal; current.velocity = (gravityNormal·velocity)*gravityNormal + wishvel;`——先把速度里"不沿重力方向"的分量整个清零，再叠加一个固定的贴墙拉力，把角色往梯子表面吸。上一版完全没有这一步，理论上角色可以慢慢飘离梯子。
+> 2. **跳跃/蹲下是独立的第二条垂直输入通道**：源码里还有 `wishvel += -0.5f*gravityNormal*scale*(jump ? 127 : (crouch ? -127 : 0));`——按跳跃键无条件往上爬、按蹲下键无条件往下爬，跟有没有按 W/S 完全无关。上一版"不按键 forwardInput 恒为 0，climbSpeed 恒为 0"这句话是错的，只在"没有额外按跳跃/蹲下"的前提下才成立。
+> 3. **面朝方向决定左右翻转**：源码在加横移分量之前有一句 `if (ladderNormal·viewForward > 0.0f) right = -right;`——背对着梯子往右移动時，世界空间里的横移方向要整个翻过来，上一版的横移完全没做这个判断。
+> 4. **走的是 Friction + Accelerate，不是 Lerp**：源码这里跟地面移动一样调用 `Friction()` 和 `Accelerate(wishvel, wishspeed, PM_ACCELERATE)`，把结果的垂直速度钳制在 `PM_LADDERSPEED`（100 单位/秒）以内，且在完全没有垂直意愿时会混入一部分重力。上一版直接用 `Velocity.Lerp(targetVel, dt*10f)` 逼近目标速度，是手感相似但机制不同的近似写法，不是源码真正的机制。
+>
+> 下面是补上这四块之后的版本，顺便复用了 2.2 节已经写好的 `Friction`/`Accelerate` 辅助函数。
 
 ```csharp
 // PlayerController.cs 追加
 public bool IsOnLadder;
 public Vector3 LadderNormal;   // 由梯子的 Area3D 检测逻辑提供朝向，指向"墙外"（玩家所在的一侧）
+private const float LadderSpeed = 2.5f;       // 对应源码 PM_LADDERSPEED = 100 单位/秒，按 2.2 节同样的比例换算成米/秒
+private const float LadderMagnetPull = 3.0f;  // 对应源码 "wishvel = -100.0f * ladderNormal" 的贴墙拉力，同样按比例换算
 
 private void ApplyLadderMove(Vector2 rawInput, Vector3 wishDir, float dt)
 {
-    // 左右横移：滤掉沿梯子法线方向的分量，只保留贴着梯子平面的部分——这部分没有问题，保留原样
-    Vector3 lateral = wishDir - wishDir.Project(LadderNormal);
+    // 第一步：磁吸贴墙——只保留速度里的垂直分量，横向分量整个清零，
+    // 再叠加一个固定的贴墙拉力（沿 -LadderNormal，即"往墙里"的方向）
+    Vector3 wishvel = new Vector3(0, Velocity.Y, 0) - LadderNormal * LadderMagnetPull;
 
-    // upscale：对应源码里的同名变量。camForward 与"上"方向的夹角决定这个系数，
-    // 钳制在 [-1,1]，水平看着梯子时已经接近 1，不需要真的仰头
+    // upscale：跟上一版一样，camForward 与"上"方向的夹角决定爬升方向和快慢
     Vector3 camForward = -_camera.GlobalTransform.Basis.Z;
     float upscale = Mathf.Clamp((Vector3.Up.Dot(camForward) + 0.5f) * 2.5f, -1f, 1f);
 
-    // 关键修正：climbSpeed 必须乘上 forwardInput——这是上一版遗漏的部分。
-    // rawInput.Y 是 Input.GetVector 前后轴的原始值，按你 InputMap 的方向约定可能需要取负号，
-    // 保证"按 W 才会爬升"，不按键 forwardInput 为 0，climbSpeed 恒为 0
+    // 第二步：前后键驱动的爬升——这部分沿用上一版的公式
     float forwardInput = -rawInput.Y;
-    float climbSpeed = -0.9f * upscale * forwardInput * RunSpeed;
+    wishvel += Vector3.Up * (-0.9f * upscale * forwardInput * RunSpeed);
 
-    Vector3 targetVel = lateral * RunSpeed + Vector3.Up * climbSpeed;
-    Velocity = Velocity.Lerp(targetVel, dt * 10.0f);
+    // 第三步：跳跃/蹲下是完全独立的第二条垂直输入通道，跟前后键无关，
+    // 这是上一版遗漏、也是这次改正的重点之一
+    if (Input.IsActionPressed("jump")) wishvel += Vector3.Up * (RunSpeed * 0.5f);
+    else if (Input.IsActionPressed("crouch")) wishvel += Vector3.Down * (RunSpeed * 0.5f);
+
+    // 第四步：左右横移——先滤掉沿梯子法线方向的分量只保留贴着梯子平面的部分，
+    // 再根据"是不是正对着梯子"翻转左右方向
+    Vector3 right = _camera.GlobalTransform.Basis.X;
+    if (LadderNormal.Dot(camForward) > 0f) right = -right;
+    Vector3 lateral = wishDir - wishDir.Project(LadderNormal);
+    float rightAmount = lateral.Dot(right.Normalized());
+    wishvel += right.Normalized() * rightAmount * RunSpeed;
+
+    // 第五步：跟地面移动同一套 Friction + Accelerate，不再是简单粗暴地 Lerp 到目标速度
+    Vector3 wishDirFinal = wishvel.LengthSquared() > 0.0001f ? wishvel.Normalized() : Vector3.Zero;
+    float wishSpeedFinal = wishvel.Length();
+
+    Vector3 vel = ApplyFriction(Velocity, dt);
+    vel = ApplyAcceleration(vel, wishDirFinal, wishSpeedFinal, Accelerate, dt);
+
+    // 垂直速度钳制在 LadderSpeed 以内，对应源码的 PM_LADDERSPEED
+    vel.Y = Mathf.Clamp(vel.Y, -LadderSpeed, LadderSpeed);
+
+    // 完全没有垂直意愿（没按 W/S，也没按跳跃/蹲下）时混入一部分重力，
+    // 让角色贴着梯子慢慢往下滑，而不是无限期悬空不动——源码在这里对重力做了特殊处理
+    bool noVerticalWish = Mathf.Abs(forwardInput) < 0.001f && !Input.IsActionPressed("jump") && !Input.IsActionPressed("crouch");
+    if (noVerticalWish)
+    {
+        vel.Y -= Gravity * 0.25f * dt;
+    }
+
+    Velocity = vel;
 }
 ```
 
@@ -383,13 +421,32 @@ private void ApplyLadderMove(Vector2 rawInput, Vector3 wishDir, float dt)
 
 > 这一节的第一版代码写得不完整，只做了"垫高之后走一下"，没有先判断"当前高度到底有没有被挡住"——结果是角色在完全平坦的地面上走路也会被这段代码不断顶高，因为条件判断只测了"垫高之后能不能走"，平地上这个条件几乎永远成立。改正版本补上了被漏掉的两步：**先确认当前高度确实被挡住了才有必要垫高**，以及**垫高之后要往下探一次、贴回台阶的实际高度**，不能直接假设台阶正好有 `StepHeight` 那么高。
 
+> 这里还有一处遗漏：真实源码（`Physics_Player.cpp:225-276`）只在 `nearGround` 为真时才会尝试整套台阶逻辑，而 `nearGround` 不是简单的"是否贴地"，还包括"虽然在空中，但离地面很近"的情况——源码在判断之前先做了一次向下的预探测，注释原话是"贴近地面时做台阶检测，能让玩家在跳跃的同时也平滑地走上楼梯"。下面代码里的 `if (!IsOnFloor()) return;` 直接把这整个空中-但-贴近地面的情况排除掉了，结果是跳着上楼梯时台阶步进完全不生效、只能靠 `MoveAndSlide()` 自己那套不太平滑的处理。改正版本加了一次向下的短距离探测来补上这一支：
+
 ```csharp
 // PlayerController.cs 追加
 [Export] public float StepHeight = 0.3f;
 
+// 这次垫高实际抬升了多少、什么时候发生的——3.2 节的视角平滑（对应源码 BobCycle() 里的
+// stepUpDelta 处理）要读这两个字段，不属于台阶步进本身的逻辑，只是顺手在这里记一下
+private float _stepUpDelta;
+private float _stepUpElapsed;
+
 private void ApplyStepUp(Vector3 horizontalMotion, float dt)
 {
-    if (!IsOnFloor() || horizontalMotion.LengthSquared() < 0.0001f) return;
+    if (horizontalMotion.LengthSquared() < 0.0001f) return;
+
+    // nearGround：贴地本身算数；不贴地时再做一次向下的短距离探测（探测距离用 StepHeight），
+    // 只要能摸到地面也算数——这样跳跃上升途中掠过一级台阶边缘时，台阶步进依然会生效，
+    // 不会等到完全落地才开始工作，跳着上楼梯才不会顿一下
+    bool nearGround = IsOnFloor();
+    if (!nearGround)
+    {
+        var groundCheckParams = new PhysicsTestMotionParameters3D { From = GlobalTransform, Motion = Vector3.Down * StepHeight };
+        var groundCheckResult = new PhysicsTestMotionResult3D();
+        nearGround = PhysicsServer3D.BodyTestMotion(GetRid(), groundCheckParams, groundCheckResult);
+    }
+    if (!nearGround) return;
 
     Vector3 motion = horizontalMotion * dt;
 
@@ -427,7 +484,13 @@ private void ApplyStepUp(Vector3 horizontalMotion, float dt)
     };
     var downResult = new PhysicsTestMotionResult3D();
     PhysicsServer3D.BodyTestMotion(GetRid(), downParams, downResult);
+    float previousY = GlobalPosition.Y;
     GlobalPosition = steppedPos + downResult.GetTravel();
+
+    // 记下这次垫高实际抬升的高度、重置计时——3.2 节会拿这两个字段做视角平滑，
+    // 不做的话角色走上台阶那一刻摄像机会跟着位置瞬间"跳"一下，很生硬
+    _stepUpDelta = GlobalPosition.Y - previousY;
+    _stepUpElapsed = 0f;
 
     // 这一帧的水平移动已经在上面这几步里手动做完了（垫高、走过去、再贴回台阶高度），
     // 如果紧接着调用的 MoveAndSlide() 还拿同一份 Velocity 再走一次，水平方向就会
@@ -766,7 +829,7 @@ public override void _UnhandledInput(InputEvent @event)
 
 ### 3.2 视角晃动（View Bob）：完整移植 DOOM 3 的 `BobCycle()`
 
-现在角色能走能看了，但站着不动和走路时摄像机是完全静止的，感觉发"飘"。这一节**完整照抄** `Player.cpp::BobCycle()` 的公式，不是一个近似效果——DOOM 3 的 view bob 实际上由三个独立部分叠加而成：一个走/跑速率不同的周期性正弦位置起伏、一个用"脚的奇偶"翻转符号做出的左右交替角度摇摆、以及一个跌落/落地时的独立冲击下沉。逐个实现：
+现在角色能走能看了，但站着不动和走路时摄像机是完全静止的，感觉发"飘"。这一节**完整照抄** `Player.cpp::BobCycle()` 的公式，不是一个近似效果——DOOM 3 的 view bob 实际上由**四个**独立部分叠加而成：一个走/跑速率不同的周期性正弦位置起伏、一个用"脚的奇偶"翻转符号做出的左右交替角度摇摆、一个跌落/落地时的独立冲击下沉（3.3 节），以及一个容易被忽略的第四部分——**台阶步进的视角平滑**：`BobCycle()`（`Player.cpp:5977-5997`）里专门检测 `physicsObj.HasSteppedUp()`，一旦上一帧发生了台阶垫高（对应本教程 2.7 节的 `ApplyStepUp`），就会把这次垫高的高度差存下来，用 `STEPUP_TIME`（200ms）的时间线性衰减掉，抵消掉角色被瞬间垫高的那一截位移，效果是走上台阶时摄像机看起来是"平滑升上去"，而不是跟着碰撞体一起瞬间弹一下。之前的版本只写了前三个部分，第四个是这次补上的。逐个实现：
 
 ```csharp
 // PlayerController.cs 追加字段
@@ -779,6 +842,7 @@ public override void _UnhandledInput(InputEvent @event)
 [Export] public float RunPitchAmount = 0.004f; // 对应 pm_runpitch，纯速度驱动的前后倾（非周期性）
 [Export] public float RunRollAmount = 0.01f;   // 对应 pm_runroll，纯速度驱动的左右倾（非周期性）
 private const float MinBobSpeed = 0.3f;        // 对应 MIN_BOB_SPEED：低于这个速度直接清零，不产生 bob
+private const float StepUpTime = 0.2f;         // 对应 STEPUP_TIME，台阶步进平滑窗口，200ms
 
 private float _bobCycle;
 private Vector3 _viewBobOffset;
@@ -786,6 +850,10 @@ private Vector3 _viewBobAngles;
 
 private void UpdateViewBob(float dt)
 {
+    // 台阶步进的计时器要独立于下面"是否在走路"的分支持续前进——哪怕这一帧玩家已经停下，
+    // 上一次垫高留下的高度差依然要按自己的时间线衰减完，不能被走路分支的提前 return 打断
+    _stepUpElapsed += dt;
+
     Vector3 horizontalVel = new Vector3(Velocity.X, 0, Velocity.Z);
     float xySpeed = horizontalVel.Length();
 
@@ -838,7 +906,18 @@ private void UpdateViewBob(float dt)
 
 private void ApplyBobToCamera()
 {
-    Vector3 camPos = _viewBobOffset + _landingDipOffset;   // _landingDipOffset 见 3.3 节
+    // 台阶步进平滑：_stepUpElapsed 在 ApplyStepUp（2.7 节）真正垫高的那一帧被清零，
+    // _stepUpDelta 记的是那一帧实际抬升的高度。在 StepUpTime 窗口内，反着补一个
+    // 随时间线性衰减到 0 的偏移，让摄像机看起来是慢慢升上去的，而不是跟着碰撞体一起瞬间弹一下——
+    // 对应源码 BobCycle() 里 stepUpDelta*(STEPUP_TIME-deltaTime)/STEPUP_TIME 那部分
+    Vector3 stepUpOffset = Vector3.Zero;
+    if (_stepUpElapsed < StepUpTime)
+    {
+        float remain = (StepUpTime - _stepUpElapsed) / StepUpTime;
+        stepUpOffset = new Vector3(0, -_stepUpDelta * remain, 0);
+    }
+
+    Vector3 camPos = _viewBobOffset + _landingDipOffset + stepUpOffset;   // _landingDipOffset 见 3.3 节
     _camera.Position = camPos;
     _camera.Rotation = new Vector3(_viewBobAngles.X, 0, _viewBobAngles.Z);
 }
@@ -858,10 +937,15 @@ private bool IsCrouchingNow()
 - **`bobFracSin` 恒为非负**——用 `Mathf.Abs(Mathf.Sin(...))` 折叠出的包络，配合 `secondHalf` 判断（对应原版 `bobFoot & 1`）去翻转横向摇摆的符号——**这正是上一版教程漏掉的、把"单调的正弦波"变成"真正左右交替摇摆"的那个关键技巧**，没有这一步，摇摆看起来只会朝一个方向倾斜再弹回来，不会有"左右左右"的交替感。
 - **周期性 bob 和纯速度驱动的倾斜是两个独立的角度来源**（`pitchBob`/`rollBob` 来自 bob 周期，`runPitch`/`runRoll` 直接来自瞬时局部速度），原版里这是两套完全不同的机制，简单相加，不是同一个公式套两次。
 - **蹲下时点头/摇摆幅度 ×3**（`crouchMultiplier`）——这个细节容易被忽略，但是它是"蹲下移动时晃动感明显更强"这个手感的直接来源。
+- **台阶步进平滑**（`_stepUpDelta`/`_stepUpElapsed`，见下面 `ApplyBobToCamera` 里的处理）——对应 `BobCycle()` 里 `HasSteppedUp()` 那一段，源码用 `STEPUP_TIME` 把垫高的高度差线性衰减掉；这一步依赖 2.7 节 `ApplyStepUp` 在真正垫高时把高度差和计时器写进这两个字段，两节代码要配合着看。
+
+> 这里要老实说明一处没标注过的数值出入：上面的 `BobUpAmount`/`BobPitchAmount`/`BobRollAmount` 分别是 0.01/0.004/0.004，而 DOOM3 原版对应的 `pm_bobup`/`pm_bobpitch`/`pm_bobroll`（`SysCvar.cpp:258-262`）分别是 0.005/0.002/0.002，正好是原版的两倍。这不是换算误差——前面 2.2 节的换算是"量纲换算"（英寸转米），这几个 bob 幅度系数跟 2.2 节里 `Accelerate`/`Friction` 那几个无量纲比例系数一样，理论上不需要跟着单位换算改变。这里是特意调大了一倍，因为直接抄原版数值在 Godot 的这套摄像机/单位设置下摇摆几乎感觉不到，纯粹是为了可感知的手感调的，不是"完全参考"的一部分——如果你想要跟原版数值上更接近的手感，把这三个数各减半即可。
 
 ### 3.3 落地冲击：跌落速度越快、镜头下沉越明显
 
 DOOM 3 的 `CrashLand()` 按跌落冲击力度分四档，用快速下沉+缓慢回弹两段式给出反馈，这是一个和上面周期性 bob**完全独立**的第三个偏移源，两者在 `ApplyBobToCamera()` 里简单相加：
+
+> 这里要老实说明一处简化：真实的 `CrashLand()`（`Player.cpp:5763-5883`）判断"摔得多重"用的不是"落地那一刻的峰值下落速度"，而是解一个二次方程算出来的**子帧冲击量** `delta = (vel + t*acc)^2 * 0.0001`（`t` 是这一帧里实际用于下落的那一小段时间，`acc` 是重力加速度），四档阈值（单人游戏下 `softDelta=30`、`hardDelta=45`、`fatalDelta=65`）都是卡在这个 `delta` 上，不是直接卡下落速度。下面 `severity = Mathf.Abs(_lastFallVelocity)` 用峰值下落速度做近似替代，四档阈值也是照着"感觉对应 -8/-16/-24/-32"手动挑的，跟源码这套子帧冲击量的计算不是一回事，只是效果上大致对应。
 
 ```csharp
 // PlayerController.cs 追加
@@ -1137,9 +1221,11 @@ public partial class Weapon : Node3D
 
 `async void TryReload()` 这个写法要特别注意——C# 的 `async`/`await` 在 Godot 里的作用，跟很多现代脚本语言的协程是同一个概念：**方法执行到 `await` 那一行会"暂停"，但不会阻塞游戏的其他部分继续跑**，计时器到点之后再从暂停的地方接着往下执行，就像整个函数只是被按下了暂停键一样。这比你自己维护一个"是否正在装弹"的计时器变量、在 `_Process` 里手动倒计时要直观得多。**这里稍微超前提一句**：这种"看起来像同步代码、实际上跨越了很多帧"的写法，正是第 13 章要讲的架构话题的一个引子——你已经在用它了，只是还没意识到这背后是个值得展开讲的东西。
 
-### 5.2 多把武器：切换——完整照抄 `idPlayer::Weapon_Combat()` 的"意图/当前状态分离"模型
+### 5.2 多把武器：切换——参照 `idPlayer::Weapon_Combat()` 的"意图/当前状态分离"模型
 
-一个玩家通常不止一把枪，而 DOOM 3 的切枪不是"点一下立刻换"，而是有真实的收枪/举枪动画：必须先把当前武器完整收起（`PutAway` → `IsHolstered()`），再举起新武器（`Raise`）。这是 `idPlayer` 里管理武器切换那部分职责的核心逻辑，值得从一开始就做对，而不是先写一个"直接切换"的简化版本再回头改：
+一个玩家通常不止一把枪，而 DOOM 3 的切枪不是"点一下立刻换"，而是有真实的收枪/举枪动画：必须先把当前武器完整收起（`PutAway` → `IsHolstered()`），再举起新武器（`Raise`）。这是 `idPlayer` 里管理武器切换那部分职责的核心逻辑，值得从一开始就做对，而不是先写一个"直接切换"的简化版本再回头改。
+
+> 这里先老实说一下"参照"到底参照到什么程度：下面这套"`_idealSlot` 表达意图、每帧轮询推进"的分离思路，是照着 `Weapon_Combat()` 的真实结构写的；但 DOOM3 原版的举枪/收枪不是固定时长的计时器，而是由武器的**脚本状态机**驱动、举枪动作实际播完哪一帧算完全由动画和脚本事件决定，`RaiseTime`/`LowerTime` 这两个固定秒数只是拿计时器近似替代了这套逐帧驱动的脚本系统。另外原版还有三块这里没做的簿记：**`weaponGone`**（切枪过程中武器实体临时"不存在"的中间状态标记）、**`NextBestWeapon()`**（当前武器打空弹药时自动切到下一把能用的武器）、以及 **`previousWeapon` 的"按键切回上一把"** 记忆——这几个都属于"锦上添花但不影响核心切换逻辑对不对"的部分，本教程不实现，需要的话可以照着这个思路自己加。
 
 先给每把武器一个状态机（`Weapon.cs` 追加）：
 
@@ -1229,16 +1315,27 @@ public partial class WeaponManager : Node3D
         }
 
         Weapon current = _weapons[_currentSlot];
-        if (current.State != Weapon.WeaponState.Holstered)
+        if (current.State == Weapon.WeaponState.Holstered)
         {
-            if (current.State != Weapon.WeaponState.Lowering)
-            {
-                current.PutAway();   // 还没开始收，先让它开始收
-            }
-            return;   // 没收完之前，什么都不做，下一帧继续检查
+            RaiseIdealWeapon();
+            return;
         }
 
-        RaiseIdealWeapon();
+        // 只有武器处于"已经举起、可以正常使用"的状态时才允许开始收枪——对应源码 IsReady()
+        // （status == WP_RELOAD || WP_READY || WP_OUTOFAMMO），特意不包含 WP_RISING：
+        // 如果举枪动画还没播完就按了切枪键，真实游戏会等它自己播完、变成"就绪"状态之后
+        // 才开始收枪，不会半路打断举枪动画——这是上一版遗漏的地方，之前 Raising 中途也会被打断
+        bool isReadyToPutAway = current.State == Weapon.WeaponState.Idle
+            || current.State == Weapon.WeaponState.Firing
+            || current.State == Weapon.WeaponState.Reloading
+            || current.State == Weapon.WeaponState.OutOfAmmo;
+
+        if (isReadyToPutAway)
+        {
+            current.PutAway();
+        }
+        // 处于 Raising（还没播完，等它自己完成）或者已经在 Lowering（已经在收了）时，
+        // 这里什么都不做，下一帧继续检查
     }
 
     private void RaiseIdealWeapon()
@@ -1315,13 +1412,17 @@ private async void TryReload()
 
 `TryFire()` 开头 `State != WeaponState.Idle && State != WeaponState.OutOfAmmo` 这个判断值得多看一眼：**没弹药也允许触发 `TryFire()`**（因为它自己会转去 `TryReload()`），但 `Raising`/`Lowering`/`Reloading` 这几个状态一律拒绝——你按开火键，武器正在收起过程中，这一枪就该被吃掉，不该排队等切枪动画播完再补开一枪，这跟 DOOM3 `WP_HOLSTERED`/`WP_RISING`/`WP_LOWERING` 状态下开火请求被直接忽略是同一个设计。
 
+> 但这里对 `Reloading` 的处理跟真实源码的枚举语义并不完全一致，需要老实说明一下：DOOM3 的 `IsReady()`（`Weapon.cpp:1832`）判定为"可以开火"的状态是 `WP_RELOAD || WP_READY || WP_OUTOFAMMO`——**装弹中也允许开火**，经典例子是霰弹枪的"边压弹边打断重新开火"（打一发就把还没压完的这次装弹取消掉）。这一版教程的 `TryFire()` 把 `Reloading` 排除在外，是刻意选择的简化：真正的取消装弹需要能中途打断 `TryReload()` 里那个 `await` 掉的计时器、并且保证"还没加进弹匣的那部分子弹不能被提前加上"，这需要重新组织 `TryReload()` 的异步流程（比如换成可取消的 token 而不是直接 `await` 计时器），为了不把这一节的状态机搞复杂，这里先不实现装弹被开火打断的行为——如果你想要这个手感，思路是在 `TryFire()` 里对 `Reloading` 也放行，同时给 `TryReload()` 加一个取消标记，在计时器醒来时先检查有没有被取消，被取消就不再加弹药、直接把 `State` 交给开火逻辑接管。
+
 这一步做完之后，`Weapon` 全部的"我现在在干嘛"都只有 `State` 这一个真相来源，不会再出现"状态机说是 Idle，但其实还在装弹"这种两套状态互相打架的情况。
 
 ### 5.3 投射物武器：火箭筒——直接命中和范围伤害是两件独立的事
 
 到现在为止，`Weapon.Fire()` 只有一种打法：一条射线，打中即判定，没有飞行时间。这在手枪/步枪上没问题，但火箭筒、等离子炮这类武器不该是"瞬间命中"——它们需要一个真的在世界里飞行、会被躲开、命中后炸出范围伤害的**投射物实体**。
 
-这一节要"完全参考"的是 DOOM 3 `neo/d3xp/Projectile.cpp` 里 `idProjectile::Collide()`（约 554-724 行）和 `Explode()` 的设计，核心是一个容易被忽略的点：**直接命中伤害和范围爆炸伤害，是两次独立的判定，不是二选一**。一发火箭打中一个怪物，会先对这个怪物单独算一次"直接命中"伤害，然后**无论有没有命中任何东西**都会引爆，再对爆炸半径内的所有实体算一遍范围伤害——已经吃过直接命中的那个目标要从范围伤害里排除掉，不然会被炸两次。
+这一节要"完全参考"的是 DOOM 3 `neo/d3xp/Projectile.cpp` 里 `idProjectile::Collide()`（约 554-724 行）和 `Explode()` 的设计，核心是一个容易被忽略的点：**直接命中伤害和范围爆炸伤害，是两次独立的判定，不是二选一**。一发火箭打中一个怪物，会先对这个怪物单独算一次"直接命中"伤害，然后**无论有没有命中任何东西**都会引爆，再对爆炸半径内的所有实体算一遍范围伤害——已经吃过直接命中的那个目标要从范围伤害里排除掉，不然会被炸两次。线性衰减的伤害公式也是照抄的，跟 `Game_local.cpp:3897` 附近 `RadiusDamage` 的算法一致。
+
+> 这里还有一个容易漏掉、但会直接影响手感的点：真实的 `RadiusDamage`（`Game_local.cpp:3890`）对每一个候选目标，除了距离衰减，还会额外做一次 `ent->CanDamage(origin, damagePoint)`——一次爆心到目标的**遮挡检测**，隔着墙的目标不给范围伤害，爆炸不能穿墙杀人。下面的 `Explode()` 第一版只用一次球形 `IntersectShape` 查询圈出半径内的所有目标，完全没有做遮挡判断，意味着躲在墙后面的怪物一样会被隔墙炸到——这不对，补上一条遮挡射线：
 
 先做投射物本体，新建场景 `Rocket.tscn`：
 
@@ -1415,6 +1516,14 @@ public partial class Rocket : Area3D
             if (alreadyDamaged.Contains(hitObject)) continue;
             alreadyDamaged.Add(hitObject);
 
+            // 遮挡检测：对应源码 CanDamage() 那次视线判定——爆心到目标之间被世界几何挡住的话，
+            // 这个目标就不该吃到范围伤害，不然爆炸会隔着墙杀人。只测世界几何（第1层），
+            // 不测生物层，避免目标自己的碰撞体把这条射线挡住
+            var occlusionQuery = PhysicsRayQueryParameters3D.Create(explodePosition, hitObject.GlobalPosition);
+            occlusionQuery.CollisionMask = 0b0001;
+            occlusionQuery.Exclude = new Godot.Collections.Array<Rid> { GetRid() };
+            if (spaceState.IntersectRay(occlusionQuery).Count > 0) continue;   // 被墙挡住，跳过这个目标
+
             // 简单的距离衰减：越靠近爆心伤害越高，边缘接近 0——DOOM 3 的 RadiusDamage 也是同一个思路
             float distance = hitObject.GlobalPosition.DistanceTo(explodePosition);
             float falloff = 1.0f - Mathf.Clamp(distance / SplashRadius, 0.0f, 1.0f);
@@ -1469,12 +1578,18 @@ private void FireProjectile()
 
 ### 5.4（可选进阶）追踪导弹：会自己转向的投射物
 
-如果想要一把"追踪导弹"武器，在 `Rocket.cs` 基础上加一个转向逻辑就够了，不需要另起一个类——这是 DOOM 3 `idGuidedProjectile::Think()`（`Projectile.cpp:1651-1721`）的简化版：每帧朝目标方向转一点，转向速率有上限（不能瞬间掉头，不然追踪导弹的飞行轨迹会显得很假）：
+如果想要一把"追踪导弹"武器，在 `Rocket.cs` 基础上加一个转向逻辑就够了，不需要另起一个类——这是 DOOM 3 `idGuidedProjectile::Think()`（`Projectile.cpp:1651-1721`）的简化版：每帧朝目标方向转一点，转向速率有上限（不能瞬间掉头，不然追踪导弹的飞行轨迹会显得很假）。这里明确标"简化版"，具体简化掉了哪些东西也要说清楚，不能让"简化版"三个字自己含糊过去：
+
+- **没有随机抖动**：真实源码每 200ms 刷新一个随机偏移角 `rndAng` 叠加到瞄准方向上，让导弹在远处飞得"不那么精准"，越接近目标这个抖动幅度越小——远处明显能看出导弹在扭，快到跟前时基本就稳定瞄着目标了。下面的版本永远精确瞄准，没有这个由远到近逐渐收紧的抖动。
+- **没有"抵近脱锁"（`burstMode`）**：真实源码导弹快接近目标时会切换成不再转向的直线加速冲刺，纯粹靠这一下加速来保证命中/砸出冲击力，不是全程都在追踪修正。这里没有实现这一段。
+- **瞄准点做了近似**：真实源码瞄的是目标的**眼睛位置再往下偏移 12 个单位**，不是目标的原始世界坐标（通常对应脚底或碰撞体中心）。这个点比较容易实现，下面顺手加上了。
 
 ```csharp
 // Rocket.cs 追加
 [Export] public bool IsGuided = false;
 [Export] public float TurnRateDegreesPerSec = 90.0f;
+[Export] public float TargetAimOffset = 1.3f;   // 近似"目标眼睛位置往下一点"——真实源码是眼位置再往下偏移 12 个单位，
+                                                  // 这里没有目标身上真正的"眼睛"骨骼可用，用一个固定高度偏移粗略模拟同样效果
 public Node3D Target;   // 发射时指定要追踪的目标（比如玩家开火时，锁定准星下最近的怪物）
 
 public override void _PhysicsProcess(double delta)
@@ -1483,7 +1598,8 @@ public override void _PhysicsProcess(double delta)
 
     if (IsGuided && Target != null && IsInstanceValid(Target))
     {
-        Vector3 toTarget = (Target.GlobalPosition - GlobalPosition).Normalized();
+        Vector3 targetPoint = Target.GlobalPosition + Vector3.Up * TargetAimOffset;
+        Vector3 toTarget = (targetPoint - GlobalPosition).Normalized();
         float maxRadians = Mathf.DegToRad(TurnRateDegreesPerSec) * dt;
         _direction = _direction.Slerp(toTarget, Mathf.Min(1.0f, maxRadians / _direction.AngleTo(toTarget)));
         LookAt(GlobalPosition + _direction, Vector3.Up);
@@ -1556,7 +1672,9 @@ private float CurrentRecoilAngle()
 3. **跟脚步 Bob 同源的周期性摇摆角度**（上一版遗漏的部分）——用的是 3.2 节 `BobCycle()` 算出的同一个 `bobFracSin`/`xySpeed`，但换了一套独立的常数、且同样按"脚的奇偶"翻转符号。
 4. **恒定的待机呼吸感**——哪怕完全不动也有一个缓慢的正弦飘动。
 
-外加一个同样被漏掉的细节：**武器落地时也会有一次冲击下沉**（3.3 节那个 `_landingDipOffset` 的 0.25 倍强度），只是幅度比摄像机自己的落地反馈更轻。完整实现：
+外加一个同样被漏掉的细节：**武器落地时也会有一次冲击下沉**（3.3 节那个 `_landingDipOffset` 的 0.25 倍强度）。这里要纠正一个直觉上很容易搞反的说法：**武器的落地冲击不是比摄像机自己的更轻，实际上比摄像机晃得更狠**。源码里 `CalculateViewWeaponPos()`（`Player.cpp:8834-8839`）算武器位置时，用的基准 `firstPersonViewOrigin`（`Player.cpp:8993`）本来就已经带上了摄像机**完整强度**的落地冲击（`viewBob` 里已经烤进了完整的 `landChange`），然后这个函数又在这个基准之上**再叠加一份 `landChange*0.25f`**——也就是说武器的落地冲击 = 摄像机已经继承到的完整落地冲击 + 额外 0.25 倍的独立冲击，两者是加在一起的，不是"摄像机的一部分"。
+
+下面 `UpdateSway()` 里的 `Position = _basePosition + accelOffset + landingDipOffset * 0.25f;` 恰好就是这个"额外 0.25 倍"的部分——之所以不需要在这里再手动加一遍"完整强度的落地冲击"，是因为按 4.1 节搭的场景树，`WeaponHolder`（挂着这个 `Weapon.cs` 的节点）本身就是 `Camera3D` 的子节点，而 `Camera3D.Position` 已经在 `ApplyBobToCamera()` 里被设成了包含完整 `_landingDipOffset` 的 `camPos`——武器作为子节点，会通过节点树的父子变换**自动继承**摄像机这份完整强度的落地冲击，不需要代码里重复处理，这里的 `landingDipOffset * 0.25f` 才是源码里真正"额外叠加"的那一份。**这也是为什么这份场景层级不能随便改**：如果你以后把武器/`WeaponHolder` 从摄像机节点下面挪出去（比如为了做武器不跟着摄像机晃的某种效果），会同时悄悄丢掉两样东西——继承来的周期性 view bob，以及继承来的完整强度落地冲击——而这里的 `* 0.25f` 只是叠加的那一小部分，补不回丢掉的大头。完整实现：
 
 ```csharp
 // Weapon.cs 追加
@@ -1704,6 +1822,8 @@ private Vector3 ComputeIdleBreath(float xySpeed)
 1. **物理冲击和伤害数值是两条完全独立的调用**——命中之后既要造成伤害，也要给被打中的物体（如果是刚体）一个推开的冲量，两者互不依赖。
 2. **伤害倍率要经过一个集中的增益修饰符查询点**，而不是直接用固定数值——哪怕你现在还没做狂暴/双倍伤害之类的增益道具，也应该先把这个查询点留出来，这是 DOOM 3 `idPlayer::PowerUpModifier()` 的设计：所有会影响战斗数值的增益，都通过同一个函数查询，而不是散落地在各处判断"当前是否处于某个状态"。
 
+> 这条"所有会影响战斗数值的增益都要过这个查询点"的原则，下面第一版代码自己没有完全遵守：真实源码里近战的推力（`Weapon.cpp:4004`）也会乘上 `owner->PowerUpModifier(SPEED)`，而下面的 `MeleePushForce` 一开始完全没有接查询点，直接用了写死的数值——这跟本节自己强调的设计原则矛盾。改正版本给推力也接上了同一个查询点（复用 `PowerupState` 现有的 `MoveSpeed` 档位，源码这里用的也是速度类增益，不是单独开的一档）。
+
 ```csharp
 // PowerupState.cs —— 挂在玩家身上，现在先放一个恒定返回 1.0 的占位实现
 using Godot;
@@ -1744,6 +1864,8 @@ private void Melee()
 {
     float rangeScale = OwnerPowerups?.GetModifier(PowerupState.Modifier.MeleeRange) ?? 1.0f;
     float damageScale = OwnerPowerups?.GetModifier(PowerupState.Modifier.MeleeDamage) ?? 1.0f;
+    // 推力也要过查询点——对应源码 owner->PowerUpModifier(SPEED)，复用 MoveSpeed 这一档
+    float pushScale = OwnerPowerups?.GetModifier(PowerupState.Modifier.MoveSpeed) ?? 1.0f;
 
     var spaceState = GetWorld3D().DirectSpaceState;
     Vector3 from = Camera.GlobalPosition;
@@ -1768,7 +1890,7 @@ private void Melee()
     if (hitObject is RigidBody3D rigidBody)
     {
         Vector3 pushDir = (to - from).Normalized();
-        rigidBody.ApplyImpulse(pushDir * MeleePushForce, hitPoint - rigidBody.GlobalPosition);
+        rigidBody.ApplyImpulse(pushDir * MeleePushForce * pushScale, hitPoint - rigidBody.GlobalPosition);
     }
 }
 ```
@@ -1777,7 +1899,9 @@ private void Melee()
 
 ### 6.4 视图模型与世界模型：其他人看到的武器，和你自己看到的不是同一个
 
-到目前为止，`WeaponHolder` 下面只有一个模型，这在单机游戏里通常够用——但如果你的项目以后可能有第三人称观察（过场动画摄像机、死亡后观察队友、联机），需要知道 DOOM 3 对这个问题的完整解法：**第一人称视角看到的武器模型和其他人看到你身上挂着的武器模型，是两个独立的物体**，只是动画同步播放。
+到目前为止，`WeaponHolder` 下面只有一个模型，这在单机游戏里通常够用——但如果你的项目以后可能有第三人称观察（过场动画摄像机、死亡后观察队友、联机），需要处理一个问题：**第一人称视角看到的武器模型和其他人看到你身上挂着的武器模型，是两个独立的物体**，只是动画同步播放。
+
+> 这里要澄清一下"参照对象"：下面用 Godot 的渲染层（`Layers`）+ 摄像机剔除遮罩（`CullMask`）来实现"我自己看到一份模型、别人看到另一份模型"，这是 Godot 里解决这个问题的一种顺手的做法，但**不是 DOOM 3 实际的解法，架构完全不同**——真实的 id Tech 4 是让世界模型（`idAnimatedEntity* worldModel`）当成一个完全独立的、绑定到角色手部骨骼的实体单独生成出来，可见性是按 surface 逐个控制的：每个 surface 有一个 `renderEntity_t::suppressSurfaceInViewID` 字段，设成"武器持有者自己的 view ID"就表示"这个 surface 对持有者自己的摄像机隐藏"（而不是"只对某个渲染层可见"这种统一开关的思路），第一人称武器视图另外还走它自己独立的一个渲染 pass。这里借用的只是 DOOM 3"两份模型、各自可见性不同"这个问题定义，具体实现是 Godot 惯用法，不是照抄 id Tech 4 的机制。
 
 ```
 Player (CharacterBody3D)
@@ -1866,7 +1990,9 @@ if (result.Count > 0)
 }
 ```
 
-**这里有一个值得记住的设计判断**：伤害（`TakeDamage`）和物理冲击（`ApplyImpulse`）是**两条完全独立的逻辑**，一个物体完全可以"只掉血不被打飞"，或者"被打飞但不掉血"（比如一个纯装饰性的空罐子，没有 `TakeDamage` 方法，但依然是 `RigidBody3D`，一样会被子弹撞飞）。不要把这两件事写成互相依赖的逻辑，分开处理会让后面加新物体类型时轻松很多。
+**这里有一个值得记住的设计判断**：伤害（`TakeDamage`）和物理冲击（`ApplyImpulse`）是**两次分开的调用**，一个物体完全可以"只掉血不被打飞"，或者"被打飞但不掉血"（比如一个纯装饰性的空罐子，没有 `TakeDamage` 方法，但依然是 `RigidBody3D`，一样会被子弹撞飞）。不要把这两件事写成互相依赖的逻辑，分开处理会让后面加新物体类型时轻松很多——不过"完全独立"这个说法需要打个折扣：真实源码里这两个数值通常**共享同一份武器伤害定义**（同一个 `damageDef` 里的 `push` 和 `damage` 两个 key 一起读出来，同一把武器打在任何物体上，冲量和伤害的比例是固定的），不是两个可以随便各自取值的独立常数。本教程为了简单，上面 `Fire()` 里直接写死了一个 `5.0f` 给所有武器共用，没有像源码那样让每把武器自己的数据决定冲量大小，如果你想更贴近源码，可以把这个 `5.0f` 也做成 `Weapon` 的一个 `[Export]` 字段。
+
+另外，真实的 `idMoveable::Killed()`（箱子对应的类）死亡时并不是直接消失——它会把模型换成一个专门准备的 `brokenModel`（碎裂后的残骸模型），残骸依然留在物理世界里继续参与仿真，不是像上面 `Crate.TakeDamage()` 这样直接 `QueueFree()` 瞬间消失。如果想要这个效果，思路很简单：血量归零时不调用 `QueueFree()`，改成把 `MeshInstance3D`/`CollisionShape3D` 换成"碎裂"版本的资源（比如换一个更小、更破碎的 `BoxMesh`/`BoxShape3D`，或者干脆换成一个准备好的碎片场景），残骸继续留在场景里被物理仿真接管。
 
 ### 7.2 一扇会开的门
 
@@ -1887,6 +2013,7 @@ public partial class Door : AnimatableBody3D
 {
     [Export] public Vector3 OpenOffset = new Vector3(0, 3, 0);
     [Export] public float MoveTime = 1.0f;
+    [Export] public float WaitTime = 3.0f;   // 开门后等待多久自动关闭
 
     private Vector3 _closedPosition;
     private bool _isOpen;
@@ -1905,6 +2032,17 @@ public partial class Door : AnimatableBody3D
         var tween = CreateTween();
         tween.SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
         tween.TweenProperty(this, "position", target, MoveTime);
+
+        // 开门之后过 WaitTime 秒自动关闭——真实源码里门是通过延迟事件（PostEventSec）实现的，
+        // 这里用一次性的 SceneTreeTimer 代替，效果等价：如果这段时间里门又被手动关闭了
+        // （_isOpen 变回 false），这个回调触发时什么都不做
+        if (_isOpen)
+        {
+            GetTree().CreateTimer(MoveTime + WaitTime).Timeout += () =>
+            {
+                if (_isOpen) Activate();
+            };
+        }
     }
 }
 ```
@@ -1941,7 +2079,9 @@ private void OnBodyEntered(Node3D body)
 
 ### 7.3 电梯：同样的原理，多一个状态
 
-电梯就是一扇会在两个以上的位置之间往返移动的"门"，代码结构完全一样，只是多了个"当前在哪一层"的状态和到达后暂停一下再返回的逻辑：
+> 这里要先纠正一个说反了的说法：不是"电梯就是门的代码结构、只是多个状态"。真实源码里，跟门代码结构真正一样、不多不少的，其实是一种简单的**两站式升降台**（`idPlat`，`Mover.h:442-470`）——它和 `idDoor` 一样是同一个 4 状态 FSM（`idMover_Binary`），只是把"开/关"换成了"上/下"，结构确实完全没差。真正带"多一个状态"的 `idElevator`（`Mover.h:214-267`，`INIT`/`IDLE`/`WAITING_ON_DOORS` 三个状态）是一个完全独立、大得多的协调器类，直接继承 `idMover`（不是 `idMover_Binary`），要管理多个楼层各自的门、等门关好才能真正启动、处理呼叫按钮排队——不是"门的代码加一个 flag"能概括的。下面这节做的 `Elevator.cs` 实际对应的是前者（两站式升降台），代码结构上确实和门一样；如果你想要那种带呼叫按钮、能停多个楼层、还要等门关好的"真电梯"，那是另一个规模大得多的系统，本教程不实现。
+
+两站式升降台在两个位置之间往返移动，代码结构和门几乎一样，只是多了个"当前在哪一层"的状态和到达后暂停一下再返回的逻辑：
 
 ```csharp
 using Godot;
@@ -1974,6 +2114,11 @@ public partial class Elevator : AnimatableBody3D
         await ToSignal(tween, Tween.SignalName.Finished);
 
         _atTop = !_atTop;
+
+        // 到达之后暂停 WaitTime 秒再允许下一次触发——这个字段之前声明了但没被用到，
+        // 现在真的接上：_isMoving 在等待期间继续保持 true，挡住重复触发
+        await ToSignal(GetTree().CreateTimer(WaitTime), SceneTreeTimer.SignalName.Timeout);
+
         _isMoving = false;
     }
 }
@@ -1983,13 +2128,17 @@ public partial class Elevator : AnimatableBody3D
 
 ### 7.4 多部件联动的门：双开门为什么不能各自独立触发
 
-一扇"双开门"（两片门扇同时向两侧打开）如果给每一片各自独立触发，玩家触碰到其中一片、只有那一片会动，看起来很别扭。DOOM 3 的解法是给同一组门指定一个共同的"团队名字"，其中一个成员被触发时，会把动作转发给整个团队、并且所有成员用**同一个起始时间**开始运动，保证严格同步（不是"各自播放同一段动画"，是"共用一份运动的起止时间"，这个区别在两片门运动速度不同或者中途被打断反向时会体现出来）：
+一扇"双开门"（两片门扇同时向两侧打开）如果给每一片各自独立触发，玩家触碰到其中一片、只有那一片会动，看起来很别扭。DOOM 3 的解法是给同一组门指定一个共同的"团队名字"，其中一个成员被触发时，会把动作转发给整个团队、并且所有成员用**同一个起始时间**开始运动，保证严格同步（不是"各自播放同一段动画"，是"共用一份运动的起止时间"，这个区别在两片门运动速度不同或者中途被打断反向时会体现出来）。
+
+> **先说清楚"转发给队长"这个模式本身解决的是什么问题，也是接下来要补的东西**：真实源码里团队系统真正的价值不是"同步开始"这么简单——`idMover_Binary::SetBlocked()`（`Mover.cpp:3046-3060`）会把"被挡住了"这个状态沿着 `activateChain` 广播给团队里的每一个成员，`idDoor::Event_TeamBlocked`（`Mover.cpp:3846-3852`）收到这个通知后会让门**反向**：如果一片门被卡住的东西（比如被塞进门缝的箱子，或者被 AI 挡住）挡住走不动了，整个团队会一起掉头往回走，而不是"没被挡住的那一片继续往前开、被挡住的那一片傻站着"。上面刚才那句"这个区别在两片门运动速度不同或者中途被打断反向时会体现出来"就是在说这件事——但下面第一版代码只实现了"转发+同步触发"，完全没有实现"中途被挡住会反向"，团队系统真正被需要的那部分理由反而没兑现。补上这一块：
 
 ```csharp
 // Door.cs 追加
 [Export] public string TeamName = "";
+[Export] public NodePath BlockZonePath;   // 指向门扇前沿一个薄的 Area3D（门自己的子节点），检测移动路径上有没有东西挡路
 private static readonly Dictionary<string, List<Door>> Teams = new();
 private bool _isTeamMaster;
+private bool _isMovingNow;
 
 public override void _Ready()
 {
@@ -2004,6 +2153,20 @@ public override void _Ready()
             _isTeamMaster = true;   // 同一队伍里第一个 _Ready() 的成为队长
         }
         Teams[TeamName].Add(this);
+    }
+
+    var blockZone = GetNodeOrNull<Area3D>(BlockZonePath);
+    if (blockZone != null) blockZone.BodyEntered += OnBlocked;
+}
+
+// 场景卸载/重载时要把自己从静态字典里摘出去——这个字典是 static 的，跨场景实例存活，
+// 不清理的话，重新加载同一个 TeamName 的门会在列表里越堆越多陈旧的引用（上一版遗漏的清理步骤）
+public override void _ExitTree()
+{
+    if (TeamName != "" && Teams.ContainsKey(TeamName))
+    {
+        Teams[TeamName].Remove(this);
+        if (Teams[TeamName].Count == 0) Teams.Remove(TeamName);
     }
 }
 
@@ -2035,13 +2198,24 @@ private void ActivateAt(double startTime)
 {
     _isOpen = !_isOpen;
     Vector3 target = _isOpen ? _closedPosition + OpenOffset : _closedPosition;
+    _isMovingNow = true;
     var tween = CreateTween();
     tween.SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
     tween.TweenProperty(this, "position", target, MoveTime);
+    tween.Finished += () => _isMovingNow = false;
+}
+
+// 对应 Event_TeamBlocked：移动路径上的检测区域探测到有东西挡路，就地反向——
+// 复用 Activate() 本身的转发/同步逻辑，从属成员一样会把这次"反向触发"转给队长，
+// 队长再用同一个起始时间广播给全队，不需要另外写一套反向专用的代码路径
+private void OnBlocked(Node3D body)
+{
+    if (!_isMovingNow) return;
+    Activate();
 }
 ```
 
-需要在文件顶部加 `using System.Collections.Generic;`。把双开门的两个 `Door` 实例 `TeamName` 都填成同一个字符串（比如 `"double_door_01"`），`OpenOffset` 分别指向左右两侧相反的方向，触发任意一片都会让整组同步开启。**"从属成员把请求转发给队长处理"这个重定向模式**，本教程后面不会再重复贴一遍代码，但如果以后遇到"一组东西需要被当成一个整体触发/控制"的场景（比如一组联动的灯光、一组必须同时启动的机关），都可以照抄这个思路：一个字符串分组键 + 队伍内选出一个队长 + 其余成员的操作全部转发给队长处理。
+需要在文件顶部加 `using System.Collections.Generic;`。把双开门的两个 `Door` 实例 `TeamName` 都填成同一个字符串（比如 `"double_door_01"`），`OpenOffset` 分别指向左右两侧相反的方向，触发任意一片都会让整组同步开启；`BlockZonePath` 各自指向自己门扇前沿的一个薄 `Area3D`（贴着门扇运动方向的领先边缘摆一个大概几厘米厚的检测区域）。**"从属成员把请求转发给队长处理"这个重定向模式**，本教程后面不会再重复贴一遍代码，但如果以后遇到"一组东西需要被当成一个整体触发/控制"的场景（比如一组联动的灯光、一组必须同时启动的机关），都可以照抄这个思路：一个字符串分组键 + 队伍内选出一个队长 + 其余成员的操作全部转发给队长处理，现在加上了"挡路即反向"，这个思路才算真正把团队系统存在的理由用上。
 
 ---
 
@@ -2498,6 +2672,127 @@ public bool WouldDieFrom(float incomingDamage)
 
 **这里的"两阶段"和"保底不死"都是真实存在于 DOOM 3 源码里、而不是本教程编出来凑数的机制**——包围盒粗筛 + 视线连线确认，是为了避免每次判断近战都做一次相对更贵的射线检测；保底不死则是一条明确写在源码里的"反挫败感"规则，只在最低两档难度生效，且同一玩家 5 秒内只保底一次。
 
+### 9.4.1 招式表：一只怪物不该只有一个 AttackDamage
+
+上面 9.4 节（往前追溯到 8.3 节）里，`Enemy` 全程只有一组孤零零的 `AttackDamage`/`AttackRange` 字段——这在"一只怪物只有一种打法"的时候够用，但这其实是一处刻意先留的简化，现在到了要还账的时候：真实 DOOM 3 里几乎没有怪物只有一种攻击。`idAI::AttackMelee(meleeDefName)`（`AI.cpp:4456`）、`Event_MeleeAttackToJoint(jointname, meleeDefName)`（`AI_events.cpp:812`）、`LaunchProjectile(jointname, target, clampToAttackCone)`（`AI.h:532`）、`Event_LaunchProjectile(entityDefName)`（`AI_events.cpp:682`）——这几个函数全都接受一个"名字"或"关节"参数，就是为了让同一只怪物的脚本能在多种攻击之间挑：一只怪物完全可以近战有"一拳"和"一抓"两种不同伤害/范围的打法，远程同时有普通子弹和会追踪的火球，各自绑在骨骼上不同的发射点、用不同的判定方式算命中。上面那种"一只怪物只有一个数"的写法，从一开始就没办法表达这件事——这也是接下来 9.8/9.9 节要动的地方：远程攻击和冲锋攻击都要基于同一张表来选，不能再各自抱着一套自己的字段。
+
+把攻击信息拆成一张表，`Enemy` 挂几条这样的条目，而不是几个孤立字段：
+
+```csharp
+// AttackDefinition.cs —— 单独的 Resource，方便在编辑器里为同一只怪物配置多份，
+// 也方便把同一份攻击定义在不同怪物之间共享
+using Godot;
+
+[GlobalClass]
+public partial class AttackDefinition : Resource
+{
+    [Export] public string AttackName;
+    [Export] public float Damage;
+    [Export] public float Range;
+
+    // 眼到眼连线（对应 TestMelee 那种全身通用的粗判定）还是从指定关节算起
+    // （对应 Event_MeleeAttackToJoint 的 jointname 参数，比如"这一下是用爪子挥的，判定要从爪子的位置算"）
+    public enum HitTraceType { EyeToEye, JointOrigin }
+    [Export] public HitTraceType TraceType = HitTraceType.EyeToEye;
+
+    [Export] public Node3D JointOrigin;    // TraceType 为 JointOrigin 时使用：挂在怪物骨骼下的 BoneAttachment3D，
+                                            // 是 Godot 里最接近 DOOM3 jointname 参数的东西——一个具名的、跟着骨骼动的空间点
+    [Export] public string AnimationName;  // 这次攻击对应哪一段动画/触发帧，留给动画系统去消费，这里不展开
+    [Export] public bool AllowSavingThrow = true;   // 这次攻击要不要走 9.4 节的保底不死判定——9.9 节的冲锋攻击会绕开它
+    [Export] public PackedScene ProjectileScene;    // 留空 = 近战；非空 = 远程，实例化这个场景当投射物
+}
+```
+
+> 这里有个 Godot 特有的小别扭要提一句：`Resource` 本来的设计意图是"可以在多个实例之间共享的资产数据"，而 `JointOrigin` 这种直接指向某个具体场景节点的引用，理论上更应该用 `NodePath`（真正用到的时候再相对怪物自身 `GetNode<Node3D>(path)` 取出来），不然一份 `AttackDefinition` 资源实际上就绑死给了某一个具体的怪物实例，没法真的被多只怪物复用。这里为了跟上面列出的字段结构保持一致，先按 `Node3D` 写；如果你想要"资源真的能被复用"这个特性，把 `JointOrigin` 换成 `NodePath` 是更地道的做法。
+
+`Enemy.cs` 把散落的单一攻击字段换成一张表：
+
+```csharp
+// Enemy.cs —— 用这个字段替换掉 8.3 节引入的 AttackDamage/AttackRange
+[Export] public Godot.Collections.Array<AttackDefinition> Attacks = new();
+```
+
+`TestMeleeBounds()`/`TestMeleeLineOfSight()`/`TryAttack()` 也要跟着换成按表挑选，而不是读那几个已经不存在的单一字段——下面是这三个函数对应 9.4 节版本的替换版：
+
+```csharp
+// Enemy.cs —— 替换 9.4 节的 TestMeleeBounds()/TestMeleeLineOfSight()/TryAttack()
+private bool TestMeleeBounds(AttackDefinition attack)
+{
+    if (_player == null) return false;
+    Vector3 toPlayer = _player.GlobalPosition - GlobalPosition;
+    bool withinHorizontal = new Vector2(toPlayer.X, toPlayer.Z).Length() <= attack.Range;
+    bool withinVertical = Mathf.Abs(toPlayer.Y) <= 1.0f;
+    return withinHorizontal && withinVertical;
+}
+
+private bool TestMeleeLineOfSight(AttackDefinition attack)
+{
+    // TraceType 决定射线从哪里发出——EyeToEye 用怪物自己头顶附近的位置（原来的写法），
+    // JointOrigin 则改用这条攻击指定的关节位置，比如"这一下是爪击，判定要从爪子那里算"
+    Vector3 origin = (attack.TraceType == AttackDefinition.HitTraceType.JointOrigin && attack.JointOrigin != null)
+        ? attack.JointOrigin.GlobalPosition
+        : GlobalPosition + Vector3.Up;
+
+    var spaceState = GetWorld3D().DirectSpaceState;
+    var query = PhysicsRayQueryParameters3D.Create(origin, _player.GlobalPosition + Vector3.Up * 0.5f);
+    query.CollisionMask = 0b0011;
+    var result = spaceState.IntersectRay(query);
+    return result.Count == 0 || (Node3D)result["collider"] == _player;
+}
+
+// 从 Attacks 表里挑一条当前可用的近战招式——远程条目（ProjectileScene 非空）留给 9.8 节的
+// PickRangedAttack() 处理，这里只看近战条目
+private AttackDefinition PickMeleeAttack()
+{
+    if (_player == null) return null;
+    foreach (var attack in Attacks)
+    {
+        if (attack.ProjectileScene != null) continue;
+        if (TestMeleeBounds(attack) && TestMeleeLineOfSight(attack)) return attack;
+    }
+    return null;
+}
+
+// 把"挑出一条能用的招式"和"真正执行这条招式、算保底不死"拆成两个函数——
+// 9.9 节的冲锋攻击会复用 TestMeleeBounds/TestMeleeLineOfSight，但不会调用这个函数，
+// 因为冲锋伤害不走保底判定这条路（原因见 9.9 节）
+private void ExecuteMeleeAttack(AttackDefinition attack)
+{
+    float finalDamage = attack.Damage * DifficultySettings.EnemyDamageMultiplier();
+
+    if (attack.AllowSavingThrow
+        && DifficultySettings.Current <= DifficultySettings.Level.Normal
+        && _player.Call("WouldDieFrom", finalDamage).AsBool())
+    {
+        double now = Time.GetTicksMsec() / 1000.0;
+        double t = now - _lastSavingThrowTime;
+        if (t > SavingThrowWindow) { _lastSavingThrowTime = now; t = 0; }
+        if (t < 1.0)
+        {
+            GD.Print($"{Name}：保底判定生效，这一下打空了");
+            return;
+        }
+    }
+
+    if (_player.HasMethod("TakeDamage")) _player.Call("TakeDamage", finalDamage);
+    GD.Print($"{Name} 使用 {attack.AttackName} 攻击了玩家，造成 {finalDamage} 点伤害");
+}
+
+private void TryAttack()
+{
+    var attack = PickMeleeAttack();
+    if (attack == null) return;
+
+    double now = Time.GetTicksMsec() / 1000.0;
+    if (now - _lastAttackTime < AttackCooldown) return;
+    _lastAttackTime = now;
+
+    ExecuteMeleeAttack(attack);
+}
+```
+
+这一版 `TryAttack()` 还只会挑近战条目——9.8 节马上会把它再扩展一层，加上远程分支。
+
 ### 9.5 疼痛打断：受伤会不会打断当前动作
 
 现在的怪物挨打只会掉血，不会有任何"被打疼了一下"的反应。DOOM 3 的疼痛系统有三道门，缺一个都不对：**冷却时间**（疼痛反应之间有最短间隔，不会每一下都触发）、**免打断窗口**（脚本/攻击逻辑可以主动申请"接下来这段时间不许被打断"，比如重击动作的起手阶段）、以及**伤害下限**（这是一个绝对数值门槛，不是概率——很多人凭直觉以为这是"一定概率被打退"，实际上 DOOM 3 里这一下伤害没达到阈值，疼痛反应根本不会触发，达到了就必定触发，不掷骰子）。
@@ -2719,64 +3014,90 @@ private async void TickIdle()
 
 ### 9.8 远程攻击：不是所有怪物都该贴脸近战
 
-第 8.3 节给怪物做的攻击只有一种：贴近了才能打的近战判定。真实的 DOOM 3 里，一只怪物到底是近战还是远程、发射的是子弹还是会爆炸的火球，靠的是 `idAI::LaunchProjectile(jointname, target, clampToAttackCone)`（`neo/d3xp/ai/AI.h:532`）这**同一个**方法——区别只在于传给它的投射物定义是哪一份。这一节把这个思路搬过来：怪物的近战和远程攻击不该是两套互相独立的系统，而是"攻击方式"这个字段的两种取值。
+第 8.3 节给怪物做的攻击只有一种：贴近了才能打的近战判定。这里要先纠正上一版一句说错的话：**近战和远程在真实 DOOM 3 里不是共用同一个方法**——近战是即时的连线检测（`AttackMelee()`/`TestMelee()`），远程是生成一个真正会飞行的投射物实体，两者在引擎里是结构上完全独立的两套系统。真正"共用同一个方法"的，是远程攻击内部的不同子类型：子弹、火球、火箭这些不同的投射物，全部通过同一个 `idAI::LaunchProjectile(jointname, target, clampToAttackCone)`（`neo/d3xp/ai/AI.h:532`）发射出去，区别只在于传给它的投射物定义是哪一份——这句话原本描述的是"远程内部的子类型共用一个发射方法"，不是"近战和远程共用一个方法"，上一版把这两件事混在一起说了。
 
-先把攻击方式拆成一个独立方法，复用第 5.3 节做的 `Rocket.tscn`：
+这一节要做的是把 9.4.1 节搭好的 `Attacks` 表用起来：近战和远程条目并存在同一张表里（用 `ProjectileScene` 是否为空区分），`TryAttack()` 从表里挑，而不是靠一个"这只怪物是近战还是远程"的枚举开关去分派——一只怪物完全可以同时拥有近战和远程两种打法，靠近了用近战、拉开距离换远程，这在"非此即彼"的枚举写法下是表达不出来的。
 
 ```csharp
 // Enemy.cs 追加
-public enum AttackType { Melee, Ranged }
-[Export] public AttackType MyAttackType = AttackType.Melee;
-[Export] public PackedScene ProjectileScene;   // 远程怪物才需要拖入，比如 Rocket.tscn
-[Export] public Node3D ProjectileSpawnPoint;   // 投射物从哪里生成，通常是怪物的"嘴"或"手"位置
-[Export] public float RangedAttackRange = 12.0f;   // 远程攻击的有效距离，通常比近战 AttackRange 大得多
-[Export] public float AttackConeDegrees = 30.0f;   // 对应 idAI 的 attack_cone：目标偏出这个角度就不发射，避免"背对着打中"的怪异画面
+[Export] public Node3D ProjectileSpawnPoint;      // 投射物从哪里生成，通常是怪物的"嘴"或"手"位置
+[Export] public float AttackConeDegrees = 30.0f;  // 目标偏出这个角度就不发射，避免"背对着打中"的怪异画面
 
-private void TryAttack()
+// 从 Attacks 表里挑一条当前可用的远程条目（ProjectileScene 非空）——
+// 近战条目由 9.4.1 节的 PickMeleeAttack() 处理，两者共存在同一张表里，互不干扰
+private AttackDefinition PickRangedAttack()
 {
-    if (_player == null) return;
+    if (_player == null || !IsPlayerInAttackCone()) return null;
     float distance = GlobalPosition.DistanceTo(_player.GlobalPosition);
-    float effectiveRange = MyAttackType == AttackType.Melee ? AttackRange : RangedAttackRange;
-    if (distance > effectiveRange) return;
-
-    // 攻击锥角检测：目标是否大致在怪物面朝的方向上，不是随便什么角度都能开火
-    Vector3 toTarget = (_player.GlobalPosition - GlobalPosition); toTarget.Y = 0;
-    float angle = Mathf.RadToDeg(GlobalTransform.Basis.Z.AngleTo(toTarget.Normalized()));
-    if (180.0f - angle > AttackConeDegrees) return;   // GlobalTransform.Basis.Z 是"身后"方向，这里换算成"正面偏离角度"
-
-    double now = Time.GetTicksMsec() / 1000.0;
-    if (now - _lastAttackTime < AttackCooldown) return;
-    _lastAttackTime = now;
-
-    if (MyAttackType == AttackType.Melee)
+    foreach (var attack in Attacks)
     {
-        AttackMelee();   // 原来 8.3/9.4 节的近战判定逻辑
+        if (attack.ProjectileScene == null) continue;
+        if (distance <= attack.Range) return attack;
     }
-    else
-    {
-        AttackRanged();
-    }
+    return null;
 }
 
-private void AttackRanged()
+// 对应 idAI::Event_EntityInAttackCone()（AI_events.cpp:1367-1399）：一次硬性的是/否判定，
+// 目标偏出这个锥角就直接不发射。**这里要纠正上一版的另一处错误引用**：这个硬性放行/拒绝的判定
+// 不是 LaunchProjectile 的 clampToAttackCone 参数做的——clampToAttackCone 实际做的是把瞄准方向
+// "掰"到锥角边缘上照样开火（`AI.cpp:4289-4298`），不会真的拒绝这次攻击。下面这种"判定不通过就
+// 直接不开火"的硬性检测，对应的真实函数是 Event_EntityInAttackCone，代码本身不用改，只是引错了名字
+private bool IsPlayerInAttackCone()
 {
-    if (ProjectileScene == null || ProjectileSpawnPoint == null) return;
+    Vector3 toTarget = (_player.GlobalPosition - GlobalPosition); toTarget.Y = 0;
+    float angle = Mathf.RadToDeg(GlobalTransform.Basis.Z.AngleTo(toTarget.Normalized()));
+    return 180.0f - angle <= AttackConeDegrees;   // GlobalTransform.Basis.Z 是"身后"方向，这里换算成"正面偏离角度"
+}
 
-    var projectile = ProjectileScene.Instantiate<Rocket>();
+private void AttackRanged(AttackDefinition attack)
+{
+    if (attack.ProjectileScene == null || ProjectileSpawnPoint == null) return;
+
+    var projectile = attack.ProjectileScene.Instantiate<Rocket>();
     GetTree().Root.AddChild(projectile);
     projectile.GlobalPosition = ProjectileSpawnPoint.GlobalPosition;
+    projectile.DirectDamage = attack.Damage;   // 伤害也从这条 AttackDefinition 读，不再是投射物场景自己写死的值
 
     Vector3 direction = (_player.GlobalPosition - ProjectileSpawnPoint.GlobalPosition).Normalized();
     projectile.Launch(direction, this);   // this：把怪物自己传进去当 Owner3D，防止爆炸伤到自己
-    GD.Print($"{Name} 发射了一枚投射物");
+    GD.Print($"{Name} 使用 {attack.AttackName} 发射了一枚投射物");
+}
+
+// Enemy.cs —— 替换 9.4.1 节里只处理近战的 TryAttack()：现在近战/远程条目都从同一张
+// Attacks 表里挑，优先挑近战（够近就贴脸打，不浪费弹药），挑不到再看有没有能用的远程条目
+private void TryAttack()
+{
+    if (_player == null) return;
+
+    double now = Time.GetTicksMsec() / 1000.0;
+    if (now - _lastAttackTime < AttackCooldown) return;
+
+    var melee = PickMeleeAttack();
+    if (melee != null)
+    {
+        _lastAttackTime = now;
+        ExecuteMeleeAttack(melee);
+        return;
+    }
+
+    var ranged = PickRangedAttack();
+    if (ranged != null)
+    {
+        _lastAttackTime = now;
+        AttackRanged(ranged);
+    }
 }
 ```
 
-**这一节真正的重点不是这段代码本身，是它带来的设计结果**：想做一只近战僵尸和一只远程暴风兵，不需要写两个不同的怪物类，只需要在场景编辑器里，一个的 `MyAttackType` 选 `Melee`，另一个选 `Ranged` 并拖入一个投射物场景——**甚至可以把 `ProjectileScene` 换成不同配置的投射物场景**（改小 `SplashRadius`、换成 `IsGuided = true` 的追踪弹版本），做出"近战怪、普通远程怪、会追踪的远程怪"三种手感完全不同的敌人，`Enemy.cs` 一行都不用改。这正是第 14 章要系统讲的"数据驱动"的一次提前预演。
+**这一节真正的重点不是这段代码本身，是它带来的设计结果**：想做一只纯近战僵尸、一只纯远程暴风兵、或者一只"平时打子弹、贴脸了改用爪子"的混合型怪物，不需要写不同的怪物类，只需要在场景编辑器里往 `Attacks` 表里塞不同组合的条目——一条 `ProjectileScene` 留空的近战条目、一条指向 `Rocket.tscn` 的远程条目，两条都挂上就是混合型。**甚至可以把某条远程攻击的 `ProjectileScene` 换成不同配置的投射物场景**（改小 `SplashRadius`、换成 `IsGuided = true` 的追踪弹版本），做出"近战怪、普通远程怪、会追踪的远程怪、近战+远程混合怪"这些手感完全不同的敌人，`Enemy.cs` 一行都不用改。这正是第 14 章要系统讲的"数据驱动"的一次提前预演，也是上面 9.4.1 节把攻击拆成一张表而不是一堆孤立字段的真正回报。
 
 ### 9.9（可选进阶）冲锋攻击：不是所有攻击都能站着放
 
-有些怪物的攻击不是"站在原地打"，而是主动冲向你——DOOM 3 里这类攻击靠 `Event_ChargeAttack`/`Event_TestChargeAttack`（`neo/d3xp/ai/AI_events.cpp:1743-1802`）实现，冲锋前会先用寻路系统验证"冲过去这条路线走不走得通"，避免怪物一头冲进墙里卡住。用本教程已经搭好的 `NavigationAgent3D` 复刻同样的验证步骤：
+有些怪物的攻击不是"站在原地打"，而是主动冲向你——DOOM 3 里这类攻击靠 `Event_ChargeAttack`/`Event_TestChargeAttack`（`neo/d3xp/ai/AI_events.cpp:1743-1802`）实现，冲锋前会先验证"冲过去这条路线走不走得通"，避免怪物一头冲进墙里卡住。这一节有两处容易想当然写错的地方，值得先说清楚再看代码：
+
+**第一处：冲锋伤害不走保底不死判定**。真实源码的 `Event_ChargeAttack` 调用的是 `BeginAttack(damageDef)`，然后每个 tick 只要命中判定通过就直接 `DirectDamage(attack, enemy)`（`AI.cpp:4139-4150`、`4356-4392`）——这是一条完全绕开 `AttackMelee()` 的独立路径，而 9.4 节那个"低难度保底不死"的判断恰恰只存在于 `AttackMelee()` 内部。也就是说，**真实游戏里冲锋攻击在新兵/普通难度下一样能一下打死血量不多的玩家**，不享受近战的保底待遇——这是刻意的难度设计（冲锋通常伤害更高、也更容易被看出来提前躲开，游戏没打算再额外保护你），不是应该修的 bug。如果直接复用 9.4.1 节的 `ExecuteMeleeAttack()`，就会把这份本不该有的保护也带过来，跟源码的行为不一致。
+
+**第二处：路径验证要验证的是"这条直线"，不是"存不存在某条路"**。真实的 `Event_TestChargeAttack`（`AI_events.cpp:1769-1802`）用的是 `PredictPath`，验证的是冲锋会走的那条**直线轨迹**本身有没有被挡住、会不会冲出悬崖——不是"从这里到玩家存不存在一条可达路径"。`NavigationAgent3D.IsTargetReachable()` 检测的是后者：哪怕这条路要绕开一根柱子，只要绕得过去就算 `true`。但冲锋不会绕路，它是径直冲过去的，一头撞上那根"反正绕得过去"的柱子——用 `IsTargetReachable()` 验证冲锋路线，验证的根本不是同一件事。改正版本换成一次直线方向的胶囊体扫掠，只信这条直线本身：
 
 ```csharp
 // Enemy.cs 追加
@@ -2787,13 +3108,18 @@ private bool _isCharging;
 private async void TryChargeAttack()
 {
     if (_isCharging || _player == null) return;
-    float distance = GlobalPosition.DistanceTo(_player.GlobalPosition);
-    if (distance > ChargeAttackRange || distance < AttackRange) return;   // 太远冲不到、太近没必要冲，直接近战就行
 
-    // 对应 TestChargeAttack：冲锋前先问寻路系统这条路能不能走通，走不通就放弃这次冲锋
-    _navAgent.TargetPosition = _player.GlobalPosition;
-    await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);   // 等一帧，让 NavigationAgent3D 把新目标点的路径算好
-    if (!_navAgent.IsTargetReachable())
+    // 冲锋伤害借用 Attacks 表里的一条近战条目当基础数值（伤害、判定用的范围），
+    // 但下面执行时不会调用 9.4.1 节的 ExecuteMeleeAttack()——原因见上面第一处说明
+    var chargeAttack = Attacks.FirstOrDefault(a => a.ProjectileScene == null);
+    if (chargeAttack == null) return;
+
+    float distance = GlobalPosition.DistanceTo(_player.GlobalPosition);
+    if (distance > ChargeAttackRange || distance < chargeAttack.Range) return;   // 太远冲不到、太近没必要冲，直接近战就行
+
+    // 对应 Event_TestChargeAttack：验证的是直线路径本身，不是"存不存在某条能到达的路"——
+    // 见上面第二处说明，这里换成一次沿冲锋方向的胶囊体扫掠
+    if (!IsChargePathClear())
     {
         GD.Print($"{Name}：冲锋路线走不通，放弃");
         return;
@@ -2809,9 +3135,14 @@ private async void TryChargeAttack()
         direction = direction.Normalized();
         Velocity = new Vector3(direction.X * ChargeSpeed, Velocity.Y, direction.Z * ChargeSpeed);
 
-        if (GlobalPosition.DistanceTo(_player.GlobalPosition) < AttackRange)
+        // 命中判定复用 9.4.1 节的两阶段检测（TestMeleeBounds/TestMeleeLineOfSight），
+        // 但伤害直接结算，不经过 ExecuteMeleeAttack() 里的保底不死判断——
+        // 对应源码 BeginAttack()+DirectDamage() 这条独立于 AttackMelee() 的路径
+        if (TestMeleeBounds(chargeAttack) && TestMeleeLineOfSight(chargeAttack))
         {
-            AttackMelee();   // 冲到贴脸距离，直接按近战判定收尾，冲锋本身不额外算一次伤害
+            float finalDamage = chargeAttack.Damage * DifficultySettings.EnemyDamageMultiplier();
+            if (_player.HasMethod("TakeDamage")) _player.Call("TakeDamage", finalDamage);
+            GD.Print($"{Name} 的冲锋直接命中，造成 {finalDamage} 点伤害（不经过保底判定）");
             break;
         }
         await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
@@ -2819,9 +3150,32 @@ private async void TryChargeAttack()
 
     _isCharging = false;
 }
+
+// 沿冲锋方向做一次胶囊体扫掠，只测世界几何（第 1 层），不测生物层——
+// 只要沿途会撞上静态几何，就说明这条直线冲锋路线走不通
+private bool IsChargePathClear()
+{
+    Vector3 direction = (_player.GlobalPosition - GlobalPosition); direction.Y = 0;
+    float distance = direction.Length();
+    direction = direction.Normalized();
+
+    var spaceState = GetWorld3D().DirectSpaceState;
+    var query = new PhysicsShapeQueryParameters3D
+    {
+        Shape = new CapsuleShape3D { Radius = 0.4f, Height = 1.8f },
+        Transform = GlobalTransform,
+        Motion = direction * distance,
+        CollisionMask = 0b0001
+    };
+    float[] result = spaceState.CastMotion(query);
+    // CastMotion 返回 [安全比例, 不安全比例]：安全比例明显小于 1，说明扫掠中途会被世界几何挡住
+    return result.Length < 2 || result[0] > 0.95f;
+}
 ```
 
-这一节标"可选"不是因为它不重要，是因为不是每种怪物都需要这个攻击方式——跟 9.8 节一样，`MyAttackType` 枚举完全可以再加一个 `Charge` 分支，`TryAttack()` 里按类型分派到 `AttackMelee()`/`AttackRanged()`/`TryChargeAttack()`，这三种攻击方式互相独立、可以按怪物类型任意组合，不需要为每一种组合单独写一个怪物类——这跟 5.3/9.8 节反复强调的"差异应该落在配置上，不是代码分支上"是同一条原则的第三次应用，读到这里这个模式应该已经很熟悉了。
+记得在文件顶部加 `using System.Linq;`（`Attacks.FirstOrDefault` 用到）。
+
+这一节标"可选"不是因为它不重要，是因为不是每种怪物都需要这个攻击方式——不过跟 9.8 节的远程攻击不一样，冲锋攻击目前还是一段独立于 `Attacks` 表之外的代码（只是借用了表里一条近战条目的数值），没有像近战/远程那样被完全收编进同一套"从表里挑"的机制，这是本教程为了不把 `AttackDefinition` 的字段进一步复杂化（比如再加一个"是否允许冲锋触发"的标记）而留下的一处不对称，如果你想让冲锋也完全数据驱动，可以在 `AttackDefinition` 上再加一个布尔字段区分"能不能被当冲锋用"，或者干脆给冲锋单独开一张表。
 
 ---
 
@@ -2875,9 +3229,13 @@ private void Die()
 
 ### 10.2.1 慢动作沉降：DOOM 3 布娃娃标志性的"先慢后快"
 
-如果你玩过 DOOM 3，可能会记得那种敌人死亡瞬间身体先短暂地以慢动作瘫倒、然后逐渐恢复正常速度的效果——这不是错觉，是 DOOM 3 在布娃娃刚触发的一段时间内，专门给这具身体的物理仿真套了一个从慢到快的时间缩放渐变（死亡前 1.6 秒到死亡后 0.8 秒这段区间内生效），配合关节/接触摩擦力也同步从低到高变化，做出"身体先松软地沉降、再逐渐恢复正常物理反应"的质感。
+如果你玩过 DOOM 3，可能会记得那种敌人死亡瞬间身体先短暂地以慢动作瘫倒、然后逐渐恢复正常速度的效果——这不是错觉，是 DOOM 3 在布娃娃刚触发的一段时间内，专门给这具身体的物理仿真套了一个从慢到快的时间缩放渐变（`Actor.cpp:1663-1667`，`ragdoll_slomoStart`/`ragdoll_slomoEnd`，死亡前 1.6 秒到死亡后 0.8 秒这段区间内生效）。
 
-**这里要老实说明一个 Godot 和 DOOM 3 的真实差异，不能假装能完全照搬**：DOOM 3 的关节人偶系统是自己手写的约束求解器，可以给单具布娃娃单独设置时间缩放；Godot 内置物理引擎的 `PhysicalBoneSimulator3D` 没有暴露"让这一具骨架用比世界其他物体更慢的时间流速仿真"这个能力（`Engine.TimeScale` 是全局的，会拖慢整个游戏，不能只影响一具尸体）。所以下面这个实现**不是时间缩放，而是用一个从强到弱变化的阻尼（damping）去模拟类似的视觉效果**——物理上不是同一回事，但视觉上很接近"一开始软绵绵地沉降、逐渐恢复正常物理反应"这个效果，这是在 Godot 现有能力下最接近的忠实还原，而不是敷衍的替代：
+> 这里要纠正一处编出来的细节：上一版说"配合关节/接触摩擦力也同步从低到高变化"，这个说法是错的，不是简化，是编错了。真实源码（`Actor.cpp:1669-1681`、`Physics_AF.cpp:4982-5001,5867-5903`）里摩擦力的变化不是单调的"从低到高"，而是一个**V 形的凹陷**：先是正常摩擦力，在自己这条时间线的**中点**跌到一个很低的值（0.1），再回升回正常水平——而且关节摩擦力和接触摩擦力走的是两条**完全独立、互不同步**的时间线：关节摩擦力的凹陷窗口是死亡后 0.2 秒到 1.2 秒，接触摩擦力的凹陷窗口是死亡后 1.0 秒到 2.0 秒，两者既不同步，也都不跟前面说的"-1.6 秒到 +0.8 秒"这条时间缩放窗口对齐——是三条各自独立的时间线在同时跑，不是"配合"着变化的一件事。
+
+**这里要老实说明一个 Godot 和 DOOM 3 的真实差异，不能假装能完全照搬**：DOOM 3 的关节人偶系统是自己手写的约束求解器，可以给单具布娃娃单独设置时间缩放；Godot 内置物理引擎的 `PhysicalBoneSimulator3D` 没有暴露"让这一具骨架用比世界其他物体更慢的时间流速仿真"这个能力（`Engine.TimeScale` 是全局的，会拖慢整个游戏，不能只影响一具尸体）。所以下面这个实现**不是时间缩放，而是用一个从强到弱变化的阻尼（damping）去模拟类似的视觉效果**——物理上不是同一回事，但视觉上很接近"一开始软绵绵地沉降、逐渐恢复正常物理反应"这个效果。
+
+再加一层老实话：就算不提时间缩放这件事，下面的阻尼曲线本身也只是对上面纠正过的"V 形凹陷、关节/接触各走各的独立时间线"这套机制的**单调近似**，不是真的复刻。`PhysicalBone3D` 的 `LinearDamp`/`AngularDamp` 也没有区分"关节摩擦力"和"接触摩擦力"这两个独立概念，Godot 这层 API 本身就不支持这种细粒度的拆分。下面这版用一个统一的阻尼值、在一段时间内从强单调衰减到 0，本教程认这是"为了简单，用一次性的阻尼上升近似代替源码真正的两段式凹陷+恢复"，不是逐段还原两条独立时间线的凹陷曲线——如果你想更贴近源码的观感，可以把这条曲线换成一个先降后升的三角形/正弦形状，且给关节和接触各开一条独立的计时器，这里为了控制复杂度没有这么做：
 
 ```csharp
 // Enemy.cs 追加
@@ -2897,9 +3255,9 @@ private async void ApplyRagdollSettleRamp()
     {
         double elapsed = Time.GetTicksMsec() / 1000.0 - startTime;
         float t = Mathf.Clamp((float)(elapsed / RagdollSettleDuration), 0f, 1f);
-        // t 从 0 到 1：阻尼从 RagdollSettleDamping 线性衰减到 0，
-        // 对应 DOOM3 原版 "刚触发时摩擦力低、逐渐恢复正常" 的效果方向（DOOM3 是摩擦力从低到高，
-        // 这里反过来用阻尼从高到低，两者视觉上都是 "先软后硬" 的沉降感）
+        // t 从 0 到 1：阻尼从 RagdollSettleDamping 单调衰减到 0——这是对 DOOM3 真实的
+        // "V 形凹陷、关节/接触摩擦力各走各的独立时间线" 这套机制的简化近似，不是逐段还原，
+        // 只是让视觉上同样有"先软后硬"的沉降感
         float damping = Mathf.Lerp(RagdollSettleDamping, 0f, t);
         foreach (var bone in bones)
         {
@@ -3324,6 +3682,8 @@ public static class CombatUtil
 
 Godot 有一种专门用来装"纯数据、可以在编辑器里像填表格一样编辑、可以存成独立文件复用"的类型：`Resource`。把怪物身上核心的"数值"部分拆出来，做成一份 `EnemyStats`（下面只演示最常调的这几项，9.5 节的 `PainThreshold`/`PainDebounce`、10.2.1 节的 `RagdollSettleDuration`/`RagdollSettleDamping` 这类没在下面出现的数值字段，照同样的思路自己加进 `EnemyStats` 就行，`Enemy.cs` 里对应保留为 `[Export]` 也不影响功能，只是没享受到数据驱动的好处）：
 
+> 注意这里**没有** `AttackRange`/`AttackDamage`/`AttackCooldown`——9.4.1 节已经把这几个扁平字段换成了 `Attacks: Array<AttackDefinition>` 这张表，而 `AttackDefinition` 本身已经是 `[GlobalClass] Resource`，天然就能在编辑器里存成独立的 `.tres` 文件、跨怪物复用，本来就是数据驱动的，不需要再套一层塞进 `EnemyStats` 里。如果你还没做 9.4.1、`Enemy` 身上还是单一的 `AttackDamage`/`AttackRange` 字段，那把它们加进下面这份 `EnemyStats` 也完全没问题，两种写法不冲突，只是做了 9.4.1 之后这几个字段的数据驱动已经改由 `AttackDefinition` 各自负责了。
+
 ```csharp
 using Godot;
 
@@ -3334,9 +3694,6 @@ public partial class EnemyStats : Resource
     [Export] public float MoveSpeed = 3.0f;
     [Export] public float ChaseRange = 15.0f;
     [Export] public float FieldOfViewDegrees = 100.0f;
-    [Export] public float AttackRange = 2.0f;
-    [Export] public float AttackDamage = 10.0f;
-    [Export] public float AttackCooldown = 1.5f;
     [Export] public float GibThreshold = -20.0f;
 }
 ```
@@ -3351,6 +3708,7 @@ using Godot;
 public partial class Enemy : CharacterBody3D
 {
     [Export] public EnemyStats Stats;   // 在编辑器里把上面做的某份 .tres 文件拖进这个槽
+    [Export] public Godot.Collections.Array<AttackDefinition> Attacks = new();   // 9.4.1 节的招式表，自己已经是 Resource，不需要经过 Stats
 
     private float _health;
     // ...
@@ -3368,17 +3726,12 @@ public partial class Enemy : CharacterBody3D
         // ...
     }
 
-    private void TryAttack()
-    {
-        // ...
-        if (distance > Stats.AttackRange) return;
-        // ...
-        _player.Call("TakeDamage", Stats.AttackDamage * DifficultySettings.EnemyDamageMultiplier());
-    }
+    // TryAttack()/PickMeleeAttack() 等照 9.4.1 节的版本不变，直接读 Attacks，
+    // 不经过 Stats——那几个字段的"数据驱动"已经靠 AttackDefinition 自己是 Resource 这件事解决了
 }
 ```
 
-现在场景里可以放三个 `Enemy.tscn` 的实例，各自的 `Stats` 槽拖进不同的资源文件，就是三种手感完全不同的怪物——**同一份代码，靠不同的数据跑出不同的行为**，这正是"数据驱动"这个词的字面意思。想做第四种怪物，不需要写一行代码，新建一份 `.tres`、填几个数字就行。
+现在场景里可以放三个 `Enemy.tscn` 的实例，各自的 `Stats` 槽拖进不同的资源文件、`Attacks` 槽拖进不同的招式表，就是三种手感完全不同的怪物——**同一份代码，靠不同的数据跑出不同的行为**，这正是"数据驱动"这个词的字面意思。想做第四种怪物，不需要写一行代码，新建一份 `.tres`、填几个数字就行。
 
 ### 14.3 武器同样适用这一套思路
 
@@ -3654,15 +4007,15 @@ public void RequestDamage(float amount)
 
 ## 18. 延伸阅读：如果你想知道 DOOM 3 原版是怎么做的
 
-这份教程教你的是"用现代的 Godot + C#，做出一个 DOOM 3 风格的单人 FPS"。经过前面几轮修订，第 2-3、6、7、9、10 章里凡是涉及**具体手感公式/数值算法**的部分（移动加速度、视角 Bob、武器摇摆后坐、近战两阶段检测、疼痛打断、保底不死、布娃娃沉降），都已经是照着 DOOM 3 BFG 源码的真实实现逐行还原的，不是"差不多意思"的简化版——如果你对照 [DOOM3-BFG-Gameplay架构精读.md](DOOM3-BFG-Gameplay架构精读.md) 里对应的章节，应该能一一找到对应关系。真正还存在、且**应该存在**的差异，只剩下两类：**代码组织方式的不同**（DOOM 3 拆成很多个协作的 C++ 类，本教程为了教学连贯性把很多东西写在少数几个脚本里）、以及**平台能力的不同**（DOOM 3 手写的一些底层机制，Godot 已经作为引擎内置能力提供，不需要重新发明）。按章节的对应关系：
+这份教程教你的是"用现代的 Godot + C#，做出一个 DOOM 3 风格的单人 FPS"。经过前面几轮修订，第 2-3、6、7、9、10 章里凡是涉及**具体手感公式/数值算法**的部分（移动加速度、视角 Bob、武器摇摆后坐、近战两阶段检测、疼痛打断、保底不死、布娃娃沉降），绝大部分都已经是照着 DOOM 3 BFG 源码的真实实现还原的，不是随手拍脑袋编的数字——如果你对照 [DOOM3-BFG-Gameplay架构精读.md](DOOM3-BFG-Gameplay架构精读.md) 里对应的章节，应该能一一找到对应关系。但"逐行还原"这个说法要打个折扣：正文里明确标注过好几处**有意为之、且写清楚了原因**的数值/机制简化（比如 3.2 节 view bob 幅度系数刻意调大了一倍、3.3 节落地冲击用峰值下落速度近似源码真正的子帧冲击量计算、10.2.1 节布娃娃摩擦力凹陷用单调阻尼近似源码的 V 形双时间线、9.9 节冲锋攻击的路径验证和保底豁免），这些都不是疏漏，是标注过的取舍，但也不该被笼统地称为"逐行还原"。真正还存在、且**应该存在**的差异，除了这些标注过的数值简化，还有两大类：**代码组织方式的不同**（DOOM 3 拆成很多个协作的 C++ 类，本教程为了教学连贯性把很多东西写在少数几个脚本里）、以及**平台能力的不同**（DOOM 3 手写的一些底层机制，Godot 已经作为引擎内置能力提供，不需要重新发明）。按章节的对应关系：
 
 | 本教程 | 对应精读文档章节 | 差异属于哪一类 |
 |---|---|---|
-| 第 2-3 章：玩家移动/视角 Bob | 精读第 5 章 `idPlayer`/`idPhysics_Player`，5.8/5.10/5.11 节 | 代码组织：DOOM 3 把"游戏逻辑"和"纯物理仿真"拆成 `idPlayer`/`idPhysics_Player` 两个类，本教程写在一个 `PlayerController` 里；公式本身（加速度、摩擦力、bob 各分量、落地冲击）已逐项对齐 |
-| 第 4-6 章：武器系统 | 精读第 7 章 | 代码组织：DOOM 3 的武器状态机用它自己发明的 DOOM Script 写，本教程直接用 C#——因为 C# 本身已经是热重载友好的脚本语言，不需要再嵌一层脚本虚拟机（精读 9.8 节详细论证过这个取舍） |
-| 第 7 章：物理与门/电梯 | 精读第 6、10 章 | 平台能力：DOOM 3 手写了完整的推挤/防穿模算法（`idPush`），Godot 用 `AnimatableBody3D` + `SyncToPhysics` 内置解决了同一个问题；团队门联动的重定向模式已经对齐 |
-| 第 8-9 章：AI | 精读第 8 章 | 平台能力：DOOM 3 的寻路系统（AAS）是自己写的一整套区域图+缓存路由算法，Godot 用内置导航网格系统解决同一个问题；两阶段近战检测、疼痛三道门、保底不死、难度数值表已逐项对齐 |
-| 第 10 章：布娃娃 | 精读 6.5 节 | 平台能力：DOOM 3 的布娃娃约束求解器是自己手写的（拉格朗日乘子法），Godot 用内置物理引擎的 `PhysicalBoneSimulator3D` 解决同一个问题；慢动作沉降效果因为 Godot 不支持单物体时间缩放，改用阻尼渐变实现，这一点在 10.2.1 节已经明确说明是不同机制、相近效果，不是偷懒 |
+| 第 2-3 章：玩家移动/视角 Bob | 精读第 5 章 `idPlayer`/`idPhysics_Player`，5.8/5.10/5.11 节 | 代码组织：DOOM 3 把"游戏逻辑"和"纯物理仿真"拆成 `idPlayer`/`idPhysics_Player` 两个类，本教程写在一个 `PlayerController` 里；公式本身（加速度、摩擦力、爬梯磁吸/双通道输入、台阶步进的贴地判定、bob 四个分量、落地冲击触发条件）已逐项对齐，其中 view bob 的三个幅度系数（`BobUpAmount` 等）标注过是刻意调大到原版的两倍，为的是在 Godot 这套单位下手感可感知 |
+| 第 4-6 章：武器系统 | 精读第 7 章 | 代码组织：DOOM 3 的武器状态机用它自己发明的 DOOM Script 写，本教程直接用 C#——因为 C# 本身已经是热重载友好的脚本语言，不需要再嵌一层脚本虚拟机（精读 9.8 节详细论证过这个取舍）；切枪时"举枪动画播完才允许收枪"、火箭筒范围伤害的遮挡判定、近战推力接入增益查询点这几处都已对齐，5.2.1 节"开火打断装弹"和 5.4 节追踪导弹的随机抖动/抵近脱锁两处仍是明确标注过的未实现项 |
+| 第 7 章：物理与门/电梯 | 精读第 6、10 章 | 平台能力：DOOM 3 手写了完整的推挤/防穿模算法（`idPush`），Godot 用 `AnimatableBody3D` + `SyncToPhysics` 内置解决了同一个问题；团队门联动的重定向模式、以及"中途被挡住会整队反向"这个团队系统真正存在的理由，都已经对齐；7.3 节也澄清了"两站式升降台"（结构等同门）和真正的多楼层 `idElevator`（独立的大协调器）不是同一回事，本教程只实现前者 |
+| 第 8-9 章：AI | 精读第 8 章 | 平台能力：DOOM 3 的寻路系统（AAS）是自己写的一整套区域图+缓存路由算法，Godot 用内置导航网格系统解决同一个问题；两阶段近战检测、疼痛三道门、保底不死、难度数值表已逐项对齐；9.4.1 节把原来"一只怪物一个 `AttackDamage`"的写法换成了 `AttackDefinition` 招式表，对应源码里近战/远程/冲锋分别接受名字或关节参数、能表达"一只怪物多种打法"这件事；9.9 节的冲锋攻击还留有一处没有完全数据驱动的不对称（借用表里一条近战条目的数值，但执行时不走 9.4.1 的保底判定，正文里已经说明原因和边界） |
+| 第 10 章：布娃娃 | 精读 6.5 节 | 平台能力：DOOM 3 的布娃娃约束求解器是自己手写的（拉格朗日乘子法），Godot 用内置物理引擎的 `PhysicalBoneSimulator3D` 解决同一个问题；慢动作沉降效果因为 Godot 不支持单物体时间缩放，改用阻尼渐变实现，这一点在 10.2.1 节已经明确说明是不同机制、相近效果，不是偷懒；10.2.1 节的摩擦力凹陷曲线（真实源码是 V 形双时间线，关节和接触各走各的）目前也只用了单调阻尼近似，正文同样已经标注清楚不是逐段还原 |
 | 第 11-12 章：关卡工具 | 精读第 10 章 | 代码组织：DOOM 3 原版有几十种专门的 `target_*` 类，本教程用"只要有 `Activate` 方法就能被调用"这一个更通用的模式覆盖了同样的需求 |
 | 第 13 章：事件系统 | 精读第 2 章 | 平台能力：DOOM 3 自己实现了一整套类型反射+事件派发系统（`idClass`/`idEvent`），因为 C++ 没有这些能力；C# 本身自带反射和信号，不需要自己造 |
 | 第 14 章：数据驱动 | 精读第 3 章 | 平台能力：DOOM 3 用纯字符串的键值字典（`spawnArgs`）做数据驱动，因为它面向的是文本编辑的 `.map`/`.def` 文件；`Resource` 是 Godot 编辑器原生支持的强类型资源，两者目的相同 |
