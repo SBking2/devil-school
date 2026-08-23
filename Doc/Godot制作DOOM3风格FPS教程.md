@@ -226,6 +226,30 @@ public partial class PlayerController : CharacterBody3D
 
 记得在输入映射里加一个 `sprint` 动作（建议绑 Shift）。现在按住 W 会有一个短暂的加速过程，松开会有摩擦力慢慢刹停；按住 Shift 跑得更快。这就是几乎所有 FPS 移动手感的地基公式，后面第 9 章做怪物移动的时候还会用到同一套东西。
 
+> **两处容易漏掉的收尾**，都是完整读完 `Physics_Player.cpp` 全文（而不是只读 `Accelerate`/`Friction` 这两个函数）才会注意到——单独看这两个函数体会跳过它们，因为它们不在这两个函数内部，而是"这两个函数的输出该怎么被使用"这个更外层的问题：
+>
+> **1. 该拒绝的坡度，要显式配置，不能靠默认值蒙对**——DOOM3 判断"这个坡陡到不能站着走"的标准写死在文件开头：`const float MIN_WALK_NORMAL = 0.7f;`，`CheckGround()` 里用 `groundTrace.c.normal * -gravityNormal < MIN_WALK_NORMAL` 来判定"这个地面太陡，不算贴地"，换算成角度约是 45.57°。`CharacterBody3D` 有一个功能上完全对应的属性 `FloorMaxAngle`——凑巧的是，Godot 4 这个属性的默认值正好是 45°（弧度 0.785），换算成同样的余弦值约 0.707，跟 DOOM3 的 0.7 几乎是同一个数字。但这终究是巧合，不是设计：不显式写出来，你的项目就是在依赖一个自己都不知道"为什么恰好对"的引擎默认值——以后 Godot 版本更新了默认值，或者你想做一关"到处是陡坡"的关卡，都没有一个显式的旋钮可以调。补上：
+>
+> ```csharp
+> // PlayerController.cs 的 _Ready() 里追加
+> [Export] public float MaxWalkableSlopeDegrees = 45.57f;   // 对应 MIN_WALK_NORMAL = 0.7f 换算出的坡度上限
+>
+> public override void _Ready()
+> {
+>     // ...原有初始化...
+>     FloorMaxAngle = Mathf.DegToRad(MaxWalkableSlopeDegrees);
+> }
+> ```
+>
+> **2. 移动速度也该留一个能被外部倍率修改的接口**——DOOM3 的 `idPlayer::AdjustSpeed()`（`Player.cpp:6654-6702`）不管算出来的是走路、跑步还是别的速度，最后一步永远是 `speed *= PowerUpModifier(SPEED);`——移动速度在真正喂给物理系统之前，总会被增益系统过一道。6.3 节会引入 `PowerupState` 这个集中查询点（当时只给了近战伤害/推力接口），但如果 2.2 节的 `wishSpeed` 从一开始就不留这个口子，以后想做"减速陷阱""加速药水"这类道具时，就得回头改移动最核心的这段代码。现在先占好位置，哪怕现在恒等于 1：
+>
+> ```csharp
+> // PlayerController.cs 追加——现在恒定是 1.0，6.3 节会说明它什么时候真正被改
+> public float SpeedModifier = 1.0f;
+> ```
+>
+> 上面 `_PhysicsProcess` 里 `float wishSpeed = Input.IsActionPressed("sprint") ? RunSpeed : WalkSpeed;` 这一行改成 `float wishSpeed = (Input.IsActionPressed("sprint") ? RunSpeed : WalkSpeed) * SpeedModifier;`（2.8 节给出的"完整版" `_PhysicsProcess` 已经把这处改动合并进去了）。游泳、爬梯两节的移动速度走的是各自独立的分支，原理完全一样，本教程不再逐处重复这行乘法。
+
 ### 2.3 空中控制：为什么要"故意"把空中加速度调低而不是直接锁死
 
 你可能会问：为什么空中不干脆完全不能变向（像很多游戏那样，起跳瞬间轨迹就固定了）？上面代码里空中依然调用了 `ApplyAcceleration`，只是把加速度系数换成了单独的 `AirAccelerate = 1.0f`（DOOM 3 原版 `PM_AIRACCELERATE` 就是这个值，是地面 `PM_ACCELERATE=10.0` 的十分之一）——这是刻意的，效果是：**你在空中依然能调整方向，但改变不了太多**。
@@ -270,13 +294,24 @@ private void UpdateCrouch()
     }
     else if (_isDucked)
     {
-        // 起身前先做一次向上 trace，确认头顶没有东西挡着才允许站起来——对应源码里的自动站立检测
-        var spaceState = GetWorld3D().DirectSpaceState;
-        var query = PhysicsRayQueryParameters3D.Create(
-            GlobalPosition + Vector3.Up * CrouchHeight,
-            GlobalPosition + Vector3.Up * StandHeight);
-        query.Exclude = new Godot.Collections.Array<Rid> { GetRid() };
-        if (spaceState.IntersectRay(query).Count == 0)
+        // 起身前先确认头顶没有东西挡着才允许站起来——对应源码 CheckDuck() 里的
+        // gameLocal.clip.Translation(trace, current.origin, end, clipModel, ...)：注意 clipModel
+        // 这时候还是"蹲着"那个尺寸（源码里改高度是这次检测之后才做的事），源码测的是"把现在这个
+        // 蹲着的胶囊体，往上平移站高和蹲高的差值，这一路有没有撞到东西"——是一次完整的胶囊体扫掠
+        // 测试，不是从角色中心打一条细线往上戳。用单点射线代替胶囊扫掠是这一节第一版藏着的一个
+        // 不易发现的 bug：站在一个只在角色胶囊边缘（不在正中心）有低矮横梁/管道的地方，中心射线
+        // 可能穿过横梁之间的空隙、判定"可以站起来"，但实际站起来的胶囊体积会和横梁重叠——玩家
+        // 会卡进几何体里。2.7 节的台阶步进已经在用 PhysicsServer3D.BodyTestMotion 对整个角色刚体
+        // 做真正的形状扫掠，这里用同一个工具复刻同样的语义："把当前（蹲着）的碰撞体，往上扫过
+        // 站起来需要抬升的这段距离"，而不是另起一套单独构造胶囊形状的查询
+        var standCheckParams = new PhysicsTestMotionParameters3D
+        {
+            From = GlobalTransform,
+            Motion = Vector3.Up * (StandHeight - CrouchHeight)
+        };
+        var standCheckResult = new PhysicsTestMotionResult3D();
+        bool standBlocked = PhysicsServer3D.BodyTestMotion(GetRid(), standCheckParams, standCheckResult);
+        if (!standBlocked)
         {
             _isDucked = false;
         }
@@ -343,6 +378,8 @@ private void ApplyWaterMove(Vector2 rawInput, Vector3 wishDir, float wishSpeed, 
 ```
 
 在 `_PhysicsProcess` 里，`IsInWater` 为真时整段替换掉原本的地面/空中分支，改为调用 `ApplyWaterMove`，并把 `Input.GetVector(...)` 算出的原始 `Vector2` 一起传进去（用来判断"是不是完全没有输入"）。水体本身就是一个开着 `Monitoring` 的 `Area3D`，`BodyEntered`/`BodyExited` 分别把 `IsInWater` 设为 `true`/`false`，这部分接线本教程前面章节已经写过好几次同样的模式，不再重复代码。
+
+> **一个明确不做的真实功能**：DOOM3 还有一个 `CheckWaterJump()`/`WaterJumpMove()`（`Physics_Player.cpp:1213-1249`）——朝着齐腰深水域的墙壁方向游过去、面前一点点距离内墙面以上是空气、墙面以下还是实心墙，就会自动判定"这是从水里爬上岸的边缘"，给一个固定的抛物线速度（`200*viewForward - 350*gravityNormal`）把角色甩到岸上，2 秒内不受正常游泳控制。这本质是一个只服务于"贴着水池边缘手动往上爬"这一个具体场景的特判，判定逻辑要连续探测墙面两个高度上的实体方块与空气交界，跟本教程 2.5 节"水体是一整个 Area3D"的简化模型不兼容（没有"沿墙面探测"的几何信息可用）。这不是漏看了源码，是明确评估过之后跳过的——大多数关卡设计能用一段简单的坡道或梯子达到同样的"离开水域"效果，这个特判本身也更像是 id Software 给某几个具体场景手工调的边缘情况，不是"通用游泳系统"必须有的一环。如果你的关卡确实需要贴墙起跳出水，参考上面给出的行数自己实现思路是现成的。
 
 ### 2.6 爬梯
 
@@ -504,6 +541,21 @@ private void ApplyStepUp(Vector3 horizontalMotion, float dt)
 
 在 `_PhysicsProcess` 里 `MoveAndSlide()` **之前**、算完地面加速度之后调用 `ApplyStepUp(horizontalVelocity, dt);`——三步走完之后，只有真正遇到台阶时角色才会被垫高并贴回台阶表面，平地上完全不会触发，也不会凭空往上飘。注意 `ApplyStepUp` 里读写的都是 `Velocity`（`CharacterBody3D` 自带的那个属性），传进来的 `horizontalVelocity` 参数只是用来做碰撞测试用的一份拷贝，函数末尾清空的是真正驱动 `MoveAndSlide()` 的那个 `Velocity`。
 
+> **`ApplyStepUp` 只做了一半：上台阶，没做下台阶**——回头看 `SlideMove()` 完整的函数签名 `SlideMove( bool gravity, bool stepUp, bool stepDown, bool push )`，`WalkMove()` 调用它时 `stepUp`/`stepDown` 两个参数都传了 `true`（244 行附近）。`stepDown` 对应的是 `SlideMove()` 末尾单独的一段代码（405-415 行）：贴地状态下，水平移动结束之后，**总是**再往下探 `maxStepHeight` 距离，只要探到了地面就直接把角色贴过去。这解决的是和"上台阶"对称的另一个问题：走下楼梯、或者沿着一个比较陡但还没陡到 `MIN_WALK_NORMAL` 之外的下坡走的时候，角色的水平速度会让它在每一级台阶的边缘飞出去一小段抛物线，再落到下一级——这就是很多简陋移动实现里"下楼梯一顿一顿地往下跳"的来源，跟 2.7 节开头说的"上楼梯抖动"其实是同一个问题在下坡方向的镜像。
+>
+> `ApplyStepUp` 里手写的三步测试（试走、垫高再试走、贴回台阶高度）完全没有覆盖这个方向——它只在"水平方向被挡住、垫高之后能走通"时触发，正常走下坡根本不会被挡住，自然不会进这段逻辑。这个问题不需要照抄 DOOM3 的 `stepDown` 探测再手写一遍：Godot 的 `CharacterBody3D` 本来就有一个功能上对应的内置机制——`FloorSnapLength`，作用完全就是"贴地状态下，每次移动后允许角色贴着地面向下吸附的最大距离"，本质就是 `stepDown` 那段代码在引擎层面的等价实现。问题在于**这个属性不configure就等于没有**（不同 Godot 版本的默认值不完全一致，不能假设默认值刚好够用），本教程至今没有一处显式设置过它，相当于下坡台阶步进这半边功能一直是"看运气"：
+>
+> ```csharp
+> // PlayerController.cs 的 _Ready() 里追加，和 2.2 节的 FloorMaxAngle 放在一起显式配置
+> public override void _Ready()
+> {
+>     // ...原有初始化...
+>     FloorSnapLength = StepHeight;   // 至少要不小于 StepHeight，才能跟 ApplyStepUp 的上台阶幅度对称
+> }
+> ```
+>
+> 这里 `FloorSnapLength` 放在 `_Ready()` 而不是每帧动态改，是因为它和 `StepHeight` 应该始终保持一致——如果你的关卡有些区域台阶特别高，与其动态调这个值，不如给那些区域单独放一个"楼梯"专用的 `StepHeight` 更大的变体角色设置，两者不该在运行时频繁切换（`FloorSnapLength` 变化太频繁会让贴地判定本身变得不稳定）。
+
 ### 2.8 跳跃：一个大家都以为很简单、其实藏了好几个坑的动作
 
 > 前面 2.1、2.2 节里，跳跃只用了一行代码搪塞过去：`velocity.Y = JumpVelocity`。跟 2.4/2.5/2.6 节一样的剧本——先给一个能跑的最简版本让你能看到效果，欠的账现在还。直接读 `Physics_Player.cpp::CheckJump()`（1174-1206 行）和它在 `WalkMove()`（644-669 行）里的调用点，会发现这一行代码背后至少漏了四件事。
@@ -603,7 +655,8 @@ public override void _PhysicsProcess(double delta)
 
     Vector2 inputDir = Input.GetVector("move_left", "move_right", "move_forward", "move_back");
     Vector3 wishDir = (Transform.Basis * new Vector3(inputDir.X, 0, inputDir.Y)).Normalized();
-    float wishSpeed = Input.IsActionPressed("sprint") ? RunSpeed : WalkSpeed;
+    // *SpeedModifier 是 2.2 节留的增益系统接口，6.3 节会说明它什么时候真正被改
+    float wishSpeed = (Input.IsActionPressed("sprint") ? RunSpeed : WalkSpeed) * SpeedModifier;
 
     Vector3 horizontalVelocity = new Vector3(velocity.X, 0, velocity.Z);
     bool useAirMove = !IsOnFloor() || justJumped;
@@ -680,7 +733,7 @@ public void ApplyLaunch(Vector3 velocity)
 
 `_isGrounded` 是你自己在 `_PhysicsProcess` 里缓存的"这一帧是不是在地面"的字段（2.2-2.8 节的判断逻辑都可以统一改成读这个字段，而不是每处都单独调用一次 `IsOnFloor()`）。
 
-**第二层：摔得够狠，短时间内不让再跳**
+**第二层：摔得够狠，标记一次硬着陆**
 
 ```cpp
 // 如果上一帧没有地面接触
@@ -693,7 +746,13 @@ if ( !hadGroundContacts ) {
 }
 ```
 
-刚落地（上一帧不是贴地、这一帧是）那一刻，如果下落速度超过阈值，标记 `PMF_TIME_LAND`，250 毫秒内不能再跳——这是**硬着陆的缓冲**，防止从高处摔下来的瞬间还能立刻弹起来，视觉/手感上会显得很假。注意这条**只在摔得够狠的时候才触发**，顺着缓坡走下来、或者小台阶落地，不会被误伤。
+刚落地（上一帧不是贴地、这一帧是）那一刻，如果下落速度超过阈值，标记 `PMF_TIME_LAND`，`movementTime` 记 250 毫秒。
+
+> **这里要纠正上一版一个想当然的说法**：上一版写的是"250 毫秒内不能再跳"，理由是这个标志位注释写着"movementTime is time before rejump"。但只把 `CheckGround()` 读完是不够的——把 `PMF_TIME_LAND`/`current.movementTime` 在整个 `Physics_Player.cpp` 里的每一处用到的地方都搜出来读一遍，会发现一个反直觉的结果：`CheckJump()` 自己从头到尾都**没有**检查这个标志位或 `current.movementTime`，`movementTime` 真正被检查的地方只有三处——`CheckLadder()` 开头（贴地硬着陆的短暂时间内不允许再抓梯子）、`CheckWaterJump()` 开头（同理，不允许立刻再触发水跳）、以及 `SetKnockBack()` 开头（不让一次新的击退打断还没结束的上一次击退计时）。也就是说，**真实的 DOOM3 里，哪怕你从很高的地方摔下来触发了"硬着陆"动画和摔落伤害，落地那一刻依然可以立刻再跳一次，没有任何强制的跳跃冷却**——那句注释描述的是设计意图，但实际代码从来没有把它接到 `CheckJump()` 上，是一个"名不副实"的标志位命名。
+>
+> 下面 `LandRecoveryTimer`/`CanJump` 这套"硬着陆之后短时间不能跳"的机制，因此**不能再算是"完全参考 DOOM3"**——它是本教程主动追加的手感强化，跟 2.8 节结尾提到的二段跳是同一类东西：DOOM3 本身没有，但很多现代动作类游戏（尤其强调"落地要有份量感"的第三人称/平台跳跃类）会加这类"硬着陆恢复窗口"，用来让摔落的冲击感在操作上也有反馈，不只是视觉上的镜头下沉（3.3 节）。这不是缺陷——是"照抄 DOOM3 的字面行为"和"做一个手感扎实的现代商业级动作系统"之间一个明确的分岔口，本教程选择保留这个强化，只是要诚实地说清楚它的来源不是源码，而是设计判断。如果你想要跟 DOOM3 逐帧一致的行为，把下面 `CanJump` 这个限制去掉、`Input.IsActionJustPressed("jump") && CanJump` 改回不带 `CanJump` 即可，`LandRecoveryTimer` 这套字段可以整体删掉。
+>
+> 注意 `PMF_TIME_LAND` 虽然不管跳跃，但**不是没用**——它驱动的是 3.3 节 `landChange`/`landTime` 那套摄像机镜头下沉效果，这部分本教程的 `TrackFallImpact`/`UpdateLandingDip` 已经完全参考、没有这个"想当然"的问题。
 
 Godot 版本，两层写法可以一起放进角色控制器：
 
@@ -775,7 +834,73 @@ public partial class LaunchPad : Area3D
 
 **连续跳跃/弹板链**为什么能直接成立，不需要额外处理：`ApplyLaunch` 走的是 `Area3D` 触发，跟落地缓冲计时、地面判定完全是两条独立的路径——角色被弹起、还没落地就飞进下一个弹板的触发区域，第二次 `ApplyLaunch` 照样会执行，不会被"上一次落地还没缓冲完"卡住（因为角色压根还没落地，`_landRecoveryTimer` 根本没被触发过）。真正会限制连续弹跳手感的，只有 `Cooldown` 这一个参数——调小一点，弹板之间挨得近也能连续弹起来。
 
-到这里，第 2 章的移动状态机已经完整覆盖了 DOOM 3 `idPhysics_Player` 的全部移动模式（走/跑/蹲/跳跃/弹飞/空中/游泳/爬梯/台阶步进），是时候进入视角部分了。
+**受击顶退：玩家挨打时完全没有物理反馈，这在商业级 FPS 里说不过去**——回头看第 4/5 章会发现一件事：子弹/爆炸命中 `RigidBody3D` 会施加物理冲量把箱子推开，但命中玩家自己时，`TakeDamage` 只扣血，玩家的 `Velocity` 完全不受影响，站在原地一动不动地硬吃火箭弹。翻 `idPlayer::Damage()`（`Player.cpp:8456-8488`）会发现真实 DOOM3 完全不是这样：
+
+```cpp
+// 决定击退
+int knockback = 0;
+damageDef->dict.GetInt( "knockback", "20", knockback );
+
+if ( knockback != 0 && !fl.noknockback ) {
+    idVec3 kick = dir;
+    kick.Normalize();
+    kick *= g_knockback.GetFloat() * knockback * attackerPushScale / 200.0f;
+    physicsObj.SetLinearVelocity( physicsObj.GetLinearVelocity() + kick );
+
+    // 设置计时器，让玩家没法立刻把这段位移完全抵消掉
+    physicsObj.SetKnockBack( idMath::ClampInt( 50, 200, knockback * 2 ) );
+}
+```
+
+每次伤害定义（`damageDef`）都带一个 `knockback` 数值（默认 20），换算成速度叠加到玩家当前速度上——注意是**叠加**（`+= kick`），不是覆盖，这跟 2.8 节起跳的 `velocity.Y += JumpVelocity` 是同一个原则。真正有意思的是紧跟着的 `SetKnockBack()`：它把 `PMF_TIME_KNOCKBACK` 标志位和一小段 `movementTime`（50-200 毫秒，随击退力度变化）写进玩家状态，这段窗口内 `WalkMove()` 会做两件跟平时不一样的事（回看 2.2 节引用过的这段源码）：
+
+```cpp
+if ( ( groundMaterial && groundMaterial->GetSurfaceFlags() & SURF_SLICK ) || current.movementFlags & PMF_TIME_KNOCKBACK ) {
+    accelerate = PM_AIRACCELERATE;   // 击退窗口内，就算贴地，加速度也降到空中那一档
+}
+...
+if ( ... || current.movementFlags & PMF_TIME_KNOCKBACK ) {
+    current.velocity += gravityVector * frametime;   // 击退窗口内，就算贴地，也照样叠加重力
+}
+```
+
+这两行才是"击退感"真正的来源：不是单纯给一个速度就完了，而是在这段窗口内，玩家**暂时失去了地面移动那种"随时能用满额加速度把自己刹停/转向"的抓地力**——加速度被临时降到空中那一档（本来就比地面弱十倍，2.3 节讲过），且哪怕人还站在地上，也会像在空中一样持续被重力往下拽一点。效果是挨了一下之后，这一小段时间里角色会明显地被打得一个趔趄、身不由己地往后出去一截，而不是"瞬间贴住地面纹丝不动"或者"被打飞出去失控翻滚"两个极端。
+
+Godot 版本，复用 2.2 节已经写好的 `Accelerate`/`AirAccelerate` 两档：
+
+```csharp
+// PlayerController.cs 追加
+private float _knockbackTimer;
+private bool InKnockback => _knockbackTimer > 0f;
+
+// impulse 是要叠加的速度，不是要覆盖的速度；lockoutSeconds 对应源码 50-200ms 那个窗口，
+// 击退越重传的值应该越大——具体怎么从伤害量换算成这两个参数，留给 4/8 章的伤害系统决定，
+// 这里只负责"收到一次击退请求之后，物理层该怎么响应"
+public void ApplyKnockback(Vector3 impulse, float lockoutSeconds)
+{
+    Velocity += impulse;
+    _knockbackTimer = Mathf.Max(_knockbackTimer, lockoutSeconds);
+}
+```
+
+在 `_PhysicsProcess` 里，`UpdateGround(dt)` 之后加一行 `_knockbackTimer = Mathf.Max(0f, _knockbackTimer - dt);`；地面分支选加速度系数的地方（2.8 节"完整版" `_PhysicsProcess` 里 `useAirMove` 之外的 `else` 分支）额外接入 `InKnockback`：
+
+```csharp
+if (useAirMove || InKnockback)
+{
+    horizontalVelocity = ApplyAcceleration(horizontalVelocity, wishDir, wishSpeed, AirAccelerate, dt);
+    if (InKnockback && IsOnFloor()) velocity.Y -= Gravity * dt;   // 击退窗口内，贴地也照样叠加一部分重力
+}
+else
+{
+    horizontalVelocity = ApplyFriction(horizontalVelocity, dt);
+    horizontalVelocity = ApplyAcceleration(horizontalVelocity, wishDir, wishSpeed, Accelerate, dt);
+}
+```
+
+`ApplyKnockback` 本身不知道、也不需要知道调用者是谁——4/8 章真正接线的时候，玩家的 `TakeDamage` 只需要在扣血之外，按命中方向和伤害类型算一个 `impulse`（方向来自攻击者到玩家的连线或者子弹飞行方向，大小可以参考真实源码的比例：`g_knockback`（默认 1000）乘以 `damageDef` 的 `knockback` 值（默认 20）除以 200——换算成米制单位、按 2.2 节的量纲比例缩小，一次普通命中大概是 2-3 m/s 量级的一次性速度叠加，不是把人打飞出去几十米那种夸张力度）再调用 `player.ApplyKnockback(impulse, lockoutSeconds)` 即可，这也是 6.3 节马上要做的事——近战命中玩家自己（比如联机对战）时就是照这个方式接的。
+
+到这里，第 2 章的移动状态机已经完整覆盖了 DOOM 3 `idPhysics_Player` 的全部移动模式（走/跑/蹲/跳跃/弹飞/受击顶退/空中/游泳/爬梯/台阶步进），是时候进入视角部分了。
 
 ---
 
@@ -826,6 +951,61 @@ public override void _UnhandledInput(InputEvent @event)
 `RotateY()` 是 `Node3D` 自带的方法，直接绕角色自身的上轴转动，这也是为什么第 2 节的 `Transform.Basis * inputDir` 现在真的有意义了：角色转向之后，"相对角色的前方"这个概念也跟着转了，`wishDir` 自动就是"当前面朝的方向"，不需要额外处理。
 
 `Input.MouseMode = Input.MouseModeEnum.Captured` 这一行很重要，没有它鼠标移动只会移动屏幕上的光标，不会转视角。
+
+**这一节现在的 `MouseSensitivity` 是"能用"，但离一个商业级 FPS 该给玩家的鼠标设置差得远**——去读 DOOM3 真正处理鼠标输入的地方（不在 `d3xp/` 里，是更底层的 `framework/UsercmdGen.cpp`，`idUsercmdGenLocal::MouseMove()`，第 440-485 行附近）会发现几件事，值得挨个对照：
+
+1. **灵敏度是纯线性缩放，没有非线性加速曲线**——`mx = mouseDx * sensitivity.GetFloat()`，`viewangles[YAW] -= m_yaw.GetFloat() * mx`，就是原始像素位移乘几个常数，仅此而已。这不是 DOOM3 偷懒，是**FPS 品类的行业共识**：竞技/精确瞄准场景几乎都拒绝非线性的"鼠标加速度"（移动越快每像素转的角度越多），因为它会破坏"肌肉记忆里同样的手部位移=同样的转向角度"这个前提，这也是为什么几乎所有 Windows 系统自带的"提高指针精确度"（系统级鼠标加速）选项，PC 端 FPS 都会建议玩家关掉。本节现有的 `MouseSensitivity` 就是纯线性缩放，这一点已经是对的，不用改——但也正因为这是一个真实存在、容易被问到的设计决策，这里明确写出来，比让读者自己猜"是不是漏做了"要好。
+2. **有一个可选的原始位移平滑**——`m_smooth` cvar（1-8，默认 1），语义是"把最近 N 次鼠标事件的位移取平均再用"（`history[historyCounter&7]` 是个 8 帧环形缓冲）。默认值 1 等于"不平滑，直接用当前这一次"；调大能缓解低端鼠标或不稳定轮询率带来的转向抖动，代价是引入一点点输入延迟。这是一个**只处理"设备噪声"、不改变整体灵敏度曲线**的功能，跟第 1 点的"不要加速度曲线"并不矛盾。
+3. **有独立的反转 Y 轴开关**——`in_mouseInvertLook`，`viewangles[PITCH] += m_pitch.GetFloat() * (in_mouseInvertLook.GetBool() ? -my : my)`。反转 Y 轴不是一个可有可无的偏好选项，是相当一部分玩家（尤其从飞行模拟/操纵杆时代过来的老玩家）离不开的可访问性设置，商业游戏基本没有不给这个开关的。
+
+本教程目前完全没有第 2、3 点，只补第 3 点（性价比最高，实现成本几乎为零）和一个简化版的第 2 点：
+
+```csharp
+// PlayerController.cs 追加
+[Export] public bool InvertMouseY = false;
+[Export(PropertyHint.Range, "1,8,1")] public int MouseSmoothingSamples = 1;   // 对应 m_smooth，默认 1 = 不平滑
+
+private readonly Vector2[] _mouseHistory = new Vector2[8];
+private int _mouseHistoryIndex;
+
+public override void _UnhandledInput(InputEvent @event)
+{
+    if (@event is InputEventMouseMotion mouseMotion && Input.MouseMode == Input.MouseModeEnum.Captured)
+    {
+        Vector2 rawDelta = mouseMotion.Relative;
+
+        // m_smooth 的简化版：把最近 MouseSmoothingSamples 次的原始位移取平均。
+        // 默认 MouseSmoothingSamples=1 时，下面这段等价于直接用 rawDelta，不引入任何延迟
+        _mouseHistory[_mouseHistoryIndex % _mouseHistory.Length] = rawDelta;
+        _mouseHistoryIndex++;
+        int n = Mathf.Min(MouseSmoothingSamples, _mouseHistory.Length);
+        Vector2 smoothedDelta = Vector2.Zero;
+        for (int i = 0; i < n; i++)
+        {
+            smoothedDelta += _mouseHistory[(_mouseHistoryIndex - 1 - i + _mouseHistory.Length) % _mouseHistory.Length];
+        }
+        smoothedDelta /= n;
+
+        RotateY(-smoothedDelta.X * MouseSensitivity);
+
+        float pitchDelta = smoothedDelta.Y * MouseSensitivity * (InvertMouseY ? 1f : -1f);
+        _pitch += pitchDelta;
+        _pitch = Mathf.Clamp(_pitch, Mathf.DegToRad(-85), Mathf.DegToRad(85));
+        _head.Rotation = new Vector3(_pitch, 0, 0);
+    }
+
+    if (@event.IsActionPressed("ui_cancel"))
+    {
+        Input.MouseMode = Input.MouseMode == Input.MouseModeEnum.Captured
+            ? Input.MouseModeEnum.Visible
+            : Input.MouseModeEnum.Captured;
+    }
+}
+```
+
+> **一个没法在这里彻底回答的开放问题**：DOOM3 能放心用"纯线性缩放"而不做任何操作系统级修正，是因为它通过 DirectInput/裸设备读数（`sys/win32/win_input.cpp`）拿到的是不经 Windows 指针加速度处理的原始位移。Godot 的 `InputEventMouseMotion.Relative` 在鼠标被 `Captured` 模式锁定时是不是同样绕开了操作系统的指针加速度、拿到的是真正的原始设备位移——这取决于具体平台和 Godot 版本的 `DisplayServer` 实现，本教程没有能力从这份 DOOM3 源码里替你确认 Godot 引擎内部这一层的行为。如果你实测发现灵敏度在不同鼠标 DPI/系统指针速度设置下手感不一致，这就是要去查的方向，而不是先怀疑上面这段代码写错了。
+>
+> 另外，上面 `_pitch` 的俯仰角限制沿用了原来的 ±85°，而 DOOM3 的默认值 `pm_maxviewpitch`/`pm_minviewpitch` 是 ±89°（`SysCvar.cpp:242-243`）——这个数字本节从没声称是照抄源码，±85° 单纯是一个更保守、不容易让摄像机转到接近垂直时出现万向节相关观感问题的常见取值，如果想要跟源码数值对齐，改成 89 即可。
 
 ### 3.2 视角晃动（View Bob）：完整移植 DOOM 3 的 `BobCycle()`
 
@@ -939,7 +1119,9 @@ private bool IsCrouchingNow()
 - **蹲下时点头/摇摆幅度 ×3**（`crouchMultiplier`）——这个细节容易被忽略，但是它是"蹲下移动时晃动感明显更强"这个手感的直接来源。
 - **台阶步进平滑**（`_stepUpDelta`/`_stepUpElapsed`，见下面 `ApplyBobToCamera` 里的处理）——对应 `BobCycle()` 里 `HasSteppedUp()` 那一段，源码用 `STEPUP_TIME` 把垫高的高度差线性衰减掉；这一步依赖 2.7 节 `ApplyStepUp` 在真正垫高时把高度差和计时器写进这两个字段，两节代码要配合着看。
 
-> 这里要老实说明一处没标注过的数值出入：上面的 `BobUpAmount`/`BobPitchAmount`/`BobRollAmount` 分别是 0.01/0.004/0.004，而 DOOM3 原版对应的 `pm_bobup`/`pm_bobpitch`/`pm_bobroll`（`SysCvar.cpp:258-262`）分别是 0.005/0.002/0.002，正好是原版的两倍。这不是换算误差——前面 2.2 节的换算是"量纲换算"（英寸转米），这几个 bob 幅度系数跟 2.2 节里 `Accelerate`/`Friction` 那几个无量纲比例系数一样，理论上不需要跟着单位换算改变。这里是特意调大了一倍，因为直接抄原版数值在 Godot 的这套摄像机/单位设置下摇摆几乎感觉不到，纯粹是为了可感知的手感调的，不是"完全参考"的一部分——如果你想要跟原版数值上更接近的手感，把这三个数各减半即可。
+> 这里要老实说明一处没标注过的数值出入：上面的 `BobUpAmount`/`BobPitchAmount`/`BobRollAmount` 分别是 0.01/0.004/0.004，而 DOOM3 原版对应的 `pm_bobup`/`pm_bobpitch`/`pm_bobroll`（`SysCvar.cpp:258-262`）分别是 0.005/0.002/0.002，正好是原版的两倍。这不是换算误差——前面 2.2 节的换算是"量纲换算"（英寸转米），这几个 bob 幅度系数跟 2.2 节里 `Accelerate`/`Friction` 那几个无量纲比例系数一样，理论上不需要跟着单位换算改变。这里是特意调大了一倍，因为直接抄原版数值在 Godot 的这套摄像机/单位设置下摇摆几乎感觉不到，纯粹是为了可感知的手感调的，不是"完全参考"的一部分——如果你想要跟原版数值上更接近的手感，把这三个数各减半即可。**补一句之前漏说的**：上面代码里 `RunPitchAmount`/`RunRollAmount`（0.004/0.01）同样是 `pm_runpitch`/`pm_runroll`（`SysCvar.cpp:258-259`，0.002/0.005）的整整两倍，跟上面三个是同一个"调大一倍换取可感知手感"的决定，只是上一版写这条说明的时候只列了前三个受影响的常量，漏提了这两个——五个常量全部统一按同样的比例放大，不是只放大了一部分。
+>
+> 还有一处这一节代码没处理、但真实源码有处理的边界情况，诚实地留在这里当一个开放问题：`BobCycle()` 判断"要不要把 `bobCycle` 清零重新开始"的条件是 `(!usercmd.forwardmove && !usercmd.rightmove) || (xyspeed <= MIN_BOB_SPEED)`——**没有输入**和**速度太低**是两个独立的、用"或"连起来的条件，任意一个满足就清零。上面 `UpdateViewBob` 只判断了后半句（`xySpeed <= MinBobSpeed`），没有单独判断"是否完全没有移动输入"。两者通常等价（松开按键之后摩擦力很快会把速度降到阈值以下），唯一会分道扬镳的场景是角色完全没有输入、但因为某种原因还在高速滑动——比如站在一个只受重力驱动持续下滑的陡坡上，或者被 2.9 节的击退顶飞之后短暂失控滑行。这两种场景下，真实 DOOM3 会立刻把视角 bob 归零（因为没有主动输入），而上面这版代码会因为速度仍然高于 `MinBobSpeed` 继续播放行走摇摆动画——玩家明明没在自己走路，镜头却还在做走路的周期摇摆，观感上会有点奇怪。这本教程目前没有可靠的斜坡材质/击退滑行系统去精确复现这个边界，所以先诚实地记录这个开放问题，而不是假装处理好了。
 
 ### 3.3 落地冲击：跌落速度越快、镜头下沉越明显
 
@@ -1009,6 +1191,8 @@ private void UpdateLandingDip()
 在 `_PhysicsProcess` 里，`TrackFallImpact()` 放在重力/地面判断附近每帧调用，`UpdateLandingDip()` 在 `UpdateViewBob(dt)` 之前调用（因为 `ApplyBobToCamera()` 里要用到刚算好的 `_landingDipOffset`）。
 
 现在运行游戏：走路应该能看到清晰的左右交替摇摆和点头，蹲着移动摇摆明显更夸张，从高处跳下落地那一刻镜头应该有一个先快速下沉、再缓慢回弹的冲击感——这三层效果（周期 bob、速度倾斜、落地冲击）叠加在一起，就是 DOOM 3 玩家视角"扎实"这个直觉印象背后的全部数学。
+
+> **一个明确划在本章范围之外的真实效果**：`idPlayer::GetViewPos()`（`Player.cpp:8950-8973`）算最终视角角度时，除了 `viewAngles + viewBobAngles`（本章处理的这套），还加了一项 `playerView.AngleOffset()`——这是另一个完全独立的系统（`PlayerView.cpp`），驱动的是"挨打时镜头猛地歪一下""爆炸在附近时画面震动"这类**跟战斗反馈绑定、而不是跟移动绑定**的镜头效果。本章的标题是"让移动看起来对"，`viewBob`/`landChange` 这一套都是移动/物理状态驱动的相机效果；`AngleOffset()` 那一套是伤害/战斗事件驱动的，性质上更接近第 4/8 章要处理的"打击反馈"，不属于这一章要完全参考的范围，本教程目前也没有在别处实现它——如果之后要做，应该按"独立于 view bob 的第三个角度偏移源，同样在相机最终角度那一步简单相加"的思路去接，跟 `_landingDipOffset` 是同一种叠加模式。
 
 **先把这一步的手感调到自己满意再往下走**——移动和视角是玩家花在游戏里时间最长、最容易被感知到细微差别的部分，值得现在就花时间打磨。
 
@@ -1121,14 +1305,85 @@ private void SpawnImpactEffect(Vector3 position, Vector3 normal)
 
 从现在开始的所有射线/物理查询，都用碰撞层来控制"谁能打谁"，不再用手动 `Exclude` 列表——这是本教程唯一一处需要你现在就去项目设置里点几下鼠标的地方，做好之后后面章节可以完全不用再操心这个问题。
 
+### 4.3.1 霰弹枪：一次开火打出一圈散射（可选）
+
+一个尖锐的问题：DOOM 3 里有没有"一枪打出多条弹道"的武器？**有**——散弹枪不是靠"打一发大威力子弹"实现的，而是货真价实地一次开火发射多颗弹丸，每颗弹丸独立判定命中、独立算伤害。这个逻辑不在 `Weapon.cpp` 里单独写了一份"散弹枪专用代码"，而是整个引擎的开火函数本来就是**多发**的：`idWeapon::Event_LaunchProjectiles(int num_projectiles, float spread, ...)`（`Weapon.cpp:3520`）从来都接受一个"这次开火打几发"的参数，手枪/步枪只是把它传成 `1`，散弹枪传成一个更大的数字（比如 8~13 发，具体数值在 `.def` 里配置），本质上是同一套函数在处理，不是两套独立的开火路径——这跟本教程第 5.3 节反复强调的"武器差异是数据配置的差异，不是代码分支的差异"是同一件事，只是这次体现在开火函数的参数上，而不是 `IsHitscan` 这样的开关上。
+
+值得照抄的不是"多发"这个想法本身（这个显而易见），而是**这些弹丸具体怎么在锥形范围内撒开**。`Event_LaunchProjectiles` 里每一发弹丸的方向是这样算的（`Weapon.cpp:3616-3621`）：
+
+```cpp
+float spreadRad = DEG2RAD( spread );
+for ( i = 0; i < num_projectiles; i++ ) {
+    ang = idMath::Sin( spreadRad * gameLocal.random.RandomFloat() );
+    spin = (float)DEG2RAD( 360.0f ) * gameLocal.random.RandomFloat();
+    dir = muzzleAxis[0] + muzzleAxis[2] * ( ang * idMath::Sin( spin ) ) - muzzleAxis[1] * ( ang * idMath::Cos( spin ) );
+    dir.Normalize();
+}
+```
+
+这里的技巧在于：不是简单地把"水平散射"和"垂直散射"各自加一个独立的随机偏移量（那样撒出来的弹着点在准星周围会是一个方形/菱形分布，边角比中心密度还高，肉眼能看出不自然）。真实做法是先随机一个**半径**（`ang`，由随机数过一遍 `sin` 得到，偏向集中在锥心附近）、再随机一个**旋转角**（`spin`，覆盖整个 360°），用极坐标的方式在一个圆锥内撒点，这样撒出来的弹着点才是肉眼看起来自然的"圆形散布，中心密、边缘疏"。这个公式可以照抄进 Godot：
+
+```csharp
+// Weapon.cs 追加字段
+[Export] public int PelletCount = 1;       // 大于 1 就是霰弹枪式散射；手枪/步枪保持 1，行为跟 4.3 节完全一样
+[Export] public float SpreadDegrees = 0f;  // 单发的最大散射半角（锥形范围的顶角一半），单位是度
+
+private void Fire()   // 这一版替换 4.3 节的 Fire()——到第 5.3 节接入投射物武器时，这个函数会被改名成 FireHitscan()
+{
+    var spaceState = GetWorld3D().DirectSpaceState;
+    Vector3 forward = -Camera.GlobalTransform.Basis.Z;
+    Vector3 right = Camera.GlobalTransform.Basis.X;
+    Vector3 up = Camera.GlobalTransform.Basis.Y;
+
+    int pellets = Mathf.Max(1, PelletCount);
+    float spreadRad = Mathf.DegToRad(SpreadDegrees);
+
+    for (int i = 0; i < pellets; i++)
+    {
+        Vector3 dir = forward;
+        if (SpreadDegrees > 0f)
+        {
+            // 照抄 Event_LaunchProjectiles()（Weapon.cpp:3616-3621）的散射算法：
+            // 极坐标撒点，不是给水平/垂直分别加独立随机偏移——后者会撒成方形，不自然
+            float ang = Mathf.Sin(spreadRad * GD.Randf());        // 随机半径，偏向锥心附近
+            float spin = Mathf.Tau * GD.Randf();                  // 随机旋转角，覆盖整个圆周
+            dir = (forward + right * (ang * Mathf.Sin(spin)) - up * (ang * Mathf.Cos(spin))).Normalized();
+        }
+
+        Vector3 from = Camera.GlobalPosition;
+        Vector3 to = from + dir * Range;
+
+        var query = PhysicsRayQueryParameters3D.Create(from, to);
+        query.CollisionMask = 0b0101;   // 同 4.3 节：World + Enemy
+
+        var result = spaceState.IntersectRay(query);
+        if (result.Count > 0)
+        {
+            Node3D hitObject = (Node3D)result["collider"];
+            if (hitObject.HasMethod("TakeDamage"))
+            {
+                hitObject.Call("TakeDamage", Damage);   // 每颗弹丸独立算一次伤害，不是总伤害除以弹丸数再统一打一下
+            }
+            SpawnImpactEffect((Vector3)result["position"], (Vector3)result["normal"]);
+        }
+    }
+}
+```
+
+注意 `Damage` 这个字段现在是"每一颗弹丸的伤害"，不是"这次开火的总伤害"——如果散弹枪一枪打 10 发、每发 4 点，总伤害上限是 40（近距离全部命中的情况），这跟真实 DOOM 3 的散弹枪调数值的方式一致：策划调的是单发伤害和弹丸数量两个独立数字，不是先定一个"总伤害"再除。
+
+**这一节不打算做的事**：真实源码的 `num_projectiles`/`spread` 传参路径最终是从每把武器各自的 `.def` 文件读出来的（脚本里调用 `LaunchProjectiles(numProjectiles, spread, ...)` 时传的是 `.def` 里配置好的常量），意味着散射角度、弹丸数量这些都是纯数据、不需要碰代码——上面 `[Export]` 字段已经做到了同样的效果，不需要再额外抽一层配置文件。另外真实弹丸沿用的仍然是"生成一个 `idProjectile` 实体"的路径（只是 `net_instanthit` 标记为真时用于网络同步优化），跟本教程"霰弹枪也是若干条射线"的实现在概念上是一回事——**打点的方式**（生成实体 vs. 打射线）不同，但**散射的数学**是完全一样的，这也是这一节真正想让你照抄的部分。
+
 ### 4.4 命中部位缩放（可选）：爆头为什么伤害更高
 
 DOOM 3 的伤害系统里，命中扫描/近战都会带上"打中了哪个部位"的信息，配合一张按部位缩放的表（比如打中头部伤害 ×3），这是完整实现的一部分，这里说明**为什么这一节标了"可选"、以及要做到什么程度才算数**：这个效果依赖被打中的角色**有细分的碰撞体积**（每个身体部位是独立的碰撞形状，或者角色骨骼上挂了带命名的物理骨骼），而本教程第 8 章的怪物目前只有一个整体的 `CapsuleShape3D`——射线打中它，`result["collider"]` 永远是同一个节点，物理查询层面根本拿不到"打中的是头还是脚"这个信息，不是漏写了判断逻辑，是碰撞体积的精细度还不支持。
 
+> **"爆头"只是举的一个例子，不是唯一的一档**：读一下真实的 `idActor::SetupDamageGroups()`（`Actor.cpp:2463`）会发现，DOOM 3 的部位倍率表根本不是"头/身体"两档写死的枚举，而是从怪物 `.def` 里读两类前缀键动态建出来的：`damage_zone <组名> <骨骼匹配规则>` 把一批骨骼归到一个命名分组（可以是 `head`，也可以是 `larm`/`rarm`/`legs` 随便取名字），再用 `damage_scale <组名> <倍率>` 给每个分组单独定一个倍率，`idActor::GetDamageForLocation()`（`Actor.cpp:2512`）按命中的关节号查这张表——理论上一个怪物可以有任意多个命中区域，各自倍率互不相同（打头 ×3、打腿 ×0.5 之类都是同一套机制的不同配置），不是只有"头"这一个特殊分支被硬编码优待。下面第一条路径的 `Area3D` 方案已经是按这个思路设计的（可以摆不止一个区域），只是这里明确点破一下，避免以为"命中部位"这个概念天然只有爆头一档。
+
 想要这个效果，有两条路：
 
-1. **粗糙但省事**：给怪物加几个手动摆放的小 `Area3D`"命中区域"（一个套在头部位置，判定优先级更高），命中扫描先测试这些区域再测试主碰撞体，命中区域自带一个 `DamageMultiplier` 导出字段。
-2. **精细但需要更多前期工作**：走真正的骨骼命中检测——如果角色用的是带骨骼的模型且已经配置了第 10 章要讲的物理骨骼，Godot 的物理查询命中 `PhysicalBone3D` 时结果里能带出具体命中了哪根骨骼（`result["collider"]` 直接就是那根骨骼对应的物理体），可以按骨骼名字查一张倍率表——这跟 DOOM 3 的原始实现（命中扫描击中演员身上具体某根骨骼，转换成关节句柄，查 `damage_zone`/`damage_scale` 表）是同一个思路，只是要先有骨骼化的角色模型才谈得上做这件事。
+1. **粗糙但省事**：给怪物加几个手动摆放的小 `Area3D`"命中区域"（不止头部一个——可以再摆一个套在四肢/腿部的区域），判定优先级更高，命中扫描先测试这些区域再测试主碰撞体，每个命中区域自带一个独立的 `DamageMultiplier` 导出字段，对应真实源码里一个 `damage_zone` 分组配一个 `damage_scale` 倍率。
+2. **精细但需要更多前期工作**：走真正的骨骼命中检测——如果角色用的是带骨骼的模型且已经配置了第 10 章要讲的物理骨骼，Godot 的物理查询命中 `PhysicalBone3D` 时结果里能带出具体命中了哪根骨骼（`result["collider"]` 直接就是那根骨骼对应的物理体），可以按骨骼名字查一张倍率表（骨骼名 → 分组名 → 倍率，两层查表，对应上面 `damage_zone`/`damage_scale` 两个前缀键各自的作用）——这跟 DOOM 3 的原始实现（命中扫描击中演员身上具体某根骨骼，转换成关节句柄，查 `damage_zone`/`damage_scale` 表）是同一个思路，只是要先有骨骼化的角色模型才谈得上做这件事。
 
 本教程从第 8 章开始一直用单个胶囊体做怪物碰撞体，是为了先把感知/寻路/状态机这些更核心的系统讲清楚，不代表"命中部位缩放不重要、可以永远不做"——如果你的美术资源已经到位（带骨骼的怪物模型），在第 10 章接入物理骨骼之后，回头把上面第二条路径接进 `Fire()`/`Melee()`/怪物近战判定，是完全可行、且直接复用已有射线检测代码的一次扩展，不需要重新设计伤害系统。
 
@@ -1220,6 +1475,8 @@ public partial class Weapon : Node3D
 记得去输入映射里加一个 `reload` 动作（建议绑 R 键）。
 
 `async void TryReload()` 这个写法要特别注意——C# 的 `async`/`await` 在 Godot 里的作用，跟很多现代脚本语言的协程是同一个概念：**方法执行到 `await` 那一行会"暂停"，但不会阻塞游戏的其他部分继续跑**，计时器到点之后再从暂停的地方接着往下执行，就像整个函数只是被按下了暂停键一样。这比你自己维护一个"是否正在装弹"的计时器变量、在 `_Process` 里手动倒计时要直观得多。**这里稍微超前提一句**：这种"看起来像同步代码、实际上跨越了很多帧"的写法，正是第 13 章要讲的架构话题的一个引子——你已经在用它了，只是还没意识到这背后是个值得展开讲的东西。
+
+> `ReserveAmmo` 现在是挂在这把枪自己身上的字段——先这样写是故意的，只有一把武器的时候看不出问题。但一个尖锐的问题是：如果玩家同时带着手枪和步枪，而两者都打 9mm 子弹，捡到的一盒子弹应该同时喂饱两把枪，还是各算各的？真实 DOOM 3 的答案是前者——`idInventory` 用一个按**弹药类型**（不是按武器）索引的储备数组，每把武器的 `.def` 只声明自己用哪种 `ammoType`（`Player.cpp:726` `AmmoIndexForWeaponClass()`，内部读 `decl->dict.GetString("ammoType")`），多把武器共享同一个类型对应的同一份储备。现在只有一把武器，这个区别还显不出来，`ReserveAmmo` 先留在 `Weapon` 上不算错——但等 5.2 节 `WeaponManager` 出现、场上有不止一把武器之后，这个简化会变成一个真实的手感问题（步枪打光了子弹，手枪的储备弹药却毫无变化，两把枪各自为政），5.2.2 节会回头把它收编成共享弹药池。
 
 ### 5.2 多把武器：切换——参照 `idPlayer::Weapon_Combat()` 的"意图/当前状态分离"模型
 
@@ -1416,6 +1673,127 @@ private async void TryReload()
 
 这一步做完之后，`Weapon` 全部的"我现在在干嘛"都只有 `State` 这一个真相来源，不会再出现"状态机说是 Idle，但其实还在装弹"这种两套状态互相打架的情况。
 
+### 5.2.2 收编 5.1 节的弹药：应该按类型共享，不是每把枪一份
+
+5.1 节结尾留了个疑问：`ReserveAmmo` 挂在 `Weapon` 自己身上，只有一把武器时看不出问题，但现在 `WeaponManager` 已经把多把武器管起来了，是时候照真实源码的做法把它收编掉。`idInventory` 管储备弹药的方式（`Player.cpp:674` 起）不是"每把武器一个数字"，而是一个按**弹药类型**索引的共享数组：每把武器的 `.def` 只声明自己用的 `ammoType`（比如 `"bullets"`），`AmmoIndexForWeaponClass()`（`Player.cpp:726`）把这个字符串解析成数组下标，换弹、拾取弹药全部读写同一个下标——手枪和步枪只要都填 `"bullets"`，两者天然共享同一份储备，代码里完全不需要为"这两把枪打同一种子弹"这件事写任何特殊判断，纯粹是数据层面自动生效的结果。
+
+储备弹药池应该放在哪？现在 `WeaponManager` 是所有武器共同的父节点，是天然的"库存"归属地——`Weapon` 自己不该再持有一份独立的储备数字：
+
+```csharp
+// WeaponManager.cs 追加：按弹药类型共享的储备弹药池，对应 idInventory 的共享数组 + ammoType
+private readonly Dictionary<string, int> _reserveAmmo = new()
+{
+    { "bullets", 60 },
+    { "shells", 16 },
+    { "rockets", 6 },
+};   // 弹药类型 -> 储备数量，跟具体哪把枪无关；只要 AmmoType 相同的武器，取的就是同一份储备
+
+public int GetReserveAmmo(string ammoType) => _reserveAmmo.GetValueOrDefault(ammoType, 0);
+
+public void AddReserveAmmo(string ammoType, int amount)
+{
+    _reserveAmmo[ammoType] = GetReserveAmmo(ammoType) + amount;   // 捡弹药补给用这个，本教程还没做拾取系统，先留好接口
+}
+
+// 换弹时从共享储备里"取"一部分，返回实际取到的数量——储备不够就只给这么多，不会取出负数
+public int TakeReserveAmmo(string ammoType, int amount)
+{
+    int have = GetReserveAmmo(ammoType);
+    int taken = Mathf.Min(have, amount);
+    _reserveAmmo[ammoType] = have - taken;
+    return taken;
+}
+```
+
+`Weapon.cs` 这边删掉 `public int ReserveAmmo`，换成一个类型标签和一个指向父节点的引用：
+
+```csharp
+// Weapon.cs —— 删掉 5.1 节的 ReserveAmmo 字段
+[Export] public string AmmoType = "bullets";   // 对应 .def 的 ammoType 键；手枪/步枪都填 "bullets" 就会共享同一份储备
+
+private WeaponManager _manager;
+
+public override void _Ready()
+{
+    CurrentAmmo = ClipSize;
+    _manager = GetParent<WeaponManager>();   // 5.2 节的场景结构里，Weapon 就是 WeaponManager 的直接子节点
+}
+
+public bool HasAnyAmmo => CurrentAmmo > 0 || (_manager != null && _manager.GetReserveAmmo(AmmoType) > 0);   // 5.2.3 节切枪要用
+```
+
+`TryReload()` 改成向 `_manager` 要弹药，不再自己扣自己的字段：
+
+```csharp
+// Weapon.cs —— 用这一版替换 5.2.1 节的 TryReload()
+private async void TryReload()
+{
+    if (State == WeaponState.Reloading || CurrentAmmo >= ClipSize) return;
+    if (_manager.GetReserveAmmo(AmmoType) <= 0) return;
+
+    State = WeaponState.Reloading;
+    GD.Print("装弹中...");
+
+    await ToSignal(GetTree().CreateTimer(ReloadTime), SceneTreeTimer.SignalName.Timeout);
+
+    int needed = ClipSize - CurrentAmmo;
+    int taken = _manager.TakeReserveAmmo(AmmoType, needed);
+    CurrentAmmo += taken;
+
+    if (State == WeaponState.Reloading)
+    {
+        State = WeaponState.Idle;
+    }
+    GD.Print($"装弹完成：{CurrentAmmo}/{_manager.GetReserveAmmo(AmmoType)}");
+}
+```
+
+去 Inspector 里把每把武器的 `AmmoType` 填好：手枪、步枪都填 `"bullets"`，散弹枪填 `"shells"`，5.3 节马上要做的火箭筒填 `"rockets"`——这个字段跟 5.2.3 节的循环切枪、5.3 节的火箭筒弹药消耗都会直接用到，不需要再改一次。
+
+### 5.2.3 滚轮循环切枪：wraparound，并跳过没弹药的武器
+
+数字键 1/2 只能"点名"切到指定武器，很多玩家习惯用滚轮在武器之间循环——DOOM 3 里对应 `idPlayer::NextWeapon()`/`PrevWeapon()`（`Player.cpp:4481`/`4530`），核心是两个细节：**越界要绕回另一端**（从最后一把往后滚，绕回第一把，反过来也一样），以及**跳过打光了弹药的武器**（`inventory.HasAmmo(weap, true, this)` 检查不通过就跳过，继续找下一把，而不是切过去之后发现是把打不响的空枪）。这两点直接搬到 `WeaponManager` 上：
+
+```csharp
+// WeaponManager.cs 追加
+public override void _UnhandledInput(InputEvent @event)
+{
+    if (@event.IsActionPressed("weapon_1")) SelectWeapon(1);
+    if (@event.IsActionPressed("weapon_2")) SelectWeapon(2);
+    if (@event.IsActionPressed("weapon_next")) CycleWeapon(1);
+    if (@event.IsActionPressed("weapon_prev")) CycleWeapon(-1);
+}
+
+// 对应 NextWeapon()/PrevWeapon()：从当前"意图槽位"开始按方向一格格找下一把还有弹药的武器，
+// 越过数组末尾/开头时绕回另一端（wraparound）；转了一整圈回到起点还没找到，就放弃、留在原地
+private void CycleWeapon(int direction)
+{
+    if (_weapons.Count == 0) return;
+
+    int w = _idealSlot;
+    for (int i = 0; i < _weapons.Count; i++)
+    {
+        w += direction;
+        if (w > _weapons.Count) w = 1;    // 越过末尾绕回槽位 1
+        if (w < 1) w = _weapons.Count;    // 越过开头绕回最后一个槽位
+
+        if (w == _idealSlot) break;       // 转了一圈回到起点，没找到别的能用的，放弃
+
+        if (_weapons.TryGetValue(w, out Weapon candidate) && candidate.HasAnyAmmo)
+        {
+            _idealSlot = w;
+            return;
+        }
+    }
+    // 一圈下来没有任何一把武器还有子弹——真实 DOOM3 这时会退回拳头（近战武器，不耗弹药，永远能用）。
+    // 本教程目前没有一把"打不光"的武器可以退，所以这里就地什么都不做，停留在当前武器上，
+    // 不会切到另一把同样没子弹的枪——如果你已经做了近战武器（第 6 章 Melee()），
+    // 可以把它当成永远满足 HasAnyAmmo 的兜底槽位，思路和源码的拳头完全一致
+}
+```
+
+同样记得加 `weapon_next`/`weapon_prev` 输入映射（建议绑鼠标滚轮上下）。
+
 ### 5.3 投射物武器：火箭筒——直接命中和范围伤害是两件独立的事
 
 到现在为止，`Weapon.Fire()` 只有一种打法：一条射线，打中即判定，没有飞行时间。这在手枪/步枪上没问题，但火箭筒、等离子炮这类武器不该是"瞬间命中"——它们需要一个真的在世界里飞行、会被躲开、命中后炸出范围伤害的**投射物实体**。
@@ -1423,6 +1801,8 @@ private async void TryReload()
 这一节要"完全参考"的是 DOOM 3 `neo/d3xp/Projectile.cpp` 里 `idProjectile::Collide()`（约 554-724 行）和 `Explode()` 的设计，核心是一个容易被忽略的点：**直接命中伤害和范围爆炸伤害，是两次独立的判定，不是二选一**。一发火箭打中一个怪物，会先对这个怪物单独算一次"直接命中"伤害，然后**无论有没有命中任何东西**都会引爆，再对爆炸半径内的所有实体算一遍范围伤害——已经吃过直接命中的那个目标要从范围伤害里排除掉，不然会被炸两次。线性衰减的伤害公式也是照抄的，跟 `Game_local.cpp:3897` 附近 `RadiusDamage` 的算法一致。
 
 > 这里还有一个容易漏掉、但会直接影响手感的点：真实的 `RadiusDamage`（`Game_local.cpp:3890`）对每一个候选目标，除了距离衰减，还会额外做一次 `ent->CanDamage(origin, damagePoint)`——一次爆心到目标的**遮挡检测**，隔着墙的目标不给范围伤害，爆炸不能穿墙杀人。下面的 `Explode()` 第一版只用一次球形 `IntersectShape` 查询圈出半径内的所有目标，完全没有做遮挡判断，意味着躲在墙后面的怪物一样会被隔墙炸到——这不对，补上一条遮挡射线：
+
+> **一个尖锐的问题**：火箭筒贴脸炸自己怎么办，DOOM 3 是不是设了个"离目标太近就不引爆"的最小引信距离？读完 `Collide()`/`Explode()`/`RadiusDamage()` 全文，答案是**没有**——DOOM3 完全没有"最小引爆距离"或者"触发引信 vs. 定时引信"这种区分（`fuse` 字段只用于会弹跳的手雷/等离子球那类武器的自毁计时，跟"离自己多近才炸"无关），火箭筒贴着墙打自己脚下一样会正常爆炸。真正解决"自己炸自己"手感问题的机制是 `RadiusDamage()`（`Game_local.cpp:3812`）读的一个 `.def` 参数 `attackerDamageScale`（默认 `0.5`）：射手自己吃自己这发爆炸的范围伤害时打五折，而不是把射手从范围伤害判定里整个排除掉——`ent == attacker` 时伤害倍率额外乘一次这个系数（`Game_local.cpp:3898`），伤害循环本身仍然会遍历到射手自己。至于击退力，源码走的是另一条路径：`RadiusPush()`（`Game_local.cpp:3948`）明确跳过所有 `idPlayer` 类型的实体（注释原文"players use knockback in idPlayer::Damage"），玩家自己的击退效果是 `idPlayer::Damage()` 内部单独算的，不经过这条给非玩家刚体用的推力路径——这部分已经超出这一节想让你照抄的范围，下面的教程版本只搬"自伤打折、不是整个排除"这一条最直接影响手感的规则。
 
 先做投射物本体，新建场景 `Rocket.tscn`：
 
@@ -1448,8 +1828,9 @@ public partial class Rocket : Area3D
     [Export] public float DirectPushForce = 8.0f;
     [Export] public float SplashPushForce = 12.0f;
     [Export] public float LifeTime = 5.0f;   // 飞出去太远还没撞到东西，超时自毁，防止永远飞下去
+    [Export] public float AttackerDamageScale = 0.5f;   // 对应源码 attackerDamageScale：自己被自己这发爆炸炸到时打的折扣，不是免疫
 
-    public Node3D Owner3D;   // 发射者，范围伤害要排除它自己（不能自己炸自己）
+    public Node3D Owner3D;   // 发射者
     private Vector3 _direction;
     private double _spawnTime;
 
@@ -1478,7 +1859,11 @@ public partial class Rocket : Area3D
 
     private void OnBodyEntered(Node3D body)
     {
-        if (body == Owner3D) return;   // 排除发射者自己（比如爆炸半径够大、火箭贴脸炸的情况）
+        // 对应源码 Collide() 里 ent == owner.GetEntity() 的那个分支：火箭在离开枪口的瞬间就贴着发射者的
+        // 碰撞体，直接命中判定要跳过发射者自己，不然枪一响自己就先挨一发直接命中——但注意这里只跳过
+        // "直接命中"这一步，范围伤害（下面 Explode() 的爆炸半径）不会因此把发射者整个排除掉，
+        // 见 5.3 节前面那条关于 attackerDamageScale 的说明
+        if (body == Owner3D) return;
 
         // 步骤一：直接命中伤害，只作用于撞上的这一个目标
         if (body.HasMethod("TakeDamage"))
@@ -1503,7 +1888,9 @@ public partial class Rocket : Area3D
         {
             Shape = new SphereShape3D { Radius = SplashRadius },
             Transform = new Transform3D(Basis.Identity, explodePosition),
-            CollisionMask = 0b0110   // 检测 Enemy(第3层) + Projectile(第4层)，按你项目实际的层规划调整
+            CollisionMask = 0b0110   // 检测 Player(第2层) + Enemy(第3层)——注意故意包含 Player 层：
+                                      // 真实 RadiusDamage() 不会把攻击者从候选目标里剔除，只是伤害打折（见下面 AttackerDamageScale），
+                                      // 如果这里漏掉 Player 层，效果就变成了"完全免疫自己的爆炸"，跟源码行为不一致
         };
 
         var results = spaceState.IntersectShape(query);
@@ -1528,9 +1915,14 @@ public partial class Rocket : Area3D
             float distance = hitObject.GlobalPosition.DistanceTo(explodePosition);
             float falloff = 1.0f - Mathf.Clamp(distance / SplashRadius, 0.0f, 1.0f);
 
+            // 对应源码 RadiusDamage() 里 ent == attacker 时额外乘一次 attackerDamageScale（Game_local.cpp:3898）：
+            // 打中别人是全额（乘 falloff）的范围伤害，但爆心波及发射者自己时要再打一次折扣，不是完全免疫——
+            // 贴脸开火自己也会掉血，只是掉得比炸中别人少
+            float selfScale = hitObject == Owner3D ? AttackerDamageScale : 1.0f;
+
             if (hitObject.HasMethod("TakeDamage"))
             {
-                hitObject.Call("TakeDamage", SplashDamage * falloff);
+                hitObject.Call("TakeDamage", SplashDamage * falloff * selfScale);
             }
             if (hitObject is RigidBody3D rigidBody)
             {
@@ -1546,6 +1938,15 @@ public partial class Rocket : Area3D
 
 `Weapon.cs` 这边不需要为投射物武器另开一套开火函数——沿用 DOOM 3 的思路（第 1 节提过的"一个通用发射逻辑 + 数据决定是子弹还是投射物"），给 `Weapon` 加一个开关：
 
+> 这里有一个容易踩的坑，跟 4.2 节那个"层层 `GetParent()`"的问题是同一类：拿发射者节点还是得用到从 `Weapon` 往上数到 `Player` 的层数，而 5.2 节引入 `WeaponManager` 之后，场景树比 4.1 节多了一层（`Weapon` 现在挂在 `WeaponManager` 下面，不再直接挂在 `WeaponHolder` 上），层数已经从三层变成了四层。如果照抄 4.2 节"数三层"的写法，会正好错开一层，"炸自己"这种 bug 会在测试的时候才暴露，而且不一定每次都能立刻看出是场景树层数算错了。与其每处需要拿发射者的地方各自现算一遍 `GetParent()` 链条（数错一层就出问题，场景树只要再改一次结构就全部要重新数），不如让 `WeaponManager` 直接曝光一个字段，一次性配置好，别处不再自己数层数：
+>
+> ```csharp
+> // WeaponManager.cs 追加
+> [Export] public CharacterBody3D PlayerBody;   // 编辑器里手动拖入 Player 节点，不再靠 GetParent() 链条现算
+> ```
+>
+> 这不是"照抄源码"能解决的问题——DOOM 3 的 `idWeapon` 本来就直接持有一个 `owner` 指针（`idEntityPtr<idPlayer> owner`，在 `idWeapon::SetOwner()` 里赋值一次），从来不会去做"网络地址往上数几层就是玩家"这种事，这里出的坑纯粹是本教程用 `GetParent()` 链条模拟"谁是我的主人"这件事本身就比较脆弱——**这一节顺手把它改成跟源码同样的做法：赋值一次，然后一直用这个引用，不再依赖场景树的具体深度**。
+
 ```csharp
 // Weapon.cs 追加
 [Export] public bool IsHitscan = true;
@@ -1556,7 +1957,7 @@ private void Fire()
 {
     if (IsHitscan)
     {
-        FireHitscan();   // 原来 4.2/4.3 节的射线判定逻辑，改个名字
+        FireHitscan();   // 原来 4.2/4.3/4.3.1 节的射线判定逻辑（含霰弹枪散射），改个名字
     }
     else
     {
@@ -1570,7 +1971,7 @@ private void FireProjectile()
     GetTree().Root.AddChild(rocket);
     rocket.GlobalPosition = Muzzle.GlobalPosition;
     Vector3 direction = -Camera.GlobalTransform.Basis.Z;
-    rocket.Launch(direction, GetParent().GetParent().GetParent<CharacterBody3D>());   // 传入发射者，用于排除自伤
+    rocket.Launch(direction, _manager.PlayerBody);   // 传入发射者，用于排除自伤——不再手动数 GetParent() 层数
 }
 ```
 
@@ -1615,6 +2016,11 @@ public override void _PhysicsProcess(double delta)
 ```
 
 `Vector3.Slerp` 配合按最大转向角度限制插值比例这一段写法有点绕，逐字拆开看：`_direction.AngleTo(toTarget)` 是当前方向和目标方向之间的夹角（弧度），`maxRadians / 夹角` 算出"这一帧允许转过的角度占总夹角的比例"，`Mathf.Min(1.0f, ...)` 防止这个比例超过 1（夹角本身很小、一帧就能转完的情况）——效果就是"匀速转向，转到位为止，不会转过头"。这个模式不止能用在导弹上，第 9 章讲怪物转身面向玩家时如果想要更平滑的转向（而不是瞬间 `LookAt`），也是同一个写法。
+
+两个容易被现代 FPS 玩家问到、但读完真实源码之后能明确回答的问题：
+
+- **导弹会不会因为被挡住太久就丢失锁定？**不会，`idGuidedProjectile::Think()` 全文没有任何视线检测——它每一帧都直接读 `enemy` 指针算方向、转向，完全不关心这中间隔没隔着墙。玩家绕柱子躲导弹，导弹会贴着柱子拐弯追过来（受 `turn_max` 限制转不过特别急的角，可能因此撞墙自爆，但这是"转向跟不上"撞上去的，不是"判定丢失目标"主动放弃）。所以这里不实现"挡住太久就脱锁"，不是漏做，是真实源码本来就没有这个机制——如果你想要这个手感，是在真实设计之上做的**原创扩展**，不是照抄。
+- **最大转向速率要怎么权衡"追得上玩家"和"给玩家留躲避空间"？**源码里 `turn_max` 是每种导弹在 `.def` 里各自写死的固定数值，不存在什么根据玩家移动速度反过来动态调节转向速率的平衡算法——策划怎么调这个数字、值多大算"公平"，源码里找不到答案，是纯粹的关卡/难度调试问题。**这里有一个开放问题**：`TurnRateDegreesPerSec` 具体该定多少，取决于你的关卡尺度、玩家移动速度、遮蔽物密度这些本教程管不到的因素，没有一个能照抄的"正确答案"，需要你自己试出来。
 
 ---
 
@@ -1815,6 +2221,10 @@ private Vector3 ComputeIdleBreath(float xySpeed)
 
 现在是四层位置/角度来源（加速度拖尾、转向滞后、脚步 bob 角度、待机呼吸）加上落地冲击、加上后坐力，一共六个独立的偏移源简单相加——这跟 DOOM3 原版的分层方式是一致的：把其中任意一层的强度单独调到 0，能确认这一层各自的贡献，这对调手感非常有用，比把它们全绑在一个"晃动强度"参数里要好排查得多。
 
+> **一个之前没标注过的数值出入，跟 3.2 节 bob 幅度那处是同一类问题**：`ComputeIdleBreath` 里 `float scale = xySpeed + 1.0f;` 这一行，真实源码（`Player.cpp:8842-8846`）写的是 `scale = xyspeed + 40.0f`。这个 `40.0f` 不是随手写的经验数字，它的作用是"就算完全站定不动（`xyspeed=0`），呼吸感也要有一个不为零的最低摆动幅度"，只是原版的 `xyspeed` 是以每秒约 320 单位为量级的速度，`40` 相对它是一个小基数；换算到本教程米制单位下站立速度是 0 、跑步顶速才 7 左右，如果直接照抄 `40.0f`，这个常数会完全淹没 `xySpeed` 本身的贡献，呼吸感变成跟移动速度几乎无关的固定频率抖动——这不是"完全参考"该有的效果。这里改成 `1.0f` 是按跟 3.2 节 `BobUpAmount` 等常数同样的思路：保留原版"哪怕站定也有最低摆动幅度"这个设计意图，但重新在新的单位量级下选一个让效果既能感知到、又不会盖过速度变化的基数，属于同一类"结构完全参考、具体数值按手感重新配平"的处理，值得跟 3.2 节那条放在一起被同样诚实地记录下来，而不是让读者以为这是漏抄的数字。
+>
+> **另一件明确要澄清"不做"的事**：DOOM3 有一个 `BUTTON_ZOOM`/`weapon.GetZoomFov()` 驱动的"变焦"（`CalcFov()`，`Player.cpp:8666-8691`），按住某些武器（比如狙击步枪）的瞄准键会把视野角收窄，营造"举枪瞄准"的效果。但这跟现代商业 FPS 里常说的"ADS"（Aim Down Sights：举枪、准星移到屏幕正中、武器摇摆/后坐力大幅降低、往往还有武器模型整体位移到眼前）不是同一件事——DOOM3 的变焦只改 FOV 这一个数字，不改变上面六层偏移源里的任何一层，武器摇摆和后坐力在变焦时和不变焦时完全一样。也就是说，"给这套 DOOM3 风格的武器摇摆系统加一个能让摇摆/后坐力大幅降低的瞄准状态"，是一个 DOOM3 原版根本没有的现代商业 FPS 标准配置，不是本节遗漏了什么——如果你的项目确实需要 ADS 手感，思路是给上面 `UpdateSway` 六层偏移源各自的强度系数（`TurnSwayScale`、`BobRollScale`/`BobYawScale`/`BobPitchScale`、`RecoilKickDegrees` 等）整体乘上一个"是否正在瞄准"的插值系数，而不是另起一套摇摆逻辑，但这已经完全超出"忠实复刻 DOOM3"的范围，是一处明确的、需要你自己决定要不要做的现代化扩展。
+
 ### 6.3 近战攻击：伤害与物理冲击分开，并预留增益倍率接口
 
 近战本质上和第 4 章的开火是同一件事——一条射线，只是距离短得多，不消耗弹药。但要"完全参考"DOOM 3 的近战，还有两个不能省略的细节：
@@ -1879,6 +2289,7 @@ private void Melee()
 
     Node3D hitObject = (Node3D)result["collider"];
     Vector3 hitPoint = (Vector3)result["position"];
+    Vector3 hitNormal = (Vector3)result["normal"];
 
     if (hitObject.HasMethod("TakeDamage"))
     {
@@ -1886,16 +2297,33 @@ private void Melee()
     }
 
     // 物理冲击和伤害是两件独立的事——一个纯装饰性的、没有 TakeDamage 方法的刚体，
-    // 挨了一拳依然应该被推开
+    // 挨了一拳依然应该被推开。推开方向用命中点的表面法线，不是用视线方向——对应源码
+    // Event_Melee()（Weapon.cpp:4004）的 impulse = -push * PowerUpModifier(SPEED) * tr.c.normal，
+    // 用的是 tr.c.normal（命中表面的法线），不是攻击者到目标的连线方向。正面近距离命中时
+    // 两者几乎重合，但斜着擦到一个有角度的表面时（比如打中一个斜放的箱子的棱角），表面法线
+    // 才是"应该往哪个方向弹开"更准确的物理直觉——用视线方向在这种情况下会把物体往错误的
+    // 斜角推出去，用法线才会让它看起来是"被拳头撞飞"而不是"沿着你的准星方向平移"
+    Vector3 pushDir = -hitNormal;
+
     if (hitObject is RigidBody3D rigidBody)
     {
-        Vector3 pushDir = (to - from).Normalized();
         rigidBody.ApplyImpulse(pushDir * MeleePushForce * pushScale, hitPoint - rigidBody.GlobalPosition);
+    }
+    // 打中的如果是另一个玩家自己（比如 17 章要做的联机合作/对战），推力走的是完全不同的一套
+    // 物理接口——CharacterBody3D 没有 ApplyImpulse，得用 2.9 节新加的 ApplyKnockback。这也是
+    // 源码里 ent->ApplyImpulse(...) 为什么对任意实体类型都通用的原因：idPhysics_Player 自己
+    // 实现了一份 ApplyImpulse（Physics_Player.cpp:1832 附近），跟 RigidBody 的物理接口是分开的
+    // 两套实现，但对调用者（这里的 Melee()）暴露的是同一个"给我推一下"的意图
+    else if (hitObject is PlayerController player)
+    {
+        player.ApplyKnockback(pushDir * MeleePushForce * pushScale, 0.15f);
     }
 }
 ```
 
 记得加 `melee` 输入映射（建议绑 V 键或鼠标中键）。你可能已经注意到，`Fire()`、`Melee()`、下一章要写的怪物近战判定，全部长得差不多——都是"从某个点往某个方向打一条射线，检测多远，命中了就调用 `TakeDamage`"。这不是偶然，也不是本教程偷懒——**几乎所有 FPS 里的近战攻击，本质上都是一条射程很短的"子弹"**，没有必要为它单独设计一套碰撞体积检测。这个观察本身也是第 13 章要讲的"什么时候该抽公共代码"的一个具体例子，先记住这个感觉，到时候会讲怎么把这几处重复的射线检测代码收拢成一个共享函数（到时候 `CombatUtil.RaycastAttack` 也会顺带把 `damageScale`/推力这两个参数一起纳入，不会漏掉这一节加的东西）。
+
+顺带解决一个从 2.2 节就留到现在的接口：`PowerupState` 现在真实存在了，2.2 节为 `wishSpeed` 留的 `SpeedModifier` 字段也该有地方接上了——以后实现狂暴一类"移动速度也一起提升"的增益时，激活的地方（`PowerupState` 未来的 `ActivatePowerup`）除了记录倍率供 `GetModifier` 查询，还应该顺手把 `player.SpeedModifier = GetModifier(Modifier.MoveSpeed)` 同步一份到玩家控制器上——`PowerupState` 只负责"回答倍率是多少"，不负责"把倍率经常性地推给移动代码"，这一步同步逻辑现在没有实现（现在 `GetModifier` 恒返回 1.0，同步了也没有可感知的效果），但接口双方现在都已经就位，以后接增益道具时不需要再回头改 2.2 节的移动代码。
 
 ### 6.4 视图模型与世界模型：其他人看到的武器，和你自己看到的不是同一个
 
@@ -1967,6 +2395,8 @@ public partial class Crate : RigidBody3D
 }
 ```
 
+**先把碰撞层设对，不然下面这一切都不会发生**：第 4.3 节把武器射线的 `CollisionMask` 设成了 `0b0101`（只检测 `World` 层和 `Enemy` 层）。Godot 新建 `RigidBody3D` 默认落在第 1 层，凑巧等于这里的 `World`——但这是巧合，不是保证：如果你之前调整过默认物理层，或者是照着自己的习惯另外分配的层号，这里很容易对不上。把 `Crate` 节点的 `Collision Layer` 显式勾选成 `World`，确认它落在武器射线已有的检测范围内；不然子弹会直接穿过箱子打中它后面的墙，`TakeDamage` 永远不会被调用，而且不会有任何报错提示你哪里错了。后面 7.2 的门、7.3 的电梯是同样的道理——凡是"应该能被子弹打中/应该能挡住子弹"的场景物件，都建议放在 `World` 层，本章后面不再重复这条。
+
 现在开枪打这个箱子，它会掉血、扣到 0 之后消失。但你会发现子弹命中时箱子不会被"打飞"——`TakeDamage` 只是扣血，没有施加物理冲量。回到 `Weapon.cs` 的 `Fire()`，命中后补一行：
 
 ```csharp
@@ -1994,6 +2424,59 @@ if (result.Count > 0)
 
 另外，真实的 `idMoveable::Killed()`（箱子对应的类）死亡时并不是直接消失——它会把模型换成一个专门准备的 `brokenModel`（碎裂后的残骸模型），残骸依然留在物理世界里继续参与仿真，不是像上面 `Crate.TakeDamage()` 这样直接 `QueueFree()` 瞬间消失。如果想要这个效果，思路很简单：血量归零时不调用 `QueueFree()`，改成把 `MeshInstance3D`/`CollisionShape3D` 换成"碎裂"版本的资源（比如换一个更小、更破碎的 `BoxMesh`/`BoxShape3D`，或者干脆换成一个准备好的碎片场景），残骸继续留在场景里被物理仿真接管。
 
+**一个值得先问清楚的问题：满地都是箱子会不会把帧率拖垮？**不会，而且这不是运气——Godot 的 `RigidBody3D` 默认开启睡眠（`CanSleep = true`）：静止一段时间之后引擎会把它标记为休眠，跳过后续的物理积分，直到有东西碰它或者对它施加力才会被唤醒。这和真实源码 `idPhysics_RigidBody` 的机制是同一件事：`TestIfAtRest()`（`Physics_RigidBody.cpp:274`）逐帧检查线速度、角速度、接触点数量是否都低于阈值，一旦满足就调用 `Rest()`（`Physics_RigidBody.cpp:720`）把物体钉住不再模拟；`ApplyImpulse()`（`Physics_RigidBody.cpp:1075`）在施加冲量的同时总是紧接着调用一次 `Activate()`（`Physics_RigidBody.cpp:751`）把物体重新唤醒。上面 `Weapon.cs` 里"命中之后调用 `ApplyImpulse`"这一步天然对应了这个唤醒动作——Godot 的 `RigidBody3D.ApplyImpulse()` 同样会自动唤醒一个正在休眠的刚体，所以一屋子睡着的箱子被打中时能正常醒过来、被打飞，不需要你手动处理"先唤醒再施力"，两边引擎在这一点上做的是同一件事，不用加任何代码。
+
+真实的 `idMoveable` 还有一件本教程目前没做的事：**被打飞的箱子撞到别的东西，会反过来对那个东西造成伤害**。`idMoveable::Collide()`（`Moveable.cpp:275`）在箱子撞上别的实体时，用撞击速度和一个 `minDamageVelocity` 阈值（默认 300）算出一个伤害倍率（`f = sqrt(v - min) / sqrt(max - min)`，速度越快伤害越接近满值，但不是线性增长），再调用 `ent->Damage(...)` 把这份伤害转嫁给撞上的东西——这正是很多商业 FPS/物理沙盒游戏里"把可破坏道具当武器扔"这种手感的来源：一个被爆炸掀飞的箱子砸中敌人，敌人是真的会掉血的，不只是被撞飞而已。给 `Crate.cs` 补上这个行为：
+
+```csharp
+using Godot;
+
+public partial class Crate : RigidBody3D
+{
+    [Export] public float Health = 30.0f;
+    [Export] public float MinDamageVelocity = 4.0f;   // 对应源码的 minDamageVelocity，单位换算成米/秒的经验值，具体数值要按场景尺度自己试
+    [Export] public float MaxDamageVelocity = 10.0f;
+    [Export] public float ImpactDamage = 15.0f;
+
+    public override void _Ready()
+    {
+        ContactMonitor = true;
+        MaxContactsReported = 4;   // 不开这两个，_IntegrateForces 里就拿不到接触信息
+    }
+
+    public void TakeDamage(float amount)
+    {
+        Health -= amount;
+        if (Health <= 0)
+        {
+            QueueFree();
+        }
+    }
+
+    // 对应 idMoveable::Collide()：撞击速度超过阈值，就对撞到的东西造成伤害——
+    // 源码用 sqrt 曲线让伤害在阈值附近快速爬升、之后逐渐放缓，这里为了简单改成线性插值
+    public override void _IntegrateForces(PhysicsDirectBodyState3D state)
+    {
+        float speed = LinearVelocity.Length();
+        if (speed < MinDamageVelocity) return;
+
+        float t = Mathf.Clamp((speed - MinDamageVelocity) / (MaxDamageVelocity - MinDamageVelocity), 0f, 1f);
+
+        for (int i = 0; i < state.GetContactCount(); i++)
+        {
+            if (state.GetContactColliderObject(i) is Node3D collider && collider.HasMethod("TakeDamage"))
+            {
+                collider.Call("TakeDamage", ImpactDamage * t);
+            }
+        }
+    }
+}
+```
+
+`MinDamageVelocity`/`MaxDamageVelocity`没有一个通用的"标准答案"——取决于你场景里 1 米对应现实世界多大尺度、箱子质量、`ApplyImpulse` 力度这几个相互关联的参数，需要在编辑器里跑起来试出手感。
+
+> **一个不打算实现的开放问题**：真实的 `idMoveable` 还能被 *Resurrection of Evil* 资料片新增的引力枪（Grabber，`Weapon_Grabber.cpp`）抓取悬浮、拖着满地图走——但这不是 `idMoveable` 类自带的能力，是那把武器单方面用物理约束把目标钉在准星前面实现的。本教程没有引力枪这一章，箱子在这里始终只是"会被撞飞、会掉血、现在还会反过来撞人"的道具，不能被拾取/搬运。如果以后想加类似能力，思路上更接近临时给箱子加一个约束节点或者每帧手动把它的位置钉到准星前方，而不是指望 `idMoveable`/`RigidBody3D` 本身有什么隐藏接口。
+
 ### 7.2 一扇会开的门
 
 门不需要真的参与物理仿真（它不该被子弹撞开），但它需要能移动、并且移动时能正确地把站在旁边/上面的玩家一起带走，不能让玩家卡进门里。Godot 为这种"运动学移动、但依然正确参与物理交互"的物体准备了专门的节点类型：`AnimatableBody3D`。
@@ -2017,6 +2500,7 @@ public partial class Door : AnimatableBody3D
 
     private Vector3 _closedPosition;
     private bool _isOpen;
+    private Tween _tween;
 
     public override void _Ready()
     {
@@ -2029,9 +2513,20 @@ public partial class Door : AnimatableBody3D
         _isOpen = !_isOpen;
         Vector3 target = _isOpen ? _closedPosition + OpenOffset : _closedPosition;
 
-        var tween = CreateTween();
-        tween.SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
-        tween.TweenProperty(this, "position", target, MoveTime);
+        // 按剩余距离等比例缩短这一次运动的时长，而不是无论从哪个位置出发都用同一个 MoveTime——
+        // 这样从半路被再次触发反向时（比如门刚开到一半，玩家又按了一次开关，或者第 11/12 章的
+        // 触发器/按钮被连续按了两下），门的运动速度是连续的，不会出现"半路突然变速"的突兀感
+        float totalDistance = OpenOffset.Length();
+        float remainingDistance = (target - Position).Length();
+        float duration = totalDistance > 0.0f ? MoveTime * (remainingDistance / totalDistance) : MoveTime;
+
+        // 杀掉上一个还没播完的 tween 再开新的——如果不这样做，快速连续触发会导致两个 tween
+        // 同时抢着写 Position，表现为门在两个目标之间抖动甚至瞬移，而不是干净地掉头
+        _tween?.Kill();
+        _tween = CreateTween();
+        _tween.SetProcessMode(Tween.TweenProcessMode.Physics);   // 见下方说明
+        _tween.SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
+        _tween.TweenProperty(this, "position", target, duration);
 
         // 开门之后过 WaitTime 秒自动关闭——真实源码里门是通过延迟事件（PostEventSec）实现的，
         // 这里用一次性的 SceneTreeTimer 代替，效果等价：如果这段时间里门又被手动关闭了
@@ -2047,12 +2542,20 @@ public partial class Door : AnimatableBody3D
 }
 ```
 
-`SyncToPhysics = true` 这一行**非常容易被漏掉、漏掉之后的表现是"门确实动了，但站在门上的玩家会穿模掉下去"**——这是 Godot 物理系统一个真实存在的坑：`AnimatableBody3D` 默认不会把自己的运动通报给物理引擎，导致 `CharacterBody3D` 感知不到"我脚下的平台在动"。开了这个开关之后，还需要在 `PlayerController.cs` 里告诉玩家"哪些碰撞层算作可以站上去被带走的地面"：
+这段代码里有两个容易被忽略、但只要写错就会在实机上现形的细节，值得展开说：
+
+**第一个是 `_tween?.Kill()`**。`CreateTween()` 每次调用都会造出一个全新的、独立的 `Tween` 实例，Godot 不会替你管理"这个节点身上是不是已经有一个 tween 在动同一个属性"——如果 `Activate()` 在上一次的 tween 还没播完时被再次调用（这在只有单扇门、没有队伍系统的现在就能触发：连续两次触发这扇门，比如后面章节的按钮被手快的玩家连按两下），旧 tween 和新 tween 会在同一帧里各写一次 `Position`，谁在这一帧的 tween 更新顺序里排在后面就"赢"，肉眼看到的是门抖动甚至瞬移，而不是干脆利落地掉头往回走。用一个 `_tween` 字段记住当前正在播放的 tween、下次触发前先 `Kill()` 掉它，是 Godot 里"允许一个动画中途被打断重新开始"的标准写法。
+
+**第二个是 `SetProcessMode(Tween.TweenProcessMode.Physics)`**。`Tween` 默认的 `ProcessMode` 是 `Idle`——也就是跟着渲染帧（`_Process`）推进，不是跟着物理帧（`_PhysicsProcess`）。但 `SyncToPhysics` 让 `AnimatableBody3D` 把"这一次物理步进里我的位置变化了多少"读出来、转换成一个速度传给物理引擎，`CharacterBody3D` 站在上面时正是靠这个速度被"带着走"的——如果 tween 只在渲染帧更新 `Position`，物理引擎在两次渲染帧之间的那几次物理步进读到的位置根本没变，算出来的"平台速度"就会一格一格地跳变而不是平滑连续，高刷新率显示器（渲染帧比物理帧密）下这个问题格外明显，表现为站在门/电梯上的玩家轻微抖动、甚至在门刚开始动的一瞬间被轻微"甩"一下。把 tween 的 `ProcessMode` 显式设成 `Physics`，让它跟物理帧同步推进，这个问题就没有了——这是很多 Godot 教程在演示"用 Tween/AnimationPlayer 做移动平台"时会漏掉的一步，因为不开这个选项在低刷新率、帧率稳定的录屏环境下很难注意到，一到玩家自己的机器上就会暴露。
+
+`SyncToPhysics = true` 这一行本身也**非常容易被漏掉、漏掉之后的表现是"门确实动了，但站在门上的玩家会穿模掉下去"**——这是 Godot 物理系统一个真实存在的坑：`AnimatableBody3D` 默认不会把自己的运动通报给物理引擎，导致 `CharacterBody3D` 感知不到"我脚下的平台在动"。开了这个开关之后，还需要在 `PlayerController.cs` 里告诉玩家"哪些碰撞层算作可以站上去被带走的地面"：
 
 ```csharp
 // PlayerController.cs 的 _Ready() 里加一行
 PlatformFloorLayers = 1;   // 假设门/电梯所在的碰撞层是第 1 层
 ```
+
+顺带一提：这里的"第 1 层"和 7.1 节强调过的碰撞层是同一件事——`Door` 节点的 `Collision Layer` 也应该包含武器射线检测的那个 `World` 层，不然子弹会直接穿过关着的门打中门后面的东西，而不是像真实世界那样被一扇关着的门挡住。
 
 现在给门加一个触发它开关的方式——先用最简单的：给 `Door` 节点再加一个 `Area3D` 子节点（一个稍大的检测区域），玩家走进去就自动触发：
 
@@ -2077,6 +2580,28 @@ private void OnBodyEntered(Node3D body)
 
 记得把玩家节点加进 `player` 组（选中 `Player` 节点，`节点 -> 组`，添加 `player`）。
 
+**给以后的钥匙系统留一个挂钩**：真实的 `idDoor` 从一开始就带着一个"这扇门要求什么"的字段——`requires`（`Mover.h:413`，从 `.def` 里配置成某个物品的名字），`Use()`（`Mover.cpp:3560-3572`）触发门之前先调用 `gameLocal.RequirementMet(activator, requires, removeItem)` 检查触发者的背包里有没有这个物品，没有就直接不动，`IsLocked()`（`Mover.cpp:3634`）单独暴露出来给关卡脚本和 AI 判断"这扇门现在能不能走"。第 11 章会做拾取物、但目前还没有背包/物品系统，没法现在就把"检查玩家是否持有某把钥匙"这部分接上——先在 `Door.cs` 留一个最简单的布尔开关，把入口占住，等背包系统做出来之后再把 `GD.Print` 换成真正的检查：
+
+```csharp
+// Door.cs 追加
+[Export] public bool Locked = false;
+
+public void Activate()
+{
+    if (Locked)
+    {
+        // 真实源码这里会检查 activator 的背包里有没有 requires 指定的钥匙物品（RequirementMet），
+        // 没有就播放"锁着"的提示音，什么都不做——本教程还没有背包系统，先占住这个位置
+        GD.Print("这扇门被锁住了");
+        return;
+    }
+
+    // ...原有的 _isOpen 翻转、tween、自动关闭逻辑不变...
+}
+```
+
+> **这里有一个开放问题，本教程不会展开实现**：真实源码里 `SetAASAreaState()`（`Mover.cpp:3454`）会把门的包围盒标记成 `AREACONTENTS_OBSTACLE`，写进关卡预计算好的 AAS（AI 寻路用的区域连通图）里，让第 9 章那种寻路系统知道"这块地方现在走不通"——但仔细读调用点会发现，这个标记主要是跟着 `Lock()`/`IsLocked()` 走的（`door->SetAASAreaState(f != 0)`，`Mover.cpp:3619`），而不是跟着门"现在是开是关"这个瞬时状态走：一扇没上锁的门，哪怕此刻正关着，在 AAS 里也不算障碍——因为源码里的怪物 AI 本来就有"自己走到门前触发它"的行为，没必要在寻路层面把关着的门当墙。反观本教程第 9 章的寻路是 Godot 内置的 `NavigationRegion3D`，导航网格是在编辑器里一次性"烘焙"出来的静态数据，不会因为一扇门运行时开关而自动更新——如果你的怪物需要绕过或者穿过一扇门，现在的做法要么是烘焙时把门的位置留出一条通道（等于假设门永远不构成障碍，这对于常开的门没问题，但一扇需要被主动触发的门会被怪物直接当成空气走过去），要么是自己教怪物在寻路目标前方检测到门就调用 `Door.Activate()`（模拟"AI 会自己开门"）。这两种做法都不是"改一行配置"能解决的，分别涉及关卡烘焙策略和 AI 行为树的改动，超出本章"物理与可交互物体"的范围，留给你在真正遇到这个需求时再决定怎么处理。
+
 ### 7.3 电梯：同样的原理，多一个状态
 
 > 这里要先纠正一个说反了的说法：不是"电梯就是门的代码结构、只是多个状态"。真实源码里，跟门代码结构真正一样、不多不少的，其实是一种简单的**两站式升降台**（`idPlat`，`Mover.h:442-470`）——它和 `idDoor` 一样是同一个 4 状态 FSM（`idMover_Binary`），只是把"开/关"换成了"上/下"，结构确实完全没差。真正带"多一个状态"的 `idElevator`（`Mover.h:214-267`，`INIT`/`IDLE`/`WAITING_ON_DOORS` 三个状态）是一个完全独立、大得多的协调器类，直接继承 `idMover`（不是 `idMover_Binary`），要管理多个楼层各自的门、等门关好才能真正启动、处理呼叫按钮排队——不是"门的代码加一个 flag"能概括的。下面这节做的 `Elevator.cs` 实际对应的是前者（两站式升降台），代码结构上确实和门一样；如果你想要那种带呼叫按钮、能停多个楼层、还要等门关好的"真电梯"，那是另一个规模大得多的系统，本教程不实现。
@@ -2091,38 +2616,66 @@ public partial class Elevator : AnimatableBody3D
     [Export] public float TopOffset = 4.0f;
     [Export] public float MoveTime = 2.0f;
     [Export] public float WaitTime = 3.0f;
+    [Export] public NodePath BlockZonePath;   // 怎么放、检测原理见 7.4 节双开门部分的说明——和门用的是同一套"挡住就反向"机制，这里先用上
 
     private Vector3 _bottomPosition;
-    private bool _atTop;
+    private bool _atTop;      // 表示"当前正朝哪个状态运动/已经到达的目标层"，不是"已经到达"的确认——和 7.4 节 Door 的 _isOpen 语义一致
     private bool _isMoving;
+    private Tween _tween;
 
     public override void _Ready()
     {
         _bottomPosition = Position;
         SyncToPhysics = true;
+
+        var blockZone = GetNodeOrNull<Area3D>(BlockZonePath);
+        if (blockZone != null) blockZone.BodyEntered += OnBlocked;
     }
 
-    public async void Activate()
+    public void Activate()
     {
         if (_isMoving) return;
+        MoveTo(!_atTop);
+    }
+
+    private void MoveTo(bool goingUp)
+    {
+        _atTop = goingUp;
         _isMoving = true;
 
-        Vector3 target = _atTop ? _bottomPosition : _bottomPosition + Vector3.Up * TopOffset;
-        var tween = CreateTween();
-        tween.SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
-        tween.TweenProperty(this, "position", target, MoveTime);
-        await ToSignal(tween, Tween.SignalName.Finished);
+        Vector3 target = _atTop ? _bottomPosition + Vector3.Up * TopOffset : _bottomPosition;
 
-        _atTop = !_atTop;
+        // 按剩余距离等比例缩短运动时长，保持反向时速度连续——道理和 7.2 节门的同一处理完全一样
+        float remainingDistance = (target - Position).Length();
+        float duration = TopOffset > 0.0f ? MoveTime * (remainingDistance / TopOffset) : MoveTime;
 
-        // 到达之后暂停 WaitTime 秒再允许下一次触发——这个字段之前声明了但没被用到，
-        // 现在真的接上：_isMoving 在等待期间继续保持 true，挡住重复触发
+        _tween?.Kill();
+        _tween = CreateTween();
+        _tween.SetProcessMode(Tween.TweenProcessMode.Physics);   // 见 7.2 节说明：SyncToPhysics 要求位置更新跟着物理帧走
+        _tween.SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
+        _tween.TweenProperty(this, "position", target, duration);
+        _tween.Finished += OnMoveFinished;
+    }
+
+    private async void OnMoveFinished()
+    {
+        // 到达之后暂停 WaitTime 秒再允许下一次触发——_isMoving 在等待期间继续保持 true，挡住重复触发
         await ToSignal(GetTree().CreateTimer(WaitTime), SceneTreeTimer.SignalName.Timeout);
-
         _isMoving = false;
+    }
+
+    // 对应 idPlat::Event_TeamBlocked（Mover.cpp:4433）：真实源码里 idPlat 和没打 crusher 标记的
+    // idDoor 用的是完全同一套"挡住就反向"默认行为（都来自 idMover_Binary），电梯没道理不接上——
+    // 具体检测方式沿用 7.4 节门的思路：门扇/平台运动路径前沿放一个薄 Area3D
+    private void OnBlocked(Node3D body)
+    {
+        if (!_isMoving) return;
+        MoveTo(!_atTop);
     }
 }
 ```
+
+**为什么把 `await ToSignal(tween, ...)` 的写法换成了 `tween.Finished += OnMoveFinished`**：上一版用 `async`/`await` 直接等 tween 播完，写法更直观，但一旦要支持"运动中途被挡住就反向"，这个写法会出问题——`OnBlocked` 需要调用 `_tween?.Kill()` 打断正在播放的旧 tween，而 `Tween.Kill()` 不会让被杀掉的 tween 发出 `Finished` 信号（它是被打断的，不是正常播完的）。如果代码还留在 `await ToSignal(tween, Tween.SignalName.Finished)` 这一行，这次 `await` 会永远等不到信号、永远不会恢复，后面"暂停 `WaitTime` 秒、把 `_isMoving` 置回 `false`"这几行代码就再也不会执行，电梯从此卡死在"正在移动"状态，之后不管怎么触发都没反应。换成事件回调（`tween.Finished += ...`）之后，"tween 播完了该干什么"和"tween 被中途打断了该干什么"是两条不会互相纠缠的独立路径，`OnBlocked` 可以放心地随时 `Kill()` 掉旧 tween、重新开始一个新的，不用担心留下一个永远等不到的 `await`。7.2/7.4 节的 `Door.cs` 从一开始就没用 `async`/`await`，原因也在这里——这是"要支持中途打断重新开始"的动作，就不能用 `await` 直接等一个可能被杀掉的信号，这一条以后写类似的可打断动画/tween 逻辑时都适用。
 
 这一节的三个例子（箱子、门、电梯）分别对应物理系统里三种不同的"物体该怎么动"：**完全交给物理引擎仿真**（箱子）、**按预定轨迹运动、但要正确参与物理交互**（门/电梯）、以及第 2 章已经写过的**由玩家输入直接驱动**（角色）。这三种是几乎所有 FPS 里"会动的东西"的全部分类，之后做怪物（第 8 章）的时候，你会发现敌人的移动方式其实是第三种和第一种的某种混合。
 
@@ -2136,6 +2689,9 @@ public partial class Elevator : AnimatableBody3D
 // Door.cs 追加
 [Export] public string TeamName = "";
 [Export] public NodePath BlockZonePath;   // 指向门扇前沿一个薄的 Area3D（门自己的子节点），检测移动路径上有没有东西挡路
+[Export] public bool IsCrusher = false;   // 见下方说明：压缩机关门不反向，直接对挡路者造成伤害
+[Export] public float CrushDamage = 0f;
+
 private static readonly Dictionary<string, List<Door>> Teams = new();
 private bool _isTeamMaster;
 private bool _isMovingNow;
@@ -2172,7 +2728,19 @@ public override void _ExitTree()
 
 public void Activate()
 {
-    if (TeamName != "" && !_isTeamMaster)
+    if (Locked)
+    {
+        GD.Print("这扇门被锁住了");
+        return;
+    }
+
+    if (TeamName == "")
+    {
+        DoActivate();
+        return;
+    }
+
+    if (!_isTeamMaster)
     {
         // 从属成员把触发请求转发给队长，自己不直接处理——对应精读文档描述的
         // "所有控制 API 从属成员重定向到主控" 这个模式
@@ -2180,42 +2748,71 @@ public void Activate()
         return;
     }
 
-    if (TeamName != "")
+    // 队长按顺序对全队每个成员发起运动——不需要显式记录一个时间戳再"对齐"，
+    // 这个 foreach 本身就在同一次方法调用、同一帧里同步跑完，每个成员的 CreateTween()
+    // 天然就是同一帧启动的，这就已经是"同一个起始时间"了（上一版传了个 startTime 参数
+    // 但函数体根本没用到它，属于中看不中用，这一版直接去掉）
+    foreach (var member in Teams[TeamName])
     {
-        double startTime = Time.GetTicksMsec() / 1000.0;
-        foreach (var member in Teams[TeamName])
-        {
-            member.ActivateAt(startTime);
-        }
-    }
-    else
-    {
-        ActivateAt(Time.GetTicksMsec() / 1000.0);
+        member.DoActivate();
     }
 }
 
-private void ActivateAt(double startTime)
+private void DoActivate()
 {
     _isOpen = !_isOpen;
     Vector3 target = _isOpen ? _closedPosition + OpenOffset : _closedPosition;
+
+    float totalDistance = OpenOffset.Length();
+    float remainingDistance = (target - Position).Length();
+    float duration = totalDistance > 0.0f ? MoveTime * (remainingDistance / totalDistance) : MoveTime;
+
     _isMovingNow = true;
-    var tween = CreateTween();
-    tween.SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
-    tween.TweenProperty(this, "position", target, MoveTime);
-    tween.Finished += () => _isMovingNow = false;
+    _tween?.Kill();
+    _tween = CreateTween();
+    _tween.SetProcessMode(Tween.TweenProcessMode.Physics);
+    _tween.SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
+    _tween.TweenProperty(this, "position", target, duration);
+    _tween.Finished += () => _isMovingNow = false;
+
+    if (_isOpen)
+    {
+        GetTree().CreateTimer(MoveTime + WaitTime).Timeout += () =>
+        {
+            if (_isOpen) Activate();
+        };
+    }
 }
 
-// 对应 Event_TeamBlocked：移动路径上的检测区域探测到有东西挡路，就地反向——
-// 复用 Activate() 本身的转发/同步逻辑，从属成员一样会把这次"反向触发"转给队长，
-// 队长再用同一个起始时间广播给全队，不需要另外写一套反向专用的代码路径
+// 对应 idDoor::Event_TeamBlocked（Mover.cpp:3846-3859）：移动路径上的检测区域探测到有东西挡路，
+// 默认反向——复用 Activate() 本身的转发/同步逻辑，从属成员一样会把这次"反向触发"转给队长，
+// 队长再广播给全队，不需要另外写一套反向专用的代码路径。但源码里这里其实有两条分支：
+// "if (crusher) return;"（Mover.cpp:3850）——crusher 类型的门从不反向，而是靠
+// Event_PartBlocked（Mover.cpp:3875-3878）对挡路者造成 damage_moverCrush 伤害，
+// 这是压缩机关门（trash compactor 那种"故意压死你"的机关）的实现方式，跟会体贴地掉头的
+// 普通门是两种完全不同的设计意图，不能一概而论
 private void OnBlocked(Node3D body)
 {
     if (!_isMovingNow) return;
+
+    if (IsCrusher)
+    {
+        if (CrushDamage > 0 && body.HasMethod("TakeDamage"))
+        {
+            body.Call("TakeDamage", CrushDamage);
+        }
+        return;
+    }
+
     Activate();
 }
 ```
 
 需要在文件顶部加 `using System.Collections.Generic;`。把双开门的两个 `Door` 实例 `TeamName` 都填成同一个字符串（比如 `"double_door_01"`），`OpenOffset` 分别指向左右两侧相反的方向，触发任意一片都会让整组同步开启；`BlockZonePath` 各自指向自己门扇前沿的一个薄 `Area3D`（贴着门扇运动方向的领先边缘摆一个大概几厘米厚的检测区域）。**"从属成员把请求转发给队长处理"这个重定向模式**，本教程后面不会再重复贴一遍代码，但如果以后遇到"一组东西需要被当成一个整体触发/控制"的场景（比如一组联动的灯光、一组必须同时启动的机关），都可以照抄这个思路：一个字符串分组键 + 队伍内选出一个队长 + 其余成员的操作全部转发给队长处理，现在加上了"挡路即反向"，这个思路才算真正把团队系统存在的理由用上。
+
+**这套机制不是"组队门"的专属特权**：`OnBlocked` 和 `_isMovingNow` 从头到尾都没有检查 `TeamName`——一扇完全没填 `TeamName` 的单开门，只要在 Inspector 里给它接上 `BlockZonePath`，`Activate()` 分支会直接走 `TeamName == ""` 那条路径调用 `DoActivate()`，反向逻辑照样生效。换句话说，"门自动关闭时压到站在门口的玩家"这个更常见的场景（不需要双开门也会发生），从一开始就该给每一扇门都接上 `BlockZonePath`，不是只有组队门才需要——7.2 节介绍单扇门的时候没有引入这部分，是因为反向检测依赖"移动路径上有东西"这个概念，放在这里跟"为什么需要团队"一起讲更完整，但代码本身对单扇门同样适用。
+
+**队伍规模也不是写死成两片的**：`Teams[TeamName]` 是一个 `List<Door>`，`Activate()` 广播时用 `foreach` 遍历整个列表——三片、四片门共用同一个 `TeamName` 一样能同步运动、一样能在任意一片被挡住时让全队反向，不需要改一行代码。真实源码里 `activateChain` 也是同样的设计：团队大小从来不是通过某个"两个"的硬编码假设支持的，而是一条可以挂任意多个成员的链表。
 
 ---
 
@@ -2447,6 +3044,72 @@ public override void _PhysicsProcess(double delta)
 
 现在给关卡加几堵墙，怪物应该能绕过去追你，而不是直接怼着墙走。
 
+### 9.1.1 动态障碍：门关上之后，怪物真的会绕开吗
+
+上面这套寻路能绕开的，只有**烘焙导航网格的时候就已经在那儿**的静态几何——关卡搭建阶段摆好的墙、地形。一个很自然的问题是：第 7 章做的那扇门，运行时会开会关，算不算这套寻路系统能感知到的障碍物？答案是**完全不算**——门的碰撞体从来没有参与过 `NavigationRegion3D` 的烘焙过程（第 7 章的门是一个独立的 `Area3D`/`AnimationPlayer` 组合，压根不是拿来给寻路用的），对 `NavigationAgent3D` 来说，门所在的那块地板从始至终都是"可以走"的空地，不管门这一刻是开着还是关着。也就是说，**现在这套实现里，关着的门根本挡不住怪物寻路**——它规划出的路径会直接穿过门的位置，最多在物理碰撞层面撞在门的碰撞体上卡一下，不会主动绕开。
+
+> **这里先说清楚为什么不能简单地"让门也参与烘焙"**：Godot 的 `NavigationObstacle3D` 确实有 `AffectNavigationMesh`/`CarveNavigationMesh` 这两个属性，可以让一个物体在烘焙导航网格的时候把自己所在的区域"挖空"，效果就是被这个物体占据的地方彻底从可行走区域里消失——但这套机制是**为烘焙这个动作设计的**，不是为运行时随时开关设计的：一扇门这一秒关着、下一秒被打开，每次状态变化都要求 `NavigationRegion3D` 重新完整烘焙一次导航网格，这是一个相对昂贵的操作，如果关卡里有好几扇会频繁开关的门，没人会希望每次开关门都触发一次导航网格重烘焙。
+
+真正适合"运行时随时变化"这种场景的，是 Godot 导航系统里另一层机制——**RVO 动态避让**（`avoidance_enabled`），它不改导航网格本身，而是在寻路给出的路径之上再加一层"实时躲开附近障碍物"的速度调整，代价是每帧的，不是每次开关门都要重新烘焙一次那么贵。先给门加一个只在关闭状态下生效的 `NavigationObstacle3D`：
+
+```csharp
+// Door.cs（第 7 章的门脚本）追加——门下面挂一个 NavigationObstacle3D 子节点，
+// 顶点大致围出门洞被门板堵住时的那块区域
+private NavigationObstacle3D _navObstacle;
+
+public override void _Ready()
+{
+    // ...原有初始化...
+    _navObstacle = GetNodeOrNull<NavigationObstacle3D>("NavigationObstacle3D");
+}
+
+// 原有的开门/关门逻辑里追加：门关上时打开避让、门开着时关掉——
+// 打开的门不该继续挡任何人的路
+private void SetDoorOpen(bool open)
+{
+    // ...原有的开关门表现...
+    if (_navObstacle != null) _navObstacle.AvoidanceEnabled = !open;
+}
+```
+
+`Enemy` 这边要打开避让、并且**把原来那些直接拍 `Velocity` 的地方，改成先把"我想要的速度"交给避让系统过一遍**——这是必须的一步，不是可选的：`avoidance_enabled` 的工作方式是你每帧把"这一帧本来想要的速度"写进 `_navAgent.Velocity`（这是"意图速度"的输入端，不是角色实际的 `Velocity`），`NavigationServer` 参考周围的 `NavigationObstacle3D`/其他开了避让的 agent 算出一个"安全速度"，通过 `VelocityComputed` 信号异步传回来；如果只打开 `AvoidanceEnabled = true` 却从来不写 `_navAgent.Velocity`，等于一直在告诉避让系统"我想要的速度是零"，算出来的安全速度自然也毫无意义——这是接入这套系统时很容易漏掉、但漏了就等于完全没生效的一步：
+
+```csharp
+// Enemy.cs 追加
+private Vector3 _avoidanceSafeVelocity;
+
+public override void _Ready()
+{
+    // ...原有初始化...
+    _navAgent.AvoidanceEnabled = true;
+    _navAgent.Radius = 0.4f;   // 跟怪物自己的碰撞体半径大致对应
+    _navAgent.VelocityComputed += v => _avoidanceSafeVelocity = v;
+}
+
+// 把"寻路算出来的期望速度"交给避让系统，返回上一次算出来的安全速度——
+// 注意这里有一帧的延迟：VelocityComputed 是异步信号，这一帧写进去的 desiredVelocity，
+// 算出来的安全速度要等到之后才会通过回调更新 _avoidanceSafeVelocity，这一帧能读到的
+// 只是"上一次"算出来的结果。怪物移动速度通常不快，这一帧的延迟在观感上可以忽略，
+// 但如果你的怪物移动很快、或者对精确的躲避时机有要求，这一点需要知道
+private Vector3 ApplyAvoidance(Vector3 desiredVelocity)
+{
+    _navAgent.Velocity = desiredVelocity;
+    return _avoidanceSafeVelocity;
+}
+```
+
+以 `ChaseAndAttack()`（9.4.3 节）为例，接入方式是把原来 `Velocity = new Vector3(moveDir.X * MoveSpeed + strafeVel.X, ...)` 这一行里、寻路贡献的那部分速度过一遍 `ApplyAvoidance()`：
+
+```csharp
+// ChaseAndAttack() 里原来这一行：
+// Velocity = new Vector3(moveDir.X * MoveSpeed + strafeVel.X, Velocity.Y, moveDir.Z * MoveSpeed + strafeVel.Z);
+// 改成：
+Vector3 avoided = ApplyAvoidance(new Vector3(moveDir.X * MoveSpeed, 0, moveDir.Z * MoveSpeed));
+Velocity = new Vector3(avoided.X + strafeVel.X, Velocity.Y, avoided.Z + strafeVel.Z);
+```
+
+> **这里要老实说明这套方案覆盖到什么程度、没覆盖到什么程度**：上面只演示了 `ChaseAndAttack()` 一处的接入方式——`TickReposition()`、巡逻移动、9.3 节改版 `TickAlert()` 的搜索移动，但凡是"从 `GetNextPathPosition()` 算出方向再乘 `MoveSpeed`"的地方，都是同一个改法（把结果丢进 `ApplyAvoidance()`），但本教程没有把每一处都改一遍贴出来——这是本教程刻意没有全部展开的一处工作量，逐处修改机械但繁琐，读者应该已经能照着上面这一处的模式自己补完其余几处。即便全部接上，`avoidance_enabled` 提供的也只是"实时躲避"，不是"重新规划路径"：`NavigationAgent3D` 心里想去的目标点和它规划出的那条路径本身完全不知道有一扇门刚刚关上，避让层只是在执行这条路径的过程中，一旦即将撞上这个 `NavigationObstacle3D`，把这一帧的期望速度往旁边推一点。如果走廊够宽，怪物会绕着关闭的门走一圈过去，看起来跟"重新规划了路径"没什么区别；但**如果这扇门正好堵在一条只有它一条路可走的窄走廊中间**，怪物会被推得贴着墙、在门前面反复试图挤过去而挤不过去，卡在原地打转，而不是掉头走另一条路——因为避让层根本不知道"另一条路"存不存在，那是路径规划层的职责，而路径规划层这里没有被通知门已经关上了。**这是一个明确的开放问题，本教程没有给出完美方案**：真正彻底的解法是门状态变化时调用 `NavigationRegion3D.BakeNavigationMesh()` 让整张导航网格感知到这个变化，但这个操作足够贵，不适合频繁触发的门；折中方案包括给容易被完全堵死的门额外配置一条"备用路径"标记点，或者干脆在关卡设计上避免"只有一扇门能过"的死胡同布局。选哪一种取决于你的关卡设计，这里不替你决定。
+
 ### 9.2 感知：看不见就不该追
 
 现在的怪物只要在 `ChaseRange` 范围内就会追，哪怕隔着一堵墙。加一个视线检测：
@@ -2454,7 +3117,8 @@ public override void _PhysicsProcess(double delta)
 ```csharp
 // Enemy.cs 追加
 [Export] public float FieldOfViewDegrees = 100.0f;
-private Node3D _lastKnownPlayerPos;   // Node3D 类型只是为了偷懒复用引用类型判空，实际存的是位置概念，见下方说明
+private Vector3? _lastKnownPlayerPos;   // C# 的可空值类型（Vector3?）就能表达"要么有一个位置，要么什么都没有"，
+                                         // 不需要为了偷懒判空而借用引用类型——这里直接用最直白的写法
 
 private bool CanSeePlayer()
 {
@@ -2476,14 +3140,80 @@ private bool CanSeePlayer()
     query.CollisionMask = 0b0011;   // World + Player 层，不检测其他怪物
     var result = spaceState.IntersectRay(query);
 
-    if (result.Count == 0) return true;   // 没打到任何东西，说明视线畅通
-    return (Node3D)result["collider"] == _player;   // 打到的第一个东西就是玩家本人，也算看得见
+    // 视线是否畅通：没打到任何东西，或者打到的第一个东西就是玩家本人
+    bool visible = result.Count == 0 || (Node3D)result["collider"] == _player;
+
+    // 只要这次真的看见了，就把这一刻的位置记下来——对应真实 idAI 在 CanSee() 命中之后
+    // 调用 SetEnemyPosition() 更新 lastVisibleEnemyPos 的那一步（AI.cpp:3899-3905）。
+    // _lastKnownPlayerPos 现在不再是一个只声明不使用的字段：9.2.1 节的听觉、9.3 节改版的
+    // TickAlert()都会读它，作为"去看一眼最后出现的地方"这个搜索行为的目标点
+    if (visible) _lastKnownPlayerPos = _player.GlobalPosition;
+
+    return visible;
 }
 ```
 
-（上面 `_lastKnownPlayerPos` 字段这一步先声明但还不用，9.3 节的状态机会用到它，这里先跳过它专注理解 `CanSeePlayer()` 本身。）
-
 把 `_PhysicsProcess` 里 `GlobalPosition.DistanceTo(_player.GlobalPosition) < ChaseRange` 的判断换成 `CanSeePlayer()`。**这里有一个性能上的考量值得提前说一句**：`CanSeePlayer()` 每帧对每只怪物都做一次射线检测，怪物一多会有开销。第 12 章讲感知优化的时候会回头处理这个问题，现在关卡里怪物不多，先不用担心。
+
+### 9.2.1 听觉：不是所有警觉都得靠眼睛
+
+现在的 `CanSeePlayer()` 只处理"看见"这一种感知——但真实 DOOM 3 的 AI 会对声音起反应，最典型的场景就是你在拐角外开了一枪，隔着墙、根本看不到你的怪物却应声警觉。这不是靠怪物"听力范围内有没有响动"这种通用声音传播模拟做的，源码里的实现比想象中朴素得多：`idGameLocal::AlertAI(ent)`（`Game_local.cpp:3777-3786`）维护的是**一个全局的、只记"最近一次是谁弄出了动静"的单一槽位**——武器开火（`Weapon.cpp:3579,3762`）、投射物命中（`Projectile.cpp:1077`）、怪物受伤或死亡时反击的那个攻击者（`AI.cpp:3299` 的 `Pain()`、`AI.cpp:3430` 的 `Killed()`）都会调用这一个函数，把"是谁""什么时候"记到这一个全局槽位里，槽位只在**下一帧**内有效（`lastAIAlertTime = time + 1`）。每只 AI 每个 think 周期通过 `Event_HeardSound()`（`AI_events.cpp:512-526`）去问"这一帧全局槽位里记的这个人，在不在我的听觉范围（`AI_HEARING_RANGE`，`AI.h:45` 定义为 2048 个引擎单位）内、我对它是不是 `ATTACK_ON_SIGHT` 反应"，问到了就把这个实体当成"我听见的目标"处理。
+
+> **这里有个容易想岔的地方要先说清楚**：这套机制**不区分"谁弄出的动静离怪物耳朵有多近"这件事之外的任何空间因素**——没有对声音做隔墙衰减、没有考虑传播路径会不会被建筑结构挡住（只用直线距离比较），也不会因为一次响动同时让好几只不同远近的怪物听到不同"清晰度"的声音。全局槽位一次只能记一个人、一帧只维持一帧，本质上是一套刻意从简的近似，不是真的听觉物理模拟。DOOM 3 之所以这样做也说得通：这是 2004 年的引擎，AI 数量和关卡复杂度都在可控范围内，没必要为声音单独跑一套传播模型。
+
+把这套"全局槽位广播"原样搬过来做一个 Godot 版本，是一个独立的静态类——设计上刻意保持它跟 DOOM 3 一样简单，**不模拟隔墙衰减，只按直线距离判断**：
+
+```csharp
+// AIPerception.cs —— 独立文件，不属于任何一个 Enemy 实例；对应 idGameLocal::AlertAI/GetAlertEntity
+// 这一整套"全局唯一噪声槽位"机制，不是每只怪物各自维护一份
+using Godot;
+
+public static class AIPerception
+{
+    private static Vector3 _noisePosition;
+    private static double _noiseExpireTime = -1;
+
+    // 武器开火、投射物命中、怪物死亡的惨叫——任何"值得让附近怪物听见"的事件都从这里报进来。
+    // 有效期只有很短一瞬（这里用 0.15 秒模拟源码里"只在下一帧有效"的效果——Godot 的物理帧
+    // 之间间隔比 DOOM3 引擎帧短很多，直接照抄"一帧"在这里没有意义，用一个小的固定时间窗替代）
+    public static void RaiseNoise(Vector3 position)
+    {
+        _noisePosition = position;
+        _noiseExpireTime = Time.GetTicksMsec() / 1000.0 + 0.15;
+    }
+
+    // listenerPos：这只怪物自己的位置；hearingRange 对应 AI_HEARING_RANGE，但做成可配置的，
+    // 不同怪物、不同噪声大小理应有不同的听觉半径，不像源码写死一个全局常量
+    public static bool TryGetRecentNoise(Vector3 listenerPos, float hearingRange, out Vector3 noisePos)
+    {
+        noisePos = _noisePosition;
+        if (Time.GetTicksMsec() / 1000.0 > _noiseExpireTime) return false;
+        return listenerPos.DistanceSquaredTo(_noisePosition) < hearingRange * hearingRange;
+    }
+}
+```
+
+要让这套系统真正触发，需要在两个地方各加一行调用：第 4/5 章开火命中判定成功的地方（不管命中与否，开枪这个动作本身就该被听见），以及本章 `Die()` 死亡的地方（对应源码 `Killed()` 里那次 `AlertAI`——同伴死亡的惨叫是很强的警觉信号）：
+
+```csharp
+// WeaponManager.cs（或你存放开火逻辑的地方）—— 在真正扣动扳机、播放枪声的那一行旁边加：
+AIPerception.RaiseNoise(GlobalPosition);
+
+// Enemy.cs 的 Die() 开头加：
+AIPerception.RaiseNoise(GlobalPosition);
+```
+
+`Enemy` 这边只需要在没看见玩家的分支里加一次查询，9.3 节的状态机会把这次查询结果接到 `TickIdle()`（听到动静，从待机转警觉）里，这里先只展示查询本身长什么样，不重复贴 9.3 节已经写过的状态切换代码：
+
+```csharp
+// Enemy.cs 追加——9.3 节的 TickIdle() 会调用这个方法
+private bool TryHearPlayer(out Vector3 noisePos)
+{
+    return AIPerception.TryGetRecentNoise(GlobalPosition, ChaseRange, out noisePos);
+}
+```
+
+**这里也顺带回答一个常见问题**：这套机制算不算"怪物之间会互相通知"的群体协作？某种程度上算，但跟"A 怪物看见了玩家，主动告诉 B 怪物"完全是两回事——源码里没有任何"看见就广播"的逻辑，`AlertAI` 只在开火/受击/死亡这些**会产生响动**的事件上触发，纯粹靠"听力范围内共享同一个全局槽位"这个巧合让多只怪物同时反应过来，不是真正意义上的信息传递。9.4.4 节还会再回来讨论"怪物之间要不要协作"这个问题，那里要处理的是走位层面的协作，跟这里的听觉层面是两件不同的事。
 
 ### 9.3 状态机：从"追/打"两态，扩展成一套完整流程
 
@@ -2499,6 +3229,7 @@ public partial class Enemy : CharacterBody3D
 
     // ...前面章节的字段不变，追加：
     [Export] public float AlertDuration = 2.0f;   // 警觉状态下，多久没看到目标就放弃、回到待机
+    [Export] public float SearchArriveDistance = 1.0f;   // 搜索最后已知位置时，走到离这个点多近就算"到了"
     private double _lastSeenTime;
 
     public override void _PhysicsProcess(double delta)
@@ -2535,20 +3266,60 @@ public partial class Enemy : CharacterBody3D
             _lastSeenTime = Time.GetTicksMsec() / 1000.0;
             GD.Print($"{Name}：发现目标，进入战斗状态");
         }
+        else if (TryHearPlayer(out Vector3 noisePos))
+        {
+            // 9.2.1 节的听觉：看不见，但听见了枪声/同伴惨叫——先不直接进战斗（毕竟还没亲眼确认），
+            // 转警觉，去响动发生的地方看一眼
+            _state = State.Alert;
+            _lastSeenTime = Time.GetTicksMsec() / 1000.0;
+            _lastKnownPlayerPos = noisePos;
+            GD.Print($"{Name}：听到动静，前去查看");
+        }
     }
 
     private void TickAlert()
     {
-        // 警觉状态：停下来，原地观望；重新看到就回战斗，超时就回待机
         if (CanSeePlayer())
         {
             _state = State.Combat;
             _lastSeenTime = Time.GetTicksMsec() / 1000.0;
+            return;
         }
-        else if (Time.GetTicksMsec() / 1000.0 - _lastSeenTime > AlertDuration)
+
+        double now = Time.GetTicksMsec() / 1000.0;
+        if (now - _lastSeenTime > AlertDuration)
         {
             _state = State.Idle;
-            GD.Print($"{Name}：目标丢失，恢复待机");
+            _lastKnownPlayerPos = null;
+            Velocity = new Vector3(0, Velocity.Y, 0);
+            GD.Print($"{Name}：搜索无果，恢复待机");
+            return;
+        }
+
+        // 警觉状态不再是"原地站桩等超时"——去 _lastKnownPlayerPos 记的最后位置看一眼，
+        // 这是本教程自己设计的搜索策略：源码里"要不要去搜、搜多久放弃"这套决策写在
+        // 拿不到的 .script 文件里，这里借用的只是真实存在的引擎原语——
+        // "记住最后一次确认目标所在的位置"这个概念本身（对应 idAI::lastVisibleEnemyPos）
+        if (_lastKnownPlayerPos.HasValue)
+        {
+            Vector3 target = _lastKnownPlayerPos.Value;
+            float distToTarget = GlobalPosition.DistanceTo(target);
+            if (distToTarget > SearchArriveDistance)
+            {
+                _navAgent.TargetPosition = target;
+                if (!_navAgent.IsNavigationFinished())
+                {
+                    Vector3 nextPos = _navAgent.GetNextPathPosition();
+                    Vector3 dir = (nextPos - GlobalPosition); dir.Y = 0; dir = dir.Normalized();
+                    Velocity = new Vector3(dir.X * MoveSpeed * 0.6f, Velocity.Y, dir.Z * MoveSpeed * 0.6f);
+                    if (dir.LengthSquared() > 0.01f)
+                        LookAt(new Vector3(GlobalPosition.X + dir.X, GlobalPosition.Y, GlobalPosition.Z + dir.Z), Vector3.Up);
+                    return;
+                }
+            }
+            // 已经走到（或者本来就够近）——原地观望，把剩下的 AlertDuration 当"看了一圈没找到人"的耐心值花掉，
+            // 而不是一到目标点就立刻掉头回待机，那样看起来会像"瞬移式"的机械感
+            Velocity = new Vector3(0, Velocity.Y, 0);
         }
     }
 
@@ -2589,7 +3360,11 @@ public partial class Enemy : CharacterBody3D
 
 `_state = State.Dead` 那个分支现在还没有真正被设置（`Die()` 方法目前还是直接 `QueueFree()`），先把架子搭好，第 10 章讲布娃娃死亡的时候会用到"进入 Dead 状态但先不移除节点，播放完死亡表现再移除"这个流程，到时候回头改 `Die()`。
 
-这个状态机现在只有 4 个状态、转移条件也很简单，但这已经是一个**可以无限扩展的骨架**——想加"受伤后短暂僵直""听到声音但没看到人、跑去查看"这类行为，都是往 `switch` 里加一个新状态分支，不需要推倒重来。
+上面的 `TickAlert()` 已经不是最初那种"原地站着等超时"的写法了——丢了视线之后，怪物会真的走到 `_lastKnownPlayerPos` 记录的最后位置去看一眼，找不到人才会在 `AlertDuration` 耗尽后放弃、回到待机，这比"一断线就傻站着，掉线秒数一到就瞬间恢复原样"看起来更像"在找你"而不是一个卡在计时器上的木偶。
+
+这个状态机现在只有 4 个状态、转移条件也很简单，但这已经是一个**可以无限扩展的骨架**——想加"受伤后短暂僵直"这类行为，都是往 `switch` 里加一个新状态分支，不需要推倒重来（9.5 节马上就会把"受伤后短暂僵直"这一条填上）。
+
+**这里主动回答一个读者可能会问、但本教程没有实现的状态**：要不要加一个"血量低于某个比例就转身逃跑"的 `Flee` 状态？先说源码事实——查遍这份源码目录的 `AI.cpp`/`AI.h`/`Actor.cpp`/`Actor.h`，**找不到任何跟"逃跑"相关的字段、状态或 spawnArg**（没有 `flee`、没有 `Fly_Turn`、没有类似的东西）。这不代表 DOOM 3 里所有怪物都是"死战到底"——但凡真有哪只怪物会在濒死时转身逃跑，这个行为只可能写在拿不到的 `.script` 文件里，C++ 引擎层没有为这件事提供任何专门支持，纯粹是脚本作者自己在状态机里判断血量、切换动画和移动目标做出来的效果，跟其他"够不着的招式就走位"这类判断没有本质区别，只是没有一个专门的引擎原语。所以本教程选择不做这个状态，不是因为它没用，而是因为**它不需要任何新的引擎层支持，加不加纯粹是内容量的取舍**——如果你想要，思路是：在 9.5 节 `TryPain()` 或者 `TakeDamage()` 里加一个"血量低于阈值且这只怪物标记为'可逃跑'"的判断，命中就把 `_state` 切到一个新的 `Flee` 状态，`TickFlee()` 里把 `_navAgent.TargetPosition` 设成"背离玩家方向、离得尽可能远的一个可行走点"（可以简单地取"当前位置沿着背离玩家的方向延伸一段距离"这条线段的终点，交给 `NavigationAgent3D` 去规划怎么走到附近），这个状态不需要引入任何新概念，全部是已经搭好的寻路 + 状态机骨架的重新组合。
 
 ### 9.4 完整近战判定：两阶段检测 + 保底不死
 
@@ -2793,6 +3568,387 @@ private void TryAttack()
 
 这一版 `TryAttack()` 还只会挑近战条目——9.8 节马上会把它再扩展一层，加上远程分支。
 
+### 9.4.2 攻击选择：多种招式该怎么选
+
+上面 `PickMeleeAttack()` 的挑选规则其实只有一条："表里第一条距离够得着、视线也通的近战条目，就用它"。这在只有一种攻击的时候没问题，但只要一只怪物同时有两种够得着的招式——比如近距离的爪击和稍远一点的地面震击——这种写法会导致它几乎永远只用排在 `Attacks` 数组里靠前的那一条：只要两者的可用距离有重叠，前面那条永远先满足条件、先被返回，后面那条形同摆设。这不是真的"选择"，只是"数组顺序优先"，玩家打几次就会发现这只怪物其实只有一种真正会用的招式。
+
+真实 DOOM 3 确实有一个跟这个问题相关的查询：`idAI::Event_EnemyRange()`/`Event_EnemyRange2D()`（`AI_events.cpp:1460-1491`，声明在 `AI.h:623-624`）。**这里要先纠正一处容易读错的细节**：这两个函数本身**返回的是一个原始浮点距离值**（`idThread::ReturnFloat(dist)`，就是怪物到目标的欧几里得距离，2D 版本只是去掉了高度分量），并不会在 C++ 这一层就把距离"归"成近战/中距/远距这样的档位——真正的分档判断（比如"距离小于 X 算近战、大于 Y 算远程"）是脚本代码拿到这个原始距离之后自己写的 if/else，而脚本文件不在本教程能拿到的这份源码目录里。所以准确的说法是：**C++ 引擎层只提供了"查距离"这一个原语，"按距离分档"这件事完全是脚本层的策略**，不是 `Event_EnemyRange` 自己做的。
+
+> **要老实说清楚这里的边界**：既然分档逻辑本身不可见，下面新增的 `MinRange`（下限）配合 9.4.1 已有的 `Range` 字段（现在承担上限的角色）这套分档字段，是拿 `Event_EnemyRange` 这个真实存在的"查询怪物到目标距离"原语作为出发点，在 Godot 这边自己设计的一套通用分档系统——具体的数值边界和"档位内怎么再挑"这套权重随机策略，都是本教程自己定的合理选择，不是从源码脚本里扒出来的。如果你手上有这些怪物真正的 `.script` 文件，应该以那里面写的分档边界和挑选规则为准。
+
+把这两件事——"这条攻击够不够得着"和"这条攻击是不是还在冷却"——都变成 `AttackDefinition` 自己的属性，再加一个权重字段，给 9.4.1 定义的 `AttackDefinition` 追加三个字段：
+
+```csharp
+// AttackDefinition.cs —— 追加到 9.4.1 节的类定义里
+[Export] public float MinRange = 0f;   // 这条攻击只在 [MinRange, Range] 这个区间内才算"够得着"——
+                                        // Range 字段沿用 9.4.1 的定义，现在承担"区间上限"这个角色
+[Export] public float Cooldown = 1.5f; // 这条攻击自己的冷却时间，不再共用 Enemy 身上那一个全局冷却
+[Export] public float Weight = 1.0f;   // 同一时刻有多条攻击都够格时，按这个权重做加权随机挑选
+```
+
+`Cooldown` 是这条攻击"多久能再打一次"的设计时长，但"这条攻击上一次是什么时候打的"是运行时才有的状态，不能直接存在 `AttackDefinition` 上——`AttackDefinition` 是 `Resource`，同一份资源理论上可能被多只怪物实例共享（9.4.1 节已经提过这一点），如果把"上次使用时间"这种运行时状态也塞进 `Resource` 里，多只怪物共用同一条 `AttackDefinition` 时就会互相污染对方的冷却计时。所以运行时的"上次使用时间"改存在 `Enemy` 自己身上，用一个以 `AttackDefinition` 为 key 的字典：
+
+```csharp
+// Enemy.cs 追加
+using System.Collections.Generic;   // Dictionary<TKey, TValue> 需要这个命名空间，别忘了加在文件顶部
+
+private readonly Dictionary<AttackDefinition, double> _attackReadyTime = new();
+
+private bool IsAttackOffCooldown(AttackDefinition attack, double now)
+{
+    return !_attackReadyTime.TryGetValue(attack, out double readyAt) || now >= readyAt;
+}
+
+private void MarkAttackUsed(AttackDefinition attack, double now)
+{
+    _attackReadyTime[attack] = now + attack.Cooldown;
+}
+
+// 上一次真正打出去的是哪一条攻击——WeightedPick 用它做"不要连续两次挑同一招"的抑制。
+// 这条状态跟 _attackReadyTime 一样存在 Enemy 身上，不存 AttackDefinition：理由相同，
+// 避免多只怪物共享同一份 Resource 时互相污染
+private AttackDefinition _lastUsedAttack;
+
+// 从一组已经确认合格的候选里按 Weight 做加权随机挑选——候选只有 0/1 个时直接短路，不用真的掷骰子。
+// **这一条"压低上一次用过的招式权重"的规则不是从源码里扒出来的**：DOOM3 的 C++ 层完全没有
+// "记住上一次用了哪招、这次少选它"这种概念（AI.h/AI.cpp 通篇没有类似 lastAttack 的字段），
+// 这件事如果存在，只会是某只怪物的 .script 自己写的、我们拿不到。这里加它纯粹是因为
+// 玩家对"同一只怪物反复甩同一个动作"的重复感很敏感，是本教程从"这套系统已经是自己设计的
+// 引申"这个既有边界内，为了打起来更耐玩而加的一条工程经验规则，不是在冒充源码行为
+private static AttackDefinition WeightedPick(List<AttackDefinition> candidates, AttackDefinition lastUsed)
+{
+    if (candidates.Count == 0) return null;
+    if (candidates.Count == 1) return candidates[0];
+
+    const float RepeatPenalty = 0.35f;   // 上一次用过的招式，这一轮权重打这个折扣，不是直接排除——
+                                          // 排除会导致"只有这一招够格"时它反而永远选不中，打折才对
+
+    float totalWeight = 0f;
+    foreach (var c in candidates)
+    {
+        float w = Mathf.Max(c.Weight, 0f);
+        if (c == lastUsed) w *= RepeatPenalty;
+        totalWeight += w;
+    }
+    if (totalWeight <= 0f) return candidates[(int)(GD.Randi() % (uint)candidates.Count)];   // 权重全是 0，退化成纯随机
+
+    float roll = (float)GD.RandRange(0.0, (double)totalWeight);
+    float cumulative = 0f;
+    foreach (var c in candidates)
+    {
+        float w = Mathf.Max(c.Weight, 0f);
+        if (c == lastUsed) w *= RepeatPenalty;
+        cumulative += w;
+        if (roll <= cumulative) return c;
+    }
+    return candidates[^1];   // 浮点误差兜底
+}
+```
+
+有了这两块之后，`TestMeleeBounds()`/`PickMeleeAttack()`/`TryAttack()` 也要跟着换成认区间、认冷却、认权重的版本：
+
+```csharp
+// Enemy.cs —— 替换 9.4.1 节的 TestMeleeBounds()/PickMeleeAttack()/TryAttack()
+// TestMeleeLineOfSight() 不用变，这次改动跟视线判定无关
+private bool TestMeleeBounds(AttackDefinition attack)
+{
+    if (_player == null) return false;
+    Vector3 toPlayer = _player.GlobalPosition - GlobalPosition;
+    float horizontalDistance = new Vector2(toPlayer.X, toPlayer.Z).Length();
+    // 现在同时检查下限：太近也可能打不到（比如一把设计上不该贴脸使用的地面震击）
+    bool withinRange = horizontalDistance >= attack.MinRange && horizontalDistance <= attack.Range;
+    bool withinVertical = Mathf.Abs(toPlayer.Y) <= 1.0f;
+    return withinRange && withinVertical;
+}
+
+private AttackDefinition PickMeleeAttack()
+{
+    if (_player == null) return null;
+    double now = Time.GetTicksMsec() / 1000.0;
+
+    var eligible = new List<AttackDefinition>();
+    foreach (var attack in Attacks)
+    {
+        if (attack.ProjectileScene != null) continue;   // 远程条目交给 9.8 节的 PickRangedAttack()
+        if (!IsAttackOffCooldown(attack, now)) continue;
+        if (!TestMeleeBounds(attack) || !TestMeleeLineOfSight(attack)) continue;
+        eligible.Add(attack);
+    }
+    return WeightedPick(eligible, _lastUsedAttack);
+}
+
+// 挑出一条攻击、标记它进入冷却、执行——三件事收在一起，避免"挑了但没用上却已经标记冷却"这种不一致
+private AttackDefinition TryAttack()
+{
+    var attack = PickMeleeAttack();
+    if (attack == null) return null;
+
+    double now = Time.GetTicksMsec() / 1000.0;
+    MarkAttackUsed(attack, now);
+    _lastUsedAttack = attack;
+    ExecuteMeleeAttack(attack);
+    return attack;
+}
+```
+
+`TryAttack()` 的返回类型从 `void` 换成了 `AttackDefinition`（成功打出的那一条，没打出就是 `null`）——之前所有把它当 `TryAttack();` 这样单独一行调用的地方（8.2/9.3 的 `ChaseAndAttack()`）不用改，C# 允许忽略一个方法的返回值；9.4.3 节的走位逻辑会开始用上这个返回值。
+
+**这里有一个值得记住的设计判断**：没有区间和权重之前，一只同时有爪击（近）和地震波（稍远）的怪物，实际上打起来只会用爪击——因为两者射程有重叠、爪击排在数组前面，地震波永远选不到。加上 `MinRange`/`Range` 分档之后，贴脸时段两者可能都够格，靠 `Weight` 做加权随机，怪物不会每次都用同一招；拉开到只有地震波够格的距离时，爪击因为超出了自己的 `Range` 自然被过滤掉，地震波才会被选中。同一套判断逻辑，不需要写"这只怪物是不是该用远一点的招式"这种专门的 if 分支。
+
+至此，8.3/9.4 节引入的 `Enemy.AttackCooldown`/`_lastAttackTime` 这一对共享冷却字段已经完全没有代码在用了（9.4.1 节的 `TryAttack()` 还引用过它们，但这里已经被整体替换掉）——可以直接从 `Enemy.cs` 里删掉，冷却现在完全由 `_attackReadyTime` 字典按每条攻击各自记账。9.8 节的远程分支和它自己的 `PickRangedAttack()`，也要跟着换成同一套区间 + 冷却 + 权重的判断，下面 9.8 节的代码已经同步改过来了。
+
+### 9.4.3 走位：不是每次都该站着打
+
+**先把这一节的定位说清楚，避免造成"这是在照抄 DOOM 3 源码"的误解**：这一节实现的实时走位系统是本教程自己设计的，不是 DOOM 3 源码的移植。真实 DOOM 3 的怪物定位系统是 `idCombatNode`（`AI.h:702`）——关卡设计师在编辑器里手动摆放一个个"战斗节点"，每个节点标注好朝向、可视范围、这个节点适合用来打近战还是远程，怪物通过 `Event_FindEnemyInCombatNodes()`/`Event_GetCombatNode()` 去找一个当前能用的节点、走过去、站在那儿打——本质上是**关卡设计师预先摆好的静态位置**，不是怪物自己实时计算"我现在该往哪挪"。这一节选择不做 `idCombatNode` 那一套（做那一套意味着教程的关卡搭建部分要多一大块"如何摆放战斗节点"的内容，也意味着怪物离开预先设计好的战斗节点密集区域就完全不会走位），而是设计一套不依赖关卡预置数据、单靠上面 9.4.2 节引入的距离分档概念就能实时算出该往哪走的系统。这套系统在**"用距离分档决定行为"这个思路**上是受 `Event_EnemyRange` 启发的，但具体走位的实时计算方式没有任何源码依据，请不要把接下来的代码当成 `idCombatNode` 的还原来理解。
+
+现在 9.3 节的状态机里，`TickCombat()` 只会做两件事：追过去、够得着就打。但如果一只纯远程怪物的目标欺身贴到脸上、或者一只纯近战怪物够不到目标，`Attacks` 表里没有一条能用的招式，怪物应该先挪到"能打"的距离上，而不是站在原地干等目标自己送上门（或者傻乎乎地继续追、追到贴脸了才发现自己是个只会打远处的怪物）。给状态机加一个 `Reposition` 状态：
+
+```csharp
+// Enemy.cs —— 状态枚举追加 Reposition，_PhysicsProcess() 的 switch 追加对应分支
+private enum State { Idle, Alert, Combat, Reposition, Dead }
+
+// _PhysicsProcess() 里的 switch 追加一支：
+//     case State.Reposition:
+//         TickReposition(dt);
+//         break;
+// （插入位置在 case State.Combat 和 case State.Dead 之间，其余分支不变）
+```
+
+判断"该不该走位"，靠的是 9.4.2 节引入的区间 + 冷却概念——不看某一条具体攻击够不够格（那是 `PickMeleeAttack`/`PickRangedAttack` 内部的事），只看**整张 `Attacks` 表里，有没有任何一条在当前距离的区间内、且没在冷却**：
+
+```csharp
+// Enemy.cs 追加——不区分近战/远程，只要区间和冷却都满足就算数，
+// 视线/包围盒这些更细的判定交给真正执行攻击时的 TestMeleeBounds/TestMeleeLineOfSight
+private bool HasEligibleAttack(float distance, double now)
+{
+    foreach (var attack in Attacks)
+    {
+        if (distance < attack.MinRange || distance > attack.Range) continue;
+        if (!IsAttackOffCooldown(attack, now)) continue;
+        return true;
+    }
+    return false;
+}
+```
+
+`TickCombat()` 现在多一步判断：够不到任何招式就转去 `Reposition`；够得到就照常追打，并且——这是这一节要解决的第二个问题——**哪怕这一刻能打，也不该每次都笔直冲上去站定不动地打**。怪物刚打出一发攻击、这条攻击进了冷却的瞬间，有一定概率不站着傻等冷却转好，而是侧身移动一小段时间，让自己看起来像在寻找角度而不是靶场里的固定木桩：
+
+```csharp
+// Enemy.cs 替换 9.3 节的 TickCombat()，ChaseAndAttack() 也一并替换
+[Export] public float StrafeChance = 0.35f;    // 每次成功打出一次攻击后，触发侧移的概率
+[Export] public float StrafeDuration = 0.6f;   // 侧移持续多久
+[Export] public float StrafeSpeed = 2.0f;      // 侧移的横向速度，刻意比 MoveSpeed 慢一些，别让它看起来在平移传送
+private double _strafeUntil;
+private int _strafeDir = 1;   // -1 = 向左，1 = 向右
+
+private void TickCombat(float dt)
+{
+    if (!CanSeePlayer())
+    {
+        Velocity = new Vector3(0, Velocity.Y, 0);
+        _state = State.Alert;
+        GD.Print($"{Name}：看不见目标了，转为警觉");
+        return;
+    }
+
+    _lastSeenTime = Time.GetTicksMsec() / 1000.0;
+    double now = _lastSeenTime;
+    float distance = GlobalPosition.DistanceTo(_player.GlobalPosition);
+
+    if (!HasEligibleAttack(distance, now))
+    {
+        _state = State.Reposition;
+        GD.Print($"{Name}：当前距离没有能用的招式，开始走位");
+        return;
+    }
+
+    ChaseAndAttack(dt);
+}
+
+private AttackDefinition ChaseAndAttack(float dt)
+{
+    Vector3 moveDir = Vector3.Zero;
+    _navAgent.TargetPosition = _player.GlobalPosition;
+    if (!_navAgent.IsNavigationFinished())
+    {
+        Vector3 nextPos = _navAgent.GetNextPathPosition();
+        moveDir = (nextPos - GlobalPosition); moveDir.Y = 0; moveDir = moveDir.Normalized();
+    }
+
+    double now = Time.GetTicksMsec() / 1000.0;
+    Vector3 strafeVel = Vector3.Zero;
+    if (now < _strafeUntil)
+    {
+        Vector3 toPlayer = _player.GlobalPosition - GlobalPosition; toPlayer.Y = 0;
+        Vector3 lateral = toPlayer.Normalized().Cross(Vector3.Up) * _strafeDir;
+        strafeVel = lateral * StrafeSpeed;
+    }
+
+    Velocity = new Vector3(moveDir.X * MoveSpeed + strafeVel.X, Velocity.Y, moveDir.Z * MoveSpeed + strafeVel.Z);
+
+    Vector3 faceDir = _player.GlobalPosition - GlobalPosition; faceDir.Y = 0;
+    if (faceDir.LengthSquared() > 0.01f)
+        LookAt(new Vector3(GlobalPosition.X + faceDir.X, GlobalPosition.Y, GlobalPosition.Z + faceDir.Z), Vector3.Up);
+
+    var fired = TryAttack();
+    if (fired != null) MaybeStartStrafe(now);   // 这一下打出去了，赌一把接下来要不要侧移
+    return fired;
+}
+
+private void MaybeStartStrafe(double now)
+{
+    if (now < _strafeUntil) return;         // 已经在侧移窗口里，不重复触发
+    if (GD.Randf() > StrafeChance) return;
+    _strafeUntil = now + StrafeDuration;
+    _strafeDir = GD.Randf() < 0.5f ? -1 : 1;
+}
+```
+
+> **这里要老实标一处简化**：上面的侧移只是在寻路给出的前进方向上叠加一个横向速度分量，本身没有再单独做一次墙体检测——之所以敢这么简化，是因为侧移幅度小（`StrafeSpeed` 刻意调得比 `MoveSpeed` 慢）、持续时间短（`StrafeDuration` 默认 0.6 秒），贴墙侧移撞墙的后果通常只是"这半秒卡在墙边空转轮子"，不会走出很离谱的路线。如果你的关卡有很多贴身的窄道或者掩体，想让侧移也严格不穿墙、不躲进会挡视线的掩体后面，可以在 `strafeVel` 生效前再加一次沿侧移方向的短距离射线/胶囊体检测（做法跟 9.9 节 `IsChargePathClear()` 的胶囊体扫掠是同一个思路），这里为了保持这一节的重点在"该不该走位、怎么决定走位方向"上，没有把这层检测也叠上去。
+
+再实现"够不到任何招式，该往哪挪"这部分——`TickReposition()`。它复用 9.1 节的 `NavigationAgent3D` 寻路（保证不会穿墙走直线），只是把寻路目标从"玩家所在的位置"换成"玩家和自己连线上、落在某条还没冷却的招式的可用区间里的一个点"：
+
+```csharp
+// Enemy.cs 追加
+[Export] public float RepositionStuckTimeout = 3.0f;   // 走位走了这么久还是够不到任何招式，就认定是被困住了
+private double _repositionSince = -1;
+
+private void TickReposition(float dt)
+{
+    if (!CanSeePlayer())
+    {
+        Velocity = new Vector3(0, Velocity.Y, 0);
+        _state = State.Alert;   // 走位途中跟丢了视线，跟 9.3 节 TickCombat() 一样转警觉，而不是继续瞎走
+        _repositionSince = -1;
+        return;
+    }
+
+    double now = Time.GetTicksMsec() / 1000.0;
+    float distance = GlobalPosition.DistanceTo(_player.GlobalPosition);
+
+    if (HasEligibleAttack(distance, now))
+    {
+        _state = State.Combat;   // 已经挪到能打的距离了，交回 TickCombat() 正常追打
+        _repositionSince = -1;
+        return;
+    }
+
+    if (_repositionSince < 0) _repositionSince = now;
+
+    // 被困住的兜底——走位走了超过 RepositionStuckTimeout 还是找不到能打的距离（典型场景：
+    // 被玩家逼到死角、周围没有空间可退，NavigationAgent3D 规划出的目标点根本走不到），
+    // 与其让怪物永远站在原地当一动不动的活靶子，不如豁出去用够得上视线判定的招式硬打一下——
+    // 忽略冷却和区间下限，只要 TestMeleeBounds/TestMeleeLineOfSight 还成立就行。
+    // 这条兜底目前只看近战条目——9.8 节加入远程之后，会把它换成同时也看远程条目的版本
+    if (now - _repositionSince > RepositionStuckTimeout)
+    {
+        var desperate = PickDesperateMeleeAttack();
+        if (desperate != null)
+        {
+            GD.Print($"{Name}：走位被困住了，豁出去用 {desperate.AttackName} 硬打一下");
+            MarkAttackUsed(desperate, now);
+            _lastUsedAttack = desperate;
+            ExecuteMeleeAttack(desperate);
+            _repositionSince = now;   // 打完这一下重新计时，别每帧都硬打
+            return;
+        }
+    }
+
+    // 在所有还没冷却的招式里，找一个"离当前距离最近"的区间去靠——
+    // 太近就退到某条招式的 MinRange，太远就冲到某条招式的 Range 以内
+    float targetDistance = distance;
+    float bestDelta = float.MaxValue;
+    bool found = false;
+    foreach (var attack in Attacks)
+    {
+        if (!IsAttackOffCooldown(attack, now)) continue;
+        float clamped = Mathf.Clamp(distance, attack.MinRange, attack.Range);
+        float delta = Mathf.Abs(clamped - distance);
+        if (delta < bestDelta) { bestDelta = delta; targetDistance = clamped; found = true; }
+    }
+
+    if (!found)
+    {
+        // 所有招式都在冷却，没有"该往哪挪"的依据——原地不动等某条招式冷却转好，
+        // 比朝着一个瞎猜的方向乱走更合理
+        Velocity = new Vector3(0, Velocity.Y, 0);
+        return;
+    }
+
+    Vector3 toPlayer = _player.GlobalPosition - GlobalPosition; toPlayer.Y = 0;
+    Vector3 desiredPos = _player.GlobalPosition - toPlayer.Normalized() * targetDistance;
+
+    _navAgent.TargetPosition = desiredPos;   // 交给 9.1 节的寻路系统去规划怎么走到这个点，不会直接穿墙
+    if (!_navAgent.IsNavigationFinished())
+    {
+        Vector3 nextPos = _navAgent.GetNextPathPosition();
+        Vector3 dir = (nextPos - GlobalPosition); dir.Y = 0; dir = dir.Normalized();
+        Velocity = new Vector3(dir.X * MoveSpeed, Velocity.Y, dir.Z * MoveSpeed);
+        if (dir.LengthSquared() > 0.01f)
+            LookAt(new Vector3(GlobalPosition.X + dir.X, GlobalPosition.Y, GlobalPosition.Z + dir.Z), Vector3.Up);
+    }
+    else
+    {
+        Velocity = new Vector3(0, Velocity.Y, 0);
+    }
+}
+
+// 兜底攻击：无视冷却和 MinRange，只要包围盒 + 视线这套最基本的命中判定还成立就行——
+// 目的不是"选出最合适的招式"，是"总得打点什么，不能傻站着挨打"
+private AttackDefinition PickDesperateMeleeAttack()
+{
+    foreach (var attack in Attacks)
+    {
+        if (attack.ProjectileScene != null) continue;
+        if (TestMeleeBounds(attack) && TestMeleeLineOfSight(attack)) return attack;
+    }
+    return null;
+}
+```
+
+这个状态和 9.1/9.2 节已经搭好的地基严丝合缝地接上了：走位目标点是交给 `NavigationAgent3D` 去规划的，不是自己算一条直线杵过去，所以不会出现"为了拉开距离一头扎进墙里"这种情况；跟丢视线时统一走 `State.Alert` 这条已有的路径，不需要在 `Reposition` 状态里单独写一套"目标去哪了"的处理逻辑。至此，`Enemy` 的状态机变成了 `Idle → Alert → Combat ⇄ Reposition → Dead` 这五态，`Combat` 和 `Reposition` 之间可以来回切换，具体切哪边完全由"当前距离有没有一条还没冷却的招式够得着"这一个统一的判断驱动。
+
+**这里回答一个容易被忽略的边界情况**：如果一只怪物被逼到角落、`HasEligibleAttack()` 一直是 `false`（比如所有招式都在冷却，或者所有招式的 `MinRange` 都大于当前能退到的最大距离），没有 `RepositionStuckTimeout` 这道兜底的话，它会永远停在 `Reposition` 状态里反复计算"该往哪挪"却又哪儿都挪不动，变成一个只会挨打不会还手的活靶子——这在设计上是站不住脚的：玩家会很快发现"把这只怪物逼到墙角"是一个稳赢的技巧，而不是靠正常输出赢下战斗。加上这道超时兜底之后，被困住太久就会豁出去硬打一下，至少不会看起来像卡死了。
+
+### 9.4.4 群体：不止一只怪物同时走位会怎样
+
+前面几节的走位系统全程只考虑了"这一只怪物和玩家之间"的关系——`TickReposition()` 算 `desiredPos` 只看自己到玩家的连线，完全不知道场景里还有没有其他怪物、它们此刻在往哪儿挪。这在只有一只怪物的战斗里没问题，但 FPS 里非常常见的"一群怪物同时围上来"场景会立刻暴露问题：如果两三只同一种怪物几乎同时判定"该走位了"，而它们各自到玩家的连线方向差不多，`Mathf.Clamp(distance, attack.MinRange, attack.Range)` 算出来的 `targetDistance` 也差不多，几只怪物会不约而同地朝着玩家周围**同一小片区域**扎堆过去——`NavigationAgent3D` 只保证"这只怪物不会穿墙走到目标点"，不保证"这只怪物不会和另一只走到同一个目标点的怪物叠在一起"，观感上会是好几只怪物挤成一团、模型互相穿插，一点都不像在包抄玩家。
+
+**这里要先说清楚：DOOM 3 源码里没有任何东西可以照抄来解决这个问题**——9.4.3 节已经交代过，走位这整套系统本身就是本教程的自建扩展，源码里对应的 `idCombatNode` 是关卡设计师手摆的静态节点，节点数量有限，天然就不会出现"好几只怪物涌向同一个点"这种问题（因为能站的点位一开始就是设计师控制好的）。既然走了实时计算这条路，"怎么让多只怪物不挤在一起"就必须是本教程自己给出方案的部分——不解决的话，对一份自称追求商业级质感的教程来说是说不过去的，这是一个真实存在、必须正面处理的问题，不能挂个"开放问题"的牌子就绕过去。
+
+处理思路分两层，分别针对"目标点选得太集中"和"就算目标点不同，路上也可能撞在一起"这两件事：
+
+**第一层：给每只怪物一个稳定的、各不相同的角度偏移**，让它们不是都直奔玩家和自己连线上的那个点，而是分散到玩家周围不同的方位角上去：
+
+```csharp
+// Enemy.cs 追加
+// 用节点自己的 InstanceId 生成一个稳定的、每只怪物各不相同的角度偏移——不需要关卡设计师
+// 手动给每只怪物分配包抄角度，同一只怪物每次调用这个方法结果都一样（不会一会儿一个方向）
+private float PackAngleOffset()
+{
+    ulong id = GetInstanceId();
+    float normalized = (id % 1000) / 1000.0f;
+    return (normalized - 0.5f) * Mathf.Pi * 0.6f;   // 映射到大约 ±54°的偏移范围，不是随机值，每次调用结果都一样
+}
+```
+
+`TickReposition()` 算 `desiredPos` 那一行，从"直接沿连线退/进"改成"沿连线偏转一个角度之后再退/进"：
+
+```csharp
+// TickReposition() 里原来这两行：
+// Vector3 toPlayer = _player.GlobalPosition - GlobalPosition; toPlayer.Y = 0;
+// Vector3 desiredPos = _player.GlobalPosition - toPlayer.Normalized() * targetDistance;
+// 改成：
+Vector3 toPlayer = _player.GlobalPosition - GlobalPosition; toPlayer.Y = 0;
+Vector3 spreadDir = toPlayer.Normalized().Rotated(Vector3.Up, PackAngleOffset());
+Vector3 desiredPos = _player.GlobalPosition - spreadDir * targetDistance;
+```
+
+这一步解决的是"目标点选得太集中"——不同 `InstanceId` 算出不同的偏移角度，几只怪物即便一开始站的位置、面对玩家的方向都差不多，走位目标点也会散开到玩家周围一圈不同的方位，而不是全部涌向同一个点。
+
+**第二层：就算目标点不同，路上仍然可能因为起点接近而短暂挤在一起**——这一层交给 9.1.1 节刚引入的 `avoidance_enabled`/`ApplyAvoidance()` 处理。这不是巧合：`NavigationAgent3D` 的 RVO 避让本来就不是只避让 `NavigationObstacle3D` 这种静态/半静态障碍物，**同样开启了 `avoidance_enabled` 的其他 agent 之间也会互相避让**——也就是说，只要每只怪物都在 9.1.1 节接上了 `ApplyAvoidance()`，多只怪物同时走位时，靠得太近的两只会被 RVO 自动推开一点距离，不需要再单独写一套"怪物之间保持间距"的分离逻辑。这也是为什么 9.1.1 节的动态避让不只是为了解决关门的问题——它本身就是"多个移动中的 agent 该怎么不叠在一起"这个更通用问题的解法，关闭的门和别的怪物，对 RVO 来说只是"避让列表"里的两种不同条目而已。
+
+> **老实说明这两层能解决到什么程度**：这套方案能让怪物**看起来**不再无脑地涌向同一点、也不再硬挤在一起，但它依然不是真正的"编队"或者"协作走位"——每只怪物的决策完全是独立的，`PackAngleOffset()` 只是给了一个静态的、跟其他怪物无关的偏移量，不会根据"这个方位这一刻已经站了另一只怪物"去动态调整；RVO 避让解决的也只是"别叠在一起"，不会主动帮怪物群体形成包围圈或者分配"谁去正面、谁去侧翼"这种战术分工。如果你想要更接近真正战术协作的效果（比如显式地在几只怪物之间分配不同的包抄方位、确保不会有两只选中同一个扇区），需要引入一个更高层的"小队"概念——一个共享的黑板/管理器，怪物加入战斗时去这个管理器"预定"一个方位区间，离开战斗（死亡/跟丢目标）时归还——这已经超出这一节想解决的范围，这里只指出这是进一步值得做的方向，不展开实现。
 ### 9.5 疼痛打断：受伤会不会打断当前动作
 
 现在的怪物挨打只会掉血，不会有任何"被打疼了一下"的反应。DOOM 3 的疼痛系统有三道门，缺一个都不对：**冷却时间**（疼痛反应之间有最短间隔，不会每一下都触发）、**免打断窗口**（脚本/攻击逻辑可以主动申请"接下来这段时间不许被打断"，比如重击动作的起手阶段）、以及**伤害下限**（这是一个绝对数值门槛，不是概率——很多人凭直觉以为这是"一定概率被打退"，实际上 DOOM 3 里这一下伤害没达到阈值，疼痛反应根本不会触发，达到了就必定触发，不掷骰子）。
@@ -2803,9 +3959,11 @@ private void TryAttack()
 // Enemy.cs 追加
 [Export] public float PainThreshold = 8.0f;    // 绝对伤害门槛，不是概率
 [Export] public float PainDebounce = 0.5f;      // 两次疼痛反应之间的最短间隔
+[Export] public float StaggerDuration = 0.4f;   // 疼痛硬直的真正时长——见下面的说明
 private double _lastPainTime = -999;
 private bool _painAllowed = true;
 private double _painPreventedUntil;
+private double _staggerUntil;
 
 public void TakeDamage(float amount)
 {
@@ -2838,7 +3996,7 @@ private void TryPain(float amount)
     if (amount < PainThreshold) return;                     // 没达到伤害门槛，不播放疼痛动画
 
     GD.Print($"{Name} 播放疼痛动画/短暂僵直");
-    // 具体表现取决于你的动画资源，逻辑上到这里就完成了
+    _staggerUntil = now + StaggerDuration;   // 这一行才是"僵直"这个词真正兑现的地方，见下面的说明
 }
 
 // 供攻击逻辑在起手帧调用："接下来这段时间不许被打断"——比如一个大动作攻击的前摇
@@ -2851,9 +4009,46 @@ public void SetPainAllowed(bool allowed)
 {
     _painAllowed = allowed;
 }
+
+public bool IsStaggered() => Time.GetTicksMsec() / 1000.0 < _staggerUntil;
 ```
 
-`PreventPain(duration)` 这个方法本身不会在教程里被直接调用（因为现在的怪物还没有"正在做一个不能被打断的大招"这种场景），但**先把这个原语准备好**——以后想做"重甲怪抡大锤前摇不能被打断"这类效果，直接在攻击逻辑的起手处调一句 `PreventPain(0.8f)` 就行，不需要重新设计打断机制。
+**这里要老实指出上一版遗留的一个问题**：`GD.Print($"{Name} 播放疼痛动画/短暂僵直");` 这一行本身只是打印了一句话，"短暂僵直"这四个字在代码里没有对应的任何实际后果——`TryAttack()`/`TickCombat()`/`TickReposition()` 该怎么跑还是怎么跑，播不播这个"动画"对游戏逻辑毫无影响，是纯装饰性的一句日志。真实源码里 `AI_PAIN` 这个标志（`AI.cpp:3279-3306` 的 `idAI::Pain()`）之所以能让怪物真的"愣一下"，靠的不是这个标志本身，而是脚本状态机看到这个标志之后**整个跳进一个专门的疼痛状态**，那个状态运行期间正常的攻击/移动判断逻辑根本不会被执行——真正的"打断"是靠切换到另一个状态、暂停了原来的状态在做的事情，不是靠一个只用来触发动画的布尔量。这个决定性的环节（脚本层的状态切换）恰好是我们拿不到的部分，但**它会不会有实际的移动/攻击后果，不需要靠那部分才能判断**——这件事只要在 Godot 这边接上一个真正会被读取的"僵直中"标记就行。所以上面的 `IsStaggered()` 不是装饰，`_PhysicsProcess()`（9.3 节）要跟着改一版，在 `switch` 之前插入一次检查：
+
+```csharp
+// Enemy.cs —— 替换目前的 _PhysicsProcess()（9.3 节写的初版，9.4.3 节又追加过 Reposition 分支）：
+// 只在原有逻辑前面插入一次僵直检查，switch 内部的各个 Tick 方法、已经加过的 Reposition 分支
+// 一个字都不用改——下面这版把 9.4.3 节加的那一支也一并列出来，避免读者对照的时候漏看
+public override void _PhysicsProcess(double delta)
+{
+    float dt = (float)delta;
+    Vector3 velocity = Velocity;
+    if (!IsOnFloor()) velocity.Y -= Gravity * dt;
+    Velocity = velocity;
+
+    if (_state != State.Dead && IsStaggered())
+    {
+        // 僵直期间：水平方向完全不动，也不会进 switch 执行任何一个 Tick 方法——
+        // 也就是说这段时间里不会攻击、不会走位、寻路目标也不会更新，是真的"愣住了"
+        Velocity = new Vector3(0, Velocity.Y, 0);
+        MoveAndSlide();
+        return;
+    }
+
+    switch (_state)
+    {
+        case State.Idle: TickIdle(); break;
+        case State.Alert: TickAlert(); break;
+        case State.Combat: TickCombat(dt); break;
+        case State.Reposition: TickReposition(dt); break;
+        case State.Dead: MoveAndSlide(); return;
+    }
+
+    MoveAndSlide();
+}
+```
+
+`PreventPain(duration)`/`SetPainAllowed(allowed)` 这两个原语现在还是不会在本节被直接调用——9.9 节的冲锋攻击会是第一个真正用到它们的地方：冲锋途中若被普通攻击打疼，直接愣住会显得非常怪（冲一半忽然定住），那里会在冲锋开始时调 `SetPainAllowed(false)`、结束时调 `SetPainAllowed(true)`，让冲锋成为一段"不会被疼痛打断"的动作。
 
 ### 9.6 完整的难度系统
 
@@ -2956,6 +4151,8 @@ public void TakeDamage(float amount)
 
 护甲永远不能把伤害完全挡到 0——哪怕护甲值远超本次伤害，也保底扣 1 点血，这是 DOOM 3 明确的设计。但要注意护甲**消耗量**也要跟着少扣：护甲原本要吸收的量超过了伤害本身，就只按"伤害减 1"来实际扣护甲，不能让护甲凭空多损耗——这是第一版遗漏的记账细节，之前的版本会在这种情况下多扣掉一些不该扣的护甲值。
 
+**这里补一条设计笔记，回答一个读到 9.4.2/9.4.3 节之后很自然会冒出来的问题**：难度会不会影响攻击选择的"聪明程度"或者走位的"积极程度"，而不只是数值？——先说源码事实：查遍这份 DOOM 3 BFG 源码目录能找到的 `g_skill` 用法，只有 `AttackMelee()` 里那一处保底不死判断（`AI.cpp:4480`）。**没有任何地方能找到"低难度让 AI 决策变笨、高难度让 AI 决策变精"这类逻辑**——DOOM 3 的难度分档，就纯粹是玩家承受的伤害倍率、怪物造成的伤害倍率、护甲吸收比例，再加上这一个保底判定，AI 本身"怎么想"在所有难度下是同一套代码、同一套权重、同一套走位规则，跑出来的行为在直觉上"聪明不聪明"完全没有差别，差的只是数值。9.4.2 节的 `MinRange`/`Range`/`Weight`、9.4.3 节的 `StrafeChance`/`RepositionStuckTimeout`，这套系统本身既然是本教程自己设计的，理论上确实可以让 `DifficultySettings` 去调它们——比如高难度下 `StrafeChance` 更高、`RepositionStuckTimeout` 更短（被逼急了更快掏出兜底攻击）、`WeightedPick` 的反重复惩罚更轻（高难度不介意看起来"精于算计"地连续使用最优招式）。**但这不是 DOOM 3 的做法，是不是要加，取决于你想做的是"忠实小品"还是"商业化打磨"**：不少商业 FPS（尤其是有明确难度分级市场的射击游戏）确实会让高难度的 AI 决策本身更凶、更少犯错，不只是玩家更脆、敌人更肉；但这么做的代价是每个难度都要单独调一遍这几个已经不算少的旋钮，且很容易在某个难度上调出"看起来在作弊"的观感（比如反应快到不自然）。本教程选择跟 DOOM 3 保持一致：`DifficultySettings` 只影响数值，不影响 9.4.2/9.4.3 这套系统本身的任何一个判断——如果你想加，上面提到的那几个 `[Export]` 字段都是现成的旋钮，改法跟 `EnemyDamageMultiplier()` 是同一个模式，这里不替你做这个决定。
+
 ### 9.7 巡逻路点：填上 `TickIdle()` 一直空着的那部分
 
 9.3 节的 `TickIdle()` 到现在为止什么都不做——怪物只是站着等玩家出现。DOOM 3 的怪物在没发现目标时通常会沿着关卡设计师放置的一串路点巡逻，而不是傻站着。做一个路点节点和对应的巡逻逻辑：
@@ -2972,13 +4169,25 @@ public partial class PatrolPoint : Marker3D
 ```
 
 ```csharp
-// Enemy.cs 追加
+// Enemy.cs 追加——替换 9.2.1/9.3 节那一版 TickIdle()
+// using System.Threading.Tasks;   // Task 需要这个命名空间，别忘了加在文件顶部
 [Export] public PatrolPoint PatrolStart;
 private PatrolPoint _currentPatrolPoint;
 private bool _isPatrolling;
 
-private async void TickIdle()
+// **这一版顺手修掉一个前一版本就存在、没在这本教程里被点破过的重入问题**：_PhysicsProcess() 的
+// switch 每一帧都会调用一次 TickIdle()。旧版把 TickIdle() 直接写成 async void，也就是说只要
+// 状态还是 Idle，每一帧都会重新触发一次全新的异步调用——多数帧里这次新调用只是把 CanSeePlayer()
+// 又测一遍（正在巡逻的那个协程内部循环自己也在测），白白多付出一次每帧都要做的射线检测
+// （9.2 节已经提过这是一笔开销）。更麻烦的是：如果这次"外层新调用"先一步判定发现了玩家、
+// 把 _state 改成 Combat，而巡逻协程本体要等到它自己下一次 await 恢复时才会跟着退出循环、
+// 把 _isPatrolling 重置回 false——中间有一帧的窗口，_isPatrolling 是"过期地"停留在 true。
+// 改法是把"发起巡逻"和"巡逻本体"拆成两个函数，_isPatrolling 为 true 时 TickIdle() 直接
+// 让协程自己处理，不再重复检查
+private void TickIdle()
 {
+    if (_isPatrolling) return;   // 协程在跑，它自己每帧都会检查视觉/听觉，外层不用再查一遍
+
     if (CanSeePlayer())
     {
         _state = State.Combat;
@@ -2987,7 +4196,21 @@ private async void TickIdle()
         return;
     }
 
-    if (PatrolStart == null || _isPatrolling) return;
+    if (TryHearPlayer(out Vector3 noisePos))
+    {
+        _state = State.Alert;
+        _lastSeenTime = Time.GetTicksMsec() / 1000.0;
+        _lastKnownPlayerPos = noisePos;
+        GD.Print($"{Name}：听到动静，前去查看");
+        return;
+    }
+
+    if (PatrolStart == null) return;
+    _ = RunPatrol();   // fire-and-forget：协程内部自己会在状态变化时退出，不需要持有返回的 Task
+}
+
+private async Task RunPatrol()
+{
     _isPatrolling = true;
     _currentPatrolPoint ??= PatrolStart;
 
@@ -2996,7 +4219,21 @@ private async void TickIdle()
         _navAgent.TargetPosition = _currentPatrolPoint.GlobalPosition;
         while (!_navAgent.IsNavigationFinished() && _state == State.Idle)
         {
-            if (CanSeePlayer()) { _isPatrolling = false; return; }   // 巡逻途中发现玩家，立刻中断巡逻
+            if (CanSeePlayer())   // 巡逻途中发现玩家，立刻中断巡逻
+            {
+                _state = State.Combat;
+                _lastSeenTime = Time.GetTicksMsec() / 1000.0;
+                _isPatrolling = false;
+                return;
+            }
+            if (TryHearPlayer(out Vector3 noisePos))   // 巡逻途中听见动静，转警觉去查看
+            {
+                _state = State.Alert;
+                _lastSeenTime = Time.GetTicksMsec() / 1000.0;
+                _lastKnownPlayerPos = noisePos;
+                _isPatrolling = false;
+                return;
+            }
             Vector3 nextPos = _navAgent.GetNextPathPosition();
             Vector3 dir = (nextPos - GlobalPosition); dir.Y = 0; dir = dir.Normalized();
             Velocity = new Vector3(dir.X * MoveSpeed * 0.5f, Velocity.Y, dir.Z * MoveSpeed * 0.5f);
@@ -3010,7 +4247,9 @@ private async void TickIdle()
 }
 ```
 
-这段协程式的巡逻循环，和第 5.1 节介绍过的 `async`/`await`（"方法执行到 `await` 那一行会暂停，但不阻塞游戏其他部分"）是同一套机制，只是这里用 `while` 循环 + `await get_tree().physics_frame` 表达一段跨越多帧、能被外部条件随时打断的行为——`while (_state == State.Idle)` 这个循环条件，一旦怪物发现玩家、`_state` 被外部改成 `Combat`，下一次循环检查就会自然退出，不需要专门写一段"打断巡逻"的清理代码。
+这段协程式的巡逻循环，和第 5.1 节介绍过的 `async`/`await`（"方法执行到 `await` 那一行会暂停，但不阻塞游戏其他部分"）是同一套机制，只是这里用 `while` 循环 + `await get_tree().physics_frame` 表达一段跨越多帧、能被外部条件随时打断的行为——`while (_state == State.Idle)` 这个循环条件，一旦怪物发现玩家、`_state` 被外部改成 `Combat`，下一次循环检查就会自然退出。`RunPatrol()` 声明成 `async Task` 而不是上一版的 `async void`，是为了让 `TickIdle()` 能显式地用 `_ = RunPatrol();` 表达"我知道这是有意不等它、不是忘了 `await`"——`async void` 在 C# 里本来就应该只留给事件处理器用，像这种由自己代码主动发起、不需要跟外部事件系统打交道的协程，`async Task` + 显式丢弃返回值是更规范的写法，额外的好处是协程内部如果抛异常，`async Task` 版本的异常至少还能被 `.NET` 的未观察异常机制捕获到，`async void` 版本则会直接让异常在无法预测的地方冒出来。
+
+**巡逻恢复到哪一个点，也是一个容易被读者忽略、这里明确说一下的细节**：`_currentPatrolPoint` 是 `Enemy` 实例自己的字段，不会因为进了 `Combat`/`Reposition` 打了一架又跑回 `Idle` 而被重置——`RunPatrol()` 里那句 `_currentPatrolPoint ??= PatrolStart;` 只在这个字段还是 `null`（第一次巡逻）时才会赋成起点，后续每次重新触发 `RunPatrol()`，都会从上次打断时停留的那个路点继续走，而不是每次都从 `PatrolStart` 重新出发——这才是"巡逻被打断、打完架回来接着巡逻"该有的行为，不是回到起点、也不是永远停在原地不再动。
 
 ### 9.8 远程攻击：不是所有怪物都该贴脸近战
 
@@ -3023,18 +4262,25 @@ private async void TickIdle()
 [Export] public Node3D ProjectileSpawnPoint;      // 投射物从哪里生成，通常是怪物的"嘴"或"手"位置
 [Export] public float AttackConeDegrees = 30.0f;  // 目标偏出这个角度就不发射，避免"背对着打中"的怪异画面
 
-// 从 Attacks 表里挑一条当前可用的远程条目（ProjectileScene 非空）——
-// 近战条目由 9.4.1 节的 PickMeleeAttack() 处理，两者共存在同一张表里，互不干扰
+// 从 Attacks 表里挑一条当前可用的远程条目（ProjectileScene 非空）——近战条目由
+// 9.4.1/9.4.2 节的 PickMeleeAttack() 处理，两者共存在同一张表里，互不干扰。
+// 判断标准跟 9.4.2 节的 PickMeleeAttack() 保持一致：区间（MinRange/Range）+ 冷却 +
+// 权重随机，而不是"表里第一条够得着的就用"
 private AttackDefinition PickRangedAttack()
 {
     if (_player == null || !IsPlayerInAttackCone()) return null;
+    double now = Time.GetTicksMsec() / 1000.0;
     float distance = GlobalPosition.DistanceTo(_player.GlobalPosition);
+
+    var eligible = new List<AttackDefinition>();
     foreach (var attack in Attacks)
     {
         if (attack.ProjectileScene == null) continue;
-        if (distance <= attack.Range) return attack;
+        if (distance < attack.MinRange || distance > attack.Range) continue;
+        if (!IsAttackOffCooldown(attack, now)) continue;
+        eligible.Add(attack);
     }
-    return null;
+    return WeightedPick(eligible, _lastUsedAttack);
 }
 
 // 对应 idAI::Event_EntityInAttackCone()（AI_events.cpp:1367-1399）：一次硬性的是/否判定，
@@ -3063,33 +4309,62 @@ private void AttackRanged(AttackDefinition attack)
     GD.Print($"{Name} 使用 {attack.AttackName} 发射了一枚投射物");
 }
 
-// Enemy.cs —— 替换 9.4.1 节里只处理近战的 TryAttack()：现在近战/远程条目都从同一张
-// Attacks 表里挑，优先挑近战（够近就贴脸打，不浪费弹药），挑不到再看有没有能用的远程条目
-private void TryAttack()
+// Enemy.cs —— 替换 9.4.2 节的 TryAttack()：现在近战/远程条目都从同一张 Attacks 表里挑，
+// 优先挑近战（够近就贴脸打，不浪费弹药），挑不到再看有没有能用的远程条目。注意这里不再有
+// 一个统一的 "now - _lastAttackTime < AttackCooldown" 前置判断——9.4.2 节已经把冷却下放到
+// 每条 AttackDefinition 自己身上，PickMeleeAttack()/PickRangedAttack() 内部各自会检查
+private AttackDefinition TryAttack()
 {
-    if (_player == null) return;
-
+    if (_player == null) return null;
     double now = Time.GetTicksMsec() / 1000.0;
-    if (now - _lastAttackTime < AttackCooldown) return;
 
     var melee = PickMeleeAttack();
     if (melee != null)
     {
-        _lastAttackTime = now;
+        MarkAttackUsed(melee, now);
+        _lastUsedAttack = melee;
         ExecuteMeleeAttack(melee);
-        return;
+        return melee;
     }
 
     var ranged = PickRangedAttack();
     if (ranged != null)
     {
-        _lastAttackTime = now;
+        MarkAttackUsed(ranged, now);
+        _lastUsedAttack = ranged;
         AttackRanged(ranged);
+        return ranged;
     }
+    return null;
 }
 ```
 
 **这一节真正的重点不是这段代码本身，是它带来的设计结果**：想做一只纯近战僵尸、一只纯远程暴风兵、或者一只"平时打子弹、贴脸了改用爪子"的混合型怪物，不需要写不同的怪物类，只需要在场景编辑器里往 `Attacks` 表里塞不同组合的条目——一条 `ProjectileScene` 留空的近战条目、一条指向 `Rocket.tscn` 的远程条目，两条都挂上就是混合型。**甚至可以把某条远程攻击的 `ProjectileScene` 换成不同配置的投射物场景**（改小 `SplashRadius`、换成 `IsGuided = true` 的追踪弹版本），做出"近战怪、普通远程怪、会追踪的远程怪、近战+远程混合怪"这些手感完全不同的敌人，`Enemy.cs` 一行都不用改。这正是第 14 章要系统讲的"数据驱动"的一次提前预演，也是上面 9.4.1 节把攻击拆成一张表而不是一堆孤立字段的真正回报。
+
+`TickReposition()`（9.4.3 节）里那个"被困住超时就硬打一下"的兜底，到现在为止只看近战条目——这里跟着补上远程分支，否则一只纯远程怪物被逼到死角、`Attacks` 表里只有远程条目时，`PickDesperateMeleeAttack()` 永远找不到东西，兜底形同虚设：
+
+```csharp
+// Enemy.cs —— 替换 9.4.3 节的 PickDesperateMeleeAttack()，改名兼顾近战/远程
+private AttackDefinition PickDesperateAttack()
+{
+    foreach (var attack in Attacks)
+    {
+        if (attack.ProjectileScene == null)
+        {
+            if (TestMeleeBounds(attack) && TestMeleeLineOfSight(attack)) return attack;
+        }
+        else if (IsPlayerInAttackCone())
+        {
+            return attack;   // 远程兜底不看 MinRange/Range——都被困住了，管不了那么多，能打多远打多远
+        }
+    }
+    return null;
+}
+```
+
+`TickReposition()` 里调用 `PickDesperateMeleeAttack()` 的那一行也要跟着改成 `PickDesperateAttack()`，判断到手之后按 `attack.ProjectileScene` 是否为空分派给 `ExecuteMeleeAttack()`/`AttackRanged()`——跟 `TryAttack()` 里已经写过的分派逻辑是同一个模式，这里不重复贴一遍完整代码。
+
+**这里把 9.4.2/9.4.3 和这一节的远程攻击拼起来，实际走一遍读者可能会怀疑的那个场景**：一只纯远程怪物（`Attacks` 表里只有一条 `MinRange = 5, Range = 20` 的远程条目），玩家欺身贴到距离 2 的地方——会不会出现"够不着任何攻击，但也没有逻辑把它从贴脸位置解救出来"这种死锁？跟踪一遍：`TickCombat()` 每帧算 `HasEligibleAttack(distance=2, now)`，遍历 `Attacks` 表，`distance(2) < attack.MinRange(5)`，条件不成立，`HasEligibleAttack` 返回 `false`，状态切到 `Reposition`；`TickReposition()` 里同样调用不到任何"够格"的攻击，进入下面"在所有还没冷却的招式里找最近区间"这段——`Mathf.Clamp(2, 5, 20)` 结果是 `5`，`targetDistance = 5`，于是 `desiredPos` 被算成"沿着怪物到玩家连线，退到距离玩家 5 的位置"，交给 `NavigationAgent3D` 走过去。也就是说，**纯远程怪物被迫贴脸之后，会经由 `Reposition` 状态主动后退到自己的最小射程之外，不会卡死在"够不着任何攻击"的状态里**——这条路径在 9.4.2/9.4.3/9.8 三节各自写代码的时候没有专门为"贴脸的纯远程怪"做特判，全靠同一套"看当前距离有没有一条招式的区间覆盖它"的通用判断自然得出，这也是那两节强调"通用系统"而不是"专门给某种怪物写分支"的真正验证。唯一的前提条件是关卡里退路要有空间——如果纯远程怪物本身也被逼到墙角无路可退，就会落到上面刚讲过的 `RepositionStuckTimeout` 兜底，用远程攻击贴脸硬打一下，而不是无限卡在"想撤但撤不了"的状态里。
 
 ### 9.9（可选进阶）冲锋攻击：不是所有攻击都能站着放
 
@@ -3097,39 +4372,69 @@ private void TryAttack()
 
 **第一处：冲锋伤害不走保底不死判定**。真实源码的 `Event_ChargeAttack` 调用的是 `BeginAttack(damageDef)`，然后每个 tick 只要命中判定通过就直接 `DirectDamage(attack, enemy)`（`AI.cpp:4139-4150`、`4356-4392`）——这是一条完全绕开 `AttackMelee()` 的独立路径，而 9.4 节那个"低难度保底不死"的判断恰恰只存在于 `AttackMelee()` 内部。也就是说，**真实游戏里冲锋攻击在新兵/普通难度下一样能一下打死血量不多的玩家**，不享受近战的保底待遇——这是刻意的难度设计（冲锋通常伤害更高、也更容易被看出来提前躲开，游戏没打算再额外保护你），不是应该修的 bug。如果直接复用 9.4.1 节的 `ExecuteMeleeAttack()`，就会把这份本不该有的保护也带过来，跟源码的行为不一致。
 
-**第二处：路径验证要验证的是"这条直线"，不是"存不存在某条路"**。真实的 `Event_TestChargeAttack`（`AI_events.cpp:1769-1802`）用的是 `PredictPath`，验证的是冲锋会走的那条**直线轨迹**本身有没有被挡住、会不会冲出悬崖——不是"从这里到玩家存不存在一条可达路径"。`NavigationAgent3D.IsTargetReachable()` 检测的是后者：哪怕这条路要绕开一根柱子，只要绕得过去就算 `true`。但冲锋不会绕路，它是径直冲过去的，一头撞上那根"反正绕得过去"的柱子——用 `IsTargetReachable()` 验证冲锋路线，验证的根本不是同一件事。改正版本换成一次直线方向的胶囊体扫掠，只信这条直线本身：
+**第二处：路径验证要验证的是"这条直线"，不是"存不存在某条路"**。真实的 `Event_TestChargeAttack`（`AI_events.cpp:1769-1802`）用的是 `PredictPath`，验证的是冲锋会走的那条**直线轨迹**本身有没有被挡住、会不会冲出悬崖——不是"从这里到玩家存不存在一条可达路径"。`NavigationAgent3D.IsTargetReachable()` 检测的是后者：哪怕这条路要绕开一根柱子，只要绕得过去就算 `true`。但冲锋不会绕路，它是径直冲过去的，一头撞上那根"反正绕得过去"的柱子——用 `IsTargetReachable()` 验证冲锋路线，验证的根本不是同一件事。改正版本换成一次直线方向的胶囊体扫掠，只信这条直线本身。
+
+**第三处：这一节最初写出来的那版代码有一个没被点破的架构问题，这里一并说清楚再往下写**——冲锋原本被实现成一段独立于 `_state` 状态机之外的 `async void` 协程，靠一个 `_isCharging` 布尔值自己标记"现在是不是在冲"。问题是 `_PhysicsProcess()` 每一帧仍然会照常按 `_state`（这时候还停留在 `Combat`）分派给 `TickCombat()`/`ChaseAndAttack()`，那两个函数一样会在同一帧写 `Velocity`——冲锋协程和正常追打逻辑变成两段互相不知道对方存在的代码在同一帧抢着写同一个 `Velocity`，谁的赋值发生在后面完全取决于协程 `await` 的信号什么时候恢复，这是实现细节，不是可以放心依赖的顺序保证。正确的做法是让冲锋也成为状态机里正式的一个状态——跟 9.4.3 节加 `Reposition` 状态时同样的思路：
+
+```csharp
+// Enemy.cs —— 状态枚举追加 Charging，_PhysicsProcess() 的 switch 追加对应分支
+private enum State { Idle, Alert, Combat, Reposition, Charging, Dead }
+
+// _PhysicsProcess() 里的 switch 追加一支：
+//     case State.Charging:
+//         break;   // 冲锋期间 Velocity 完全由下面 RunCharge() 协程自己控制，这一帧什么都不用做——
+//                  // 重力和 MoveAndSlide() 仍然由 _PhysicsProcess() 统一处理，跟其他状态一样
+```
 
 ```csharp
 // Enemy.cs 追加
 [Export] public float ChargeSpeed = 10.0f;
 [Export] public float ChargeAttackRange = 6.0f;
-private bool _isCharging;
+[Export] public float ChargeCooldown = 4.0f;   // 冲锋自己的冷却——跟 9.4.2 节每条 AttackDefinition 各自的
+                                                // Cooldown 是分开记账的，因为冲锋不经过 PickMeleeAttack() 那套挑选
+private double _chargeReadyTime = -999;
 
-private async void TryChargeAttack()
+// 由 TickCombat() 每帧调用，判断"这一刻要不要发起冲锋"——一次同步的是/否判断，
+// 真正冲出去的过程交给下面的 RunCharge() 协程。返回 true 说明这一帧已经把状态切进
+// Charging 了，调用方应该直接 return，不要再执行正常的追打/走位逻辑
+private bool TryStartCharge()
 {
-    if (_isCharging || _player == null) return;
+    double now = Time.GetTicksMsec() / 1000.0;
+    if (now < _chargeReadyTime || _player == null) return false;
 
     // 冲锋伤害借用 Attacks 表里的一条近战条目当基础数值（伤害、判定用的范围），
     // 但下面执行时不会调用 9.4.1 节的 ExecuteMeleeAttack()——原因见上面第一处说明
     var chargeAttack = Attacks.FirstOrDefault(a => a.ProjectileScene == null);
-    if (chargeAttack == null) return;
+    if (chargeAttack == null) return false;
 
     float distance = GlobalPosition.DistanceTo(_player.GlobalPosition);
-    if (distance > ChargeAttackRange || distance < chargeAttack.Range) return;   // 太远冲不到、太近没必要冲，直接近战就行
+    if (distance > ChargeAttackRange || distance < chargeAttack.Range) return false;   // 太远冲不到、太近没必要冲，直接近战就行
 
     // 对应 Event_TestChargeAttack：验证的是直线路径本身，不是"存不存在某条能到达的路"——
     // 见上面第二处说明，这里换成一次沿冲锋方向的胶囊体扫掠
     if (!IsChargePathClear())
     {
         GD.Print($"{Name}：冲锋路线走不通，放弃");
-        return;
+        return false;
     }
 
-    _isCharging = true;
+    _chargeReadyTime = now + ChargeCooldown;
+    _state = State.Charging;
+    _ = RunCharge(chargeAttack);
+    return true;
+}
+
+private async Task RunCharge(AttackDefinition chargeAttack)
+{
     GD.Print($"{Name} 开始冲锋！");
     double chargeStart = Time.GetTicksMsec() / 1000.0;
 
-    while (Time.GetTicksMsec() / 1000.0 - chargeStart < 1.5 && _isCharging)
+    // 9.5 节埋下的 PreventPain()/SetPainAllowed() 原语，这是本教程第一次真正用上它们：
+    // 冲锋途中要是被普通攻击的疼痛判定打中，直接愣在半路会显得很怪（冲一半忽然定住），
+    // 所以冲锋期间关掉疼痛硬直，冲完（不管是命中、超时还是中途被打断）再打开
+    SetPainAllowed(false);
+
+    while (Time.GetTicksMsec() / 1000.0 - chargeStart < 1.5 && _state == State.Charging)
     {
         Vector3 direction = (_player.GlobalPosition - GlobalPosition); direction.Y = 0;
         direction = direction.Normalized();
@@ -3148,7 +4453,17 @@ private async void TryChargeAttack()
         await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
     }
 
-    _isCharging = false;
+    SetPainAllowed(true);   // 不管上面是命中 break、超时结束，还是中途状态被外部改掉，都要把疼痛许可还回去——
+                             // 否则一旦某次冲锋中途被打断（比如冲一半玩家把怪物打死），_painAllowed 会
+                             // 一直卡在 false，这只怪物从此再也不会有疼痛反应，是一个很容易漏掉的资源泄漏式 bug
+
+    // 只有状态还停留在自己设的 Charging 时才收尾改回 Combat——避免覆盖掉冲锋途中
+    // 已经被外部改成的其他状态（比如冲锋没冲完就被玩家一枪打死，_state 已经是 Dead 了）
+    if (_state == State.Charging)
+    {
+        Velocity = new Vector3(0, Velocity.Y, 0);
+        _state = State.Combat;
+    }
 }
 
 // 沿冲锋方向做一次胶囊体扫掠，只测世界几何（第 1 层），不测生物层——
@@ -3173,9 +4488,182 @@ private bool IsChargePathClear()
 }
 ```
 
-记得在文件顶部加 `using System.Linq;`（`Attacks.FirstOrDefault` 用到）。
+最后是把 `TryStartCharge()` 接进 `TickCombat()`——**这里直接回答"冲锋跟走位状态机冲不冲突、到底谁说了算"这个问题**：冲锋检查排在 `HasEligibleAttack()` 判断之前，一旦触发就直接切状态、`return`，这一帧不会再往下走到"该不该转 `Reposition`"这一步；`Charging` 是独立于 `Combat`/`Reposition` 之外的状态，两者不可能同时生效，`_PhysicsProcess()` 的 `switch` 每一帧只会进其中一支：
 
-这一节标"可选"不是因为它不重要，是因为不是每种怪物都需要这个攻击方式——不过跟 9.8 节的远程攻击不一样，冲锋攻击目前还是一段独立于 `Attacks` 表之外的代码（只是借用了表里一条近战条目的数值），没有像近战/远程那样被完全收编进同一套"从表里挑"的机制，这是本教程为了不把 `AttackDefinition` 的字段进一步复杂化（比如再加一个"是否允许冲锋触发"的标记）而留下的一处不对称，如果你想让冲锋也完全数据驱动，可以在 `AttackDefinition` 上再加一个布尔字段区分"能不能被当冲锋用"，或者干脆给冲锋单独开一张表。
+```csharp
+// Enemy.cs —— 替换 9.4.3 节的 TickCombat()：只在原有逻辑前面插入一次冲锋判断，
+// 其余部分（HasEligibleAttack 判断、ChaseAndAttack 调用）原样不动
+private void TickCombat(float dt)
+{
+    if (!CanSeePlayer())
+    {
+        Velocity = new Vector3(0, Velocity.Y, 0);
+        _state = State.Alert;
+        GD.Print($"{Name}：看不见目标了，转为警觉");
+        return;
+    }
+
+    _lastSeenTime = Time.GetTicksMsec() / 1000.0;
+    double now = _lastSeenTime;
+    float distance = GlobalPosition.DistanceTo(_player.GlobalPosition);
+
+    if (TryStartCharge()) return;   // 冲锋优先于走位判断——够条件就直接冲，不用先判断有没有"够格的招式"
+
+    if (!HasEligibleAttack(distance, now))
+    {
+        _state = State.Reposition;
+        GD.Print($"{Name}：当前距离没有能用的招式，开始走位");
+        return;
+    }
+
+    ChaseAndAttack(dt);
+}
+```
+
+这里"冲锋判断排在走位判断之前"是本教程自己定的优先级——源码里没有这层裁决可以参考（`Event_ChargeAttack`/`Event_TestChargeAttack` 什么时候该被调用，同样是脚本层的决定）。选择让冲锋优先，是因为冲锋本身通常就是"拉近距离"的一种手段，如果反过来让 `Reposition` 先把怪物挪到某条普通招式的可用区间，冲锋这个选项在很多帧里就再也没有机会被触发到；`TickReposition()` 里没有对称地加一次 `TryStartCharge()` 调用——这是有意的：冲锋和"正在小心翼翼地找角度走位"是两种不同的行为动机，混在一起容易出现"走位走到一半忽然冲锋"这种不连贯的观感，如果你想让走位途中也能触发冲锋，把同一行 `if (TryStartCharge()) return;` 加到 `TickReposition()` 开头就行，判断逻辑完全复用，不用另外写一份。
+
+记得在文件顶部加 `using System.Linq;`（`Attacks.FirstOrDefault` 用到）和 `using System.Threading.Tasks;`（`Task` 用到，如果 9.7 节已经加过这一行，这里不用重复加）。
+
+这一节标"可选"不是因为它不重要，是因为不是每种怪物都需要这个攻击方式——冲锋现在已经被收编成状态机里正式的一个状态，解决了最初那版跟 `Combat`/`Reposition` 抢 `Velocity` 写权的问题，但"选哪条攻击当冲锋基础数值"这件事依然没有走 9.4.2 节 `PickMeleeAttack()`/`WeightedPick()` 那一整套区间 + 冷却 + 权重的挑选流程——`TryStartCharge()` 里 `Attacks.FirstOrDefault(a => a.ProjectileScene == null)` 永远只挑表里第一条近战条目，这是本教程为了不把 `AttackDefinition` 的字段进一步复杂化（比如再加一个"能不能被当冲锋用"的标记）而留下的一处不对称。如果你想让冲锋也完全数据驱动、支持同一只怪物有好几种不同的冲锋打法，可以在 `AttackDefinition` 上加一个 `IsChargeAttack` 布尔字段，`TryStartCharge()` 改成跟 `PickMeleeAttack()` 一样走一遍"筛选候选 + `WeightedPick`"的流程，而不是 `FirstOrDefault`。
+
+### 9.10（可选进阶）Boss：多阶段怪物
+
+**先把这一节的定位说清楚**：真实 DOOM 3 里**没有一个单独的 Boss AI C++ 类**——查遍 `neo/d3xp/ai/` 目录，找不到任何叫 `idAI_Boss`、`Cyberdemon`、`Guardian` 之类的类。Boss 在源码结构上就是一只普通的 `idAI` 实例，跟本教程从第 8 章开始做的怪物用的是同一个引擎层类型，区别全部体现在它挂的那份体积大得多的 `.script` 脚本文件里——更多的攻击、更复杂的阶段判断逻辑，这些脚本文件同样不在本教程能拿到的这份源码目录里。所以这一节要做的，从头到尾都是**本教程自己在已经搭好的架构上做的合理扩展**：把 9.4.1 的 `Attacks` 表、9.4.2 的攻击选择、9.4.3 的走位、9.6 的难度系统这几块拼到一起，做出一个"血量降到某个百分比就换一套打法"的多阶段系统，不是在照抄某段 Boss 源码——因为那段源码根本不存在于本教程能看到的范围里。
+
+延续 9.8 节结尾提过的思路——不同的怪物手感应该靠往 `Attacks` 表里塞不同的数据组合来表达，而不是靠新写一个继承自 `Enemy` 的子类。Boss 也一样：不新开一个 `Boss : Enemy` 的子类，而是继续往 `Enemy` 身上加数据，用"`Phases` 数组是否为空"来区分"这是普通怪物还是 Boss"。先做一份阶段配置：
+
+```csharp
+// BossPhase.cs —— 单独的 Resource，一只 Boss 挂几份，在编辑器里按血量阈值从高到低排开
+using Godot;
+
+[GlobalClass]
+public partial class BossPhase : Resource
+{
+    [Export] public string PhaseName;
+    [Export] public float HealthThreshold = 1.0f;   // 血量降到 MaxHealth 的这个比例以下（0~1），就切换到这一阶段
+    [Export] public Godot.Collections.Array<AttackDefinition> PhaseAttacks = new();   // 这一阶段能用的招式子集，
+                                                                                        // 可以跟其他阶段重叠，也可以完全独占
+    [Export] public float MoveSpeedMultiplier = 1.0f;   // Boss 通常后期阶段更快、更凶——这里就是那个"更快"的旋钮
+}
+```
+
+`Enemy` 挂一份 `Phases` 数组，并且要在受伤时判断该不该切阶段：
+
+```csharp
+// Enemy.cs 追加
+using System;   // event 需要这个命名空间
+
+[Export] public Godot.Collections.Array<BossPhase> Phases = new();
+[Export] public float PhaseTransitionInvulnerability = 1.0f;   // 切阶段瞬间的强制无敌窗口，给表现（音效/镜头/动画）留出反应时间
+
+public event Action<BossPhase> PhaseChanged;   // 挂钩，读者可以在这里接一段过场镜头/播报语音之类的表现
+                                                 // （这里先用最基础的 C# event——本教程要到第 13 章才正式介绍
+                                                 // Godot 的 [Signal] 机制，这一节写的时候还不适合提前用它；
+                                                 // 如果你已经看过第 13 章，把这里换成 [Signal] 效果是一样的）
+
+private BossPhase _activePhase;
+private double _phaseInvulnerableUntil;
+
+// 返回值：这一次调用有没有真的切换阶段——TakeDamage() 需要知道这件事，见下面的说明
+private bool UpdateBossPhase()
+{
+    if (Phases.Count == 0) return false;
+    float healthFraction = _health / MaxHealth;
+
+    // 在所有"阈值 >= 当前血量比例"的阶段里，挑阈值最低的那一个——
+    // 也就是"当前血量刚好够得着的、最往后的那一阶段"。各阶段的 HealthThreshold
+    // 理应互不重叠、由挂 Phases 的人自己按从高到低的顺序摆好
+    BossPhase target = null;
+    foreach (var phase in Phases)
+    {
+        if (healthFraction <= phase.HealthThreshold
+            && (target == null || phase.HealthThreshold < target.HealthThreshold))
+        {
+            target = phase;
+        }
+    }
+
+    if (target != null && target != _activePhase)
+    {
+        _activePhase = target;
+        _phaseInvulnerableUntil = Time.GetTicksMsec() / 1000.0 + PhaseTransitionInvulnerability;
+        GD.Print($"{Name}：进入阶段「{target.PhaseName}」，{PhaseTransitionInvulnerability} 秒强制无敌");
+        PhaseChanged?.Invoke(target);
+        return true;
+    }
+    return false;
+}
+```
+
+`TakeDamage()`（9.5 节定义）要多做两件事：切阶段瞬间的无敌窗口要挡伤害，受伤之后要检查是不是该换阶段了：
+
+```csharp
+// Enemy.cs —— 替换 9.5 节的 TakeDamage()
+public void TakeDamage(float amount)
+{
+    if (_state == State.Dead) return;
+    if (Phases.Count > 0 && Time.GetTicksMsec() / 1000.0 < _phaseInvulnerableUntil) return;   // 阶段切换的强制无敌窗口
+
+    _health -= amount;
+
+    if (_health <= 0)
+    {
+        Die();
+        return;
+    }
+
+    // 同一下伤害如果刚好触发了换阶段，就不要再叠一次疼痛硬直——见下面的说明
+    bool phaseChanged = Phases.Count > 0 && UpdateBossPhase();
+    if (!phaseChanged) TryPain(amount);
+}
+```
+
+**这里要主动检查一个容易被忽略的交叉情况，而不是等读者自己踩到**：如果不加 `phaseChanged` 这层判断，`TakeDamage()` 原本的写法是"切完阶段之后，不管切没切，`TryPain(amount)` 照常执行"——设想一下，玩家打出的这一下伤害刚好把血量砍过了某个 `HealthThreshold`，于是 `UpdateBossPhase()` 触发了阶段切换、给了 `PhaseTransitionInvulnerability` 这么长一段强制无敌窗口，紧接着同一帧、同一次 `TakeDamage()` 调用里，`TryPain(amount)` 还是照常跑了一遍——如果这一下伤害同时也过了 `PainThreshold`，Boss 会在"理应无敌、播放阶段转换表现"的这个时刻**同时**触发一次疼痛硬直（9.5 节的 `_staggerUntil`），两套反应叠在一起，观感上会是"Boss 一边放着阶段转换的特效一边像被打疼了一样抖一下"，很容易让玩家觉得这是穿模或者时序错误，而不是设计好的效果。改成"这一下如果换了阶段，就不再额外触发疼痛"之后，阶段转换本身（连同你挂在 `PhaseChanged` 上的表现）就是这一下伤害唯一的反应，不会有第二套反应来抢戏。
+
+阶段切换本身只做了两件"轻量"的事——挡一小段时间的伤害，和抛一个事件出去让读者自己接表现——**这是有意保持简单的**：真要做的话，"强制打断当前动作，播一段专属的阶段转换动画/台词，镜头给个特写"这些都可以挂在 `PhaseChanged` 这个事件上，但那属于具体项目的表现层工作，这里只搭这根挂钩，不替你把动画和运镜也写了。
+
+最后是把 9.4.2 的攻击选择和 9.4.3 的走位接到"当前阶段"上——这两节写的 `PickMeleeAttack()`/`PickRangedAttack()`/`HasEligibleAttack()`/`TickReposition()`，以及 9.4.3/9.8 节后来为"被困住兜底"加的 `PickDesperateAttack()`、9.9 节 `TryStartCharge()` 里 `Attacks.FirstOrDefault(...)` 那一行，但凡出现 `Attacks` 的地方，只需要把它换成下面这个新属性，其余判断逻辑（区间/冷却/权重/视线）一个字都不用动：
+
+```csharp
+// Enemy.cs 追加——Phases 为空（普通怪物）时退回 9.4.1 节的 Attacks 表，
+// Phases 非空时只从当前激活阶段的 PhaseAttacks 里选
+private Godot.Collections.Array<AttackDefinition> CurrentAttackPool()
+{
+    return (Phases.Count > 0 && _activePhase != null) ? _activePhase.PhaseAttacks : Attacks;
+}
+
+// 同理，凡是直接用 MoveSpeed 的地方（ChaseAndAttack()、TickReposition()、TickIdle() 的巡逻移动），
+// 都换成这个属性——Boss 没进入任何阶段时（Phases 为空）行为跟普通怪物完全一样
+private float EffectiveMoveSpeed => MoveSpeed * (Phases.Count > 0 && _activePhase != null ? _activePhase.MoveSpeedMultiplier : 1.0f);
+```
+
+**这就是先把 9.4.2/9.4.3 做成通用系统、而不是给某只怪物写死的真正回报**：Boss 后期阶段移动更快、可用招式变了，9.4.3 节的走位逻辑不需要专门为 Boss 再写一套——它本来就是照着"当前有没有一条够得着的招式""该多快移动"这两个通用问题来决定行为的，阶段一变，这两个问题的答案自动跟着变，走位自然就适配了新阶段，不需要多出一行"如果这是 Boss 就……"这样的特判代码。9.6 节的 `DifficultySettings.EnemyDamageMultiplier()` 也是同样的道理——`ExecuteMeleeAttack()`/`AttackRanged()` 已经在用它，Boss 的攻击一样会经过这一层难度缩放，不需要再单独处理。`Reposition` 状态也是同一套故事：`TickReposition()` 内部但凡出现 `Attacks` 的地方都已经换成 `CurrentAttackPool()`，Boss 进入某个"这一阶段没有远程招式、只剩贴身近战"的阶段之后，被拉开距离照样会触发走位逼近，不需要为 Boss 专门再判断一次"这是不是我这个阶段该用的招式"。
+
+**开放问题：要不要加一个"激怒计时器"（enrage timer）**——这是本教程主动提出、但没有替你做决定的一个设计问题。不少商业 FPS/ARPG 的 Boss 战会有这么一条规则：战斗进行到某个时长还没打完，Boss 直接获得一次性的大幅增益（攻击力/攻速暴涨，甚至进入必杀阶段），目的是防止玩家用"绕着 Boss 一直跑，靠地形和距离磨死它"这种不需要正面承伤的打法把战斗拖到无限长。**这不是从 DOOM 3 里来的**——前面已经说过，DOOM 3 源码里根本没有独立的 Boss 类，自然也没有 enrage 相关的字段或逻辑，这纯粹是本教程基于"通用商业 Boss 战设计经验"提出的一个候选功能，不是补充源码遗漏。要不要加，取决于你的 Boss 战节奏设计：如果 Boss 本身就有 9.9 节的冲锋、够快的 `MoveSpeed`，玩家很难长期保持"只跑不打"的距离，enrage 计时器可能是画蛇添足；如果 Boss 是一只纯站桩输出、移动缓慢的类型，没有这道保险确实存在被无限风筝的风险。如果决定要加，实现思路很简单，直接复用已经搭好的骨架、不需要引入新概念：
+
+```csharp
+// Enemy.cs 追加——可选，是否启用取决于你的 Boss 设计
+[Export] public float EnrageTime = 0f;   // <= 0 表示不启用；否则战斗持续这么久（秒）后强制激怒
+[Export] public float EnrageDamageMultiplier = 1.5f;
+[Export] public float EnrageMoveSpeedMultiplier = 1.3f;
+private double _combatStartTime = -1;
+private bool _enraged;
+
+// 在 TickCombat() 开头（CanSeePlayer() 判断之后）追加一行 CheckEnrage(); 即可接入，
+// 不需要新增状态——激怒只是叠加在现有阶段系统之上的一层数值修正，不改变走位/攻击选择的判断逻辑
+private void CheckEnrage()
+{
+    if (EnrageTime <= 0 || _enraged || Phases.Count == 0) return;
+    if (_combatStartTime < 0) _combatStartTime = Time.GetTicksMsec() / 1000.0;
+    if (Time.GetTicksMsec() / 1000.0 - _combatStartTime > EnrageTime)
+    {
+        _enraged = true;
+        GD.Print($"{Name}：激怒！");
+    }
+}
+```
+
+`ExecuteMeleeAttack()`/`AttackRanged()` 算 `finalDamage` 的地方，以及 `EffectiveMoveSpeed`，各自再乘一个 `(_enraged ? EnrageDamageMultiplier/EnrageMoveSpeedMultiplier : 1.0f)` 就接上了——这里不重复贴一遍这两个函数的完整代码，改法跟接入 `DifficultySettings.EnemyDamageMultiplier()` 是完全一样的模式，一行乘法。**这个计时器从进入战斗（`_state` 第一次变成 `Combat`）开始计，而不是从阶段切换开始计**——如果你想要"每进入一个新阶段就重新计时"这种效果（常见于分阶段 Boss，逼玩家在限定时间内打完这一阶段），把 `_combatStartTime` 的重置移到 `UpdateBossPhase()` 里、阶段真正切换的那一刻，而不是只在 `_combatStartTime < 0` 时赋值一次。
 
 ---
 
@@ -3326,6 +4814,73 @@ private void Gib()
 
 跑一下：正常死亡应该是布娃娃瘫倒，用大伤害一次打死（比如把 `Damage` 临时改成 100）应该看到肢解效果。**这个功能纯粹是锦上添花，不影响任何核心玩法**——如果你的美术资源还没准备好碎块模型，`GibChunkScene` 留空、跳过这一节完全不影响后面章节的学习，回头有资源了再补上就行。
 
+> **对照真实源码，纠正一处可能的误解**：上面这版 `Gib()` 隐藏本体、瞬间 `QueueFree()`、另外单独生成几个不相干的碎块——这套"整体替换掉，不是从活着的骨架上一根一根拆骨头"的思路，**恰好是 DOOM 3 真实的做法，不是本教程的简化**。源码里 `idAFEntity_Gibbable::Gib()`（`AFEntity.cpp:1214-1256`）触发条件是 `health < -20 && spawnArgs.GetBool("gib")`——阈值 `-20` 和上面 `GibThreshold` 的默认值精确对应，不是巧合。触发之后，它做的也不是"从这具还在模拟的布娃娃身上摘掉一根骨骼、让约束链断开重连"，而是：整个渲染模型直接切换成一份预先做好的、独立的"肢解态模型"（`model_gib`），物理体的 `Contents` 换成 `CONTENTS_CORPSE`（不再被当作正常碰撞体处理），再额外调用 `SpawnGibs()`（`AFEntity.cpp:1164-1207`）生成一批独立的碎块实体（`idAFEntity_Base::DropAFs` + `idMoveableItem::DropItems`）往外飞散——跟上面 `Gib()` 里"本体消失 + 单独生成几个碎块 `RigidBody3D`"是同一个骨架，只是 Godot 这版把"预先做好的肢解态模型"简化成了"直接不显示"。也就是说，**`PhysicalBoneSimulator3D` 用不着支持"运行时从活体约束链上摘掉一根骨骼"这个能力，因为真实源码本来就没有走这条路**——如果你之前担心"摘掉一条手臂之后，肩关节的 `PhysicalBone3D` 约束会不会变成指向空气、报错"，这个担心不成立，因为无论是源码还是本教程，都没有实现"从活着的骨架上真的拆掉一根骨骼"这种玩法，两边都是用"整体切换/替换"绕开了这个问题。
+>
+> 还有两处细节，真实源码有、上面这版没有，值得知道（要不要补，取决于你的项目规模）：
+> 1. **碎块生成有一个全局节流**：源码里 `GIB_DELAY = 200`（`AFEntity.h:43`，注释原文是"只保留一个较低的频率，免得一次炸一堆怪物时性能掉得太狠"），`gameLocal.GetGibTime()`/`SetGibTime()` 维护一个全局的"下一次允许真正生成碎块的时间"，同一帧内哪怕好几只怪物同时被打出肢解判定，实际生成碎块特效的频率也会被摊平到至少每 200 毫秒一次。上面这版 `Gib()` 里每只怪物各自独立生成 5 个碎块，没有这层全局节流——只要你的关卡不会出现"一枚火箭炸出一堆同时触发肢解的怪物"这种场景（比如用溅射伤害同时打死一群小怪），就不用管这一条；一旦会出现，没有节流的话那一瞬间的 `RigidBody3D` 生成数量可能会造成一次明显的帧率毛刺，值得照着 `GIB_DELAY` 的思路加一个全局冷却。
+> 2. **本体不是瞬间消失的**：源码里 `Gib()` 最后一行 `PostEventSec(&EV_Gibbed, 4.0f)`，而 `EV_Gibbed` 绑定的处理函数就是 `Event_Remove`（`AFEntity.cpp:962`）——也就是说，切换成肢解态模型之后，这具残骸还会在原地**再保留 4 秒**（跟碎块的存活时间一致）才真正被移除，玩家看到的是"倒下的残骸躺一会儿，跟着碎块一起消失"，而不是上面这版"本体一肢解就立刻从场景里消失、只剩碎块在飞"。如果你想要更接近源码的观感，把 `Visible = false; ... QueueFree();` 换成"隐藏原模型，改显示一个静止的肢解态残骸网格（哪怕只是原模型不带动画地摆一个姿势），4 秒后再 `QueueFree()`"，用一个 `GetTree().CreateTimer(4.0).Timeout += QueueFree;` 就能接上，不需要新概念。
+
+### 10.4 尸体的生命周期：别让战场变成永久坟场
+
+上面 `SpawnGibs()` 生成的碎块，源码和本教程都用了一个固定的存活时间（4 秒）自动清理——这条没有争议，两边一致。但**普通死亡（没有触发肢解、只是 `PhysicalBonesStartSimulation()` 瘫倒）的布娃娃尸体，源码里完全没有清理机制**：翻遍 `AI.cpp`、`Physics_AF.cpp`、`AFEntity.cpp` 都找不到任何"尸体存在超过多久就自动移除""同时存在的尸体数量有上限"这类逻辑——`idAI::Killed()` 触发布娃娃之后，这具尸体会一直留在关卡里，直到玩家离开这张地图。这不是源码疏漏，是 2004 年那批关卡本身就是"打完一段、经过存档点或过场就切地图"的线性结构，一张地图能同时存在的尸体数量天然有上限，没必要专门处理。
+
+**这里要老实说明：接下来这段是本教程主动加的，不是从源码扒出来的**——但如果你的关卡是"一大片开放区域、玩家可能在里面反复横跳打很久"这种非线性结构（这正是本教程从第 9 章开始鼓励的巡逻+导航网格这套关卡形态最容易导致的情况），普通死亡尸体没有任何清理机制会变成一个真实的性能问题：每一具瘫倒的布娃娃都是一整套还在被物理引擎持续模拟的 `PhysicalBone3D` 链（哪怕它们已经完全静止，Godot 的物理引擎通常也需要经过若干帧的低速运动才会把一个物理体标记为"休眠"，休眠之后开销才会显著降低），打得越久、地上堆的尸体越多，物理线程的负担只会单调上升，永远不会自己降下来。一个简单、通用的解法：用一个全局管理器给"同时存在的尸体数量"设一个上限，超过上限就按"最早倒下的先清理"的顺序淡出最老的一具：
+
+```csharp
+// CorpseManager.cs —— Autoload 单例，跟 EventBus（第 13 章）注册方式一样
+using Godot;
+using System.Collections.Generic;
+
+public partial class CorpseManager : Node
+{
+    public static CorpseManager Instance { get; private set; }
+
+    [Export] public int MaxCorpses = 20;   // 同时存在的（非肢解）尸体上限，超出部分按"最早倒下的先清理"淘汰
+
+    private readonly List<Node3D> _corpses = new();
+
+    public override void _Ready() => Instance = this;
+
+    // Enemy.Die() 触发布娃娃之后调用这个，把自己登记进队列
+    public void Register(Node3D corpse)
+    {
+        _corpses.Add(corpse);
+        if (_corpses.Count > MaxCorpses)
+        {
+            Node3D oldest = _corpses[0];
+            _corpses.RemoveAt(0);
+            FadeAndRemove(oldest);
+        }
+    }
+
+    // 尸体因为别的原因提前消失了（比如关卡自己清理），记得摘出队列，不然队列会越攒越大、
+    // 而且可能因为引用了一个已经被释放的节点在下次 Register 触发淘汰时报错
+    public void Unregister(Node3D corpse) => _corpses.Remove(corpse);
+
+    private async void FadeAndRemove(Node3D corpse)
+    {
+        if (!IsInstanceValid(corpse)) return;
+        // 直接摘除最老的尸体最简单，但会很突兀地"啪"一下从场景里消失；给最后半秒做个淡出，
+        // 观感上更像"融进阴影里"而不是"贴图突然没了"——前提是怪物材质开启了透明混合（Transparency），
+        // 没开的话这个 tween 不会有可见效果，直接瞬间移除也不算错，只是少了这个加分项
+        var tween = CreateTween();
+        bool hasFade = false;
+        foreach (Node child in corpse.GetChildren())
+        {
+            if (child is MeshInstance3D mesh)
+            {
+                hasFade = true;
+                tween.Parallel().TweenProperty(mesh, "transparency", 1.0f, 0.5f);
+            }
+        }
+        if (hasFade) await ToSignal(tween, Tween.SignalName.Finished);
+        if (IsInstanceValid(corpse)) corpse.QueueFree();
+    }
+}
+```
+
+`Enemy.Die()`（10.2 节）末尾追加一行 `CorpseManager.Instance?.Register(this);` 就接上了——用 `?.` 是因为如果你还没把这个脚本注册成 Autoload，调用不会直接报错崩掉，只是静默跳过淘汰逻辑，方便你按自己的节奏决定什么时候接入这套机制。**这条上限该设多大，没有一个放之四海而皆准的数字**：太小（比如 5）会让玩家在激烈战斗中亲眼看到"我刚打死的敌人凭空消失了"这种穿帮；太大又起不到控制物理开销的作用——具体数值取决于你关卡的战斗密度和目标平台性能，20 只是一个"先跑起来、后面自己按实测表现调"的起点，不是权威数字。10.3 节的肢解碎块因为已经有源码对齐的 4 秒定时清理，不需要接入这套按数量淘汰的系统，两套清理机制各自负责各自的对象，互不冲突。
+
 ---
 
 ## 11. 关卡工具箱：触发器、开关、拾取物
@@ -3340,6 +4895,29 @@ AmmoPickup (Area3D)
 └── MeshInstance3D
 ```
 
+**先问一个尖锐的问题，再写代码**：如果玩家当前这种弹药的储备已经是满的，走进一发弹药拾取物会发生什么？上一版的写法是"不管当前储备多少，无条件加上去、然后拾取物消失/进入重生倒计时"——这意味着一个已经满弹的玩家路过一堆弹药，会眼睁睁看着它们一个个"被捡起"却什么都没发生，如果这堆弹药还带重生倒计时，相当于白白吃掉了一次原本可以留给队友、留给自己下一轮再来捡的资源。真实的直觉应该是反过来的：**捡不动的东西不该消失**。要让这件事成立，`AddReserveAmmo` 得先有一个上限的概念——5.2.2 节写的版本是没有的：
+
+```csharp
+// WeaponManager.cs——补一个上限，替换掉 5.2.2 节没有上限的 AddReserveAmmo
+[Export] public int MaxReserveAmmoPerType = 200;   // 简化起见先用同一个上限套所有弹药类型；
+                                                     // 如果不同弹药想要不同上限，把这个字段换成
+                                                     // Godot.Collections.Dictionary<string, int> 按 ammoType 查表即可
+
+// 返回值是这次实际补上了多少——可能因为快到上限而小于 amount，甚至是 0（已经满了）。
+// 调用方（拾取物）需要知道这件事，才能决定要不要把自己留在场上
+public int AddReserveAmmo(string ammoType, int amount)
+{
+    int current = GetReserveAmmo(ammoType);
+    int newAmount = Mathf.Min(current + amount, MaxReserveAmmoPerType);
+    int actuallyAdded = newAmount - current;
+    _reserveAmmo[ammoType] = newAmount;
+    return actuallyAdded;
+}
+
+// 拾取物调用的入口，跟 TakeDamage/Activate/Interact 是同一种"只认方法名"的鸭子类型调用
+public int GiveAmmo(string ammoType, int amount) => AddReserveAmmo(ammoType, amount);
+```
+
 `AmmoPickup.cs`：
 
 ```csharp
@@ -3347,6 +4925,8 @@ using Godot;
 
 public partial class AmmoPickup : Area3D
 {
+    [Export] public string AmmoType = "bullets";   // 跟 5.2.2 节 Weapon.AmmoType 是同一套字符串键——
+                                                     // 拾取的是"这一类型弹药的共享储备"，不是某一把具体武器
     [Export] public int AmmoAmount = 20;
     [Export] public float RespawnTime = 15.0f;   // <=0 表示拾取后不再重生
 
@@ -3360,7 +4940,14 @@ public partial class AmmoPickup : Area3D
         if (!body.IsInGroup("player")) return;
         if (!body.HasMethod("GiveAmmo")) return;
 
-        body.Call("GiveAmmo", AmmoAmount);
+        int given = (int)body.Call("GiveAmmo", AmmoType, AmmoAmount);
+        if (given <= 0)
+        {
+            // 一点都没吃进去——这种弹药的储备已经满了。拾取物原地不动、不进入任何"已拾取"状态，
+            // 玩家能看见它、能再走过来试，直到储备腾出空间为止，而不是被无声无息地清空
+            return;
+        }
+
         SetPickedUp(true);
 
         if (RespawnTime > 0)
@@ -3382,7 +4969,55 @@ public partial class AmmoPickup : Area3D
 }
 ```
 
-需要在 `PlayerController.cs`（或者更合理地，`WeaponManager.cs`，看你的项目怎么组织）加一个 `GiveAmmo` 方法接住这次调用——具体怎么加到已有的弹药系统上，取决于第 5 章你怎么设计的弹药存储方式，这里不重复展开。
+血包是完全同一个模式，唯一的区别是"满了不该拾取"的判断对象从弹药储备换成了血量。`PlayerController.cs` 补一个 `Heal` 方法（8 章定下来的 `Health`/`MaxHealth` 现在派上第二次用场）：
+
+```csharp
+// PlayerController.cs 追加
+public int Heal(float amount)
+{
+    float before = Health;
+    Health = Mathf.Min(Health + amount, MaxHealth);
+    int healed = Mathf.RoundToInt(Health - before);
+    if (healed > 0) EmitSignal(SignalName.HealthChanged, Health, MaxHealth);   // 13 章接好信号之后补上这一行
+    return healed;
+}
+```
+
+```csharp
+// HealthPickup.cs —— 跟 AmmoPickup 是同一个骨架，判断"满了没有"的对象换成 Health/MaxHealth
+using Godot;
+
+public partial class HealthPickup : Area3D
+{
+    [Export] public int HealAmount = 25;
+    [Export] public float RespawnTime = 20.0f;
+
+    public override void _Ready() => BodyEntered += OnBodyEntered;
+
+    private async void OnBodyEntered(Node3D body)
+    {
+        if (!body.IsInGroup("player") || !body.HasMethod("Heal")) return;
+
+        int healed = (int)body.Call("Heal", HealAmount);
+        if (healed <= 0) return;   // 满血——留在场上，不消失
+
+        Visible = false;
+        GetNode<CollisionShape3D>("CollisionShape3D").Disabled = true;
+        if (RespawnTime > 0)
+        {
+            await ToSignal(GetTree().CreateTimer(RespawnTime), SceneTreeTimer.SignalName.Timeout);
+            Visible = true;
+            GetNode<CollisionShape3D>("CollisionShape3D").Disabled = false;
+        }
+        else
+        {
+            QueueFree();
+        }
+    }
+}
+```
+
+**这里刻意留了一个不对称，说明一下原因**：`AddReserveAmmo` 返回"实际补上了多少"，`Heal` 也返回"实际治疗了多少"，两者都用这个返回值判断"要不要把自己留在场上"——但如果玩家的储备/血量只差一点点就满（比如差 2 点，捡到一发加 20 的弹药），现在的写法是"能补多少补多少，然后正常消失/进入重生"，不是"不够整数吃满就拒绝"。这是有意的：真实玩家不会因为"这发弹药没有 100% 利用" 而觉得不对劲，只有"完全没有效果却还是消失了"（`given == 0` 却依然判定为"已拾取"）才会显得像 bug。
 
 ### 11.2 触发体积：走进去，门就开了
 
@@ -3396,8 +5031,10 @@ public partial class TriggerZone : Area3D
 {
     [Export] public NodePath[] Targets = System.Array.Empty<NodePath>();
     [Export] public bool OneShot = true;
+    [Export] public float Wait = 0.5f;   // OneShot = false 时，两次触发之间至少间隔多久——见下面的说明
 
     private bool _fired;
+    private double _nextTriggerTime;
 
     public override void _Ready()
     {
@@ -3409,7 +5046,11 @@ public partial class TriggerZone : Area3D
         if (_fired && OneShot) return;
         if (!body.IsInGroup("player")) return;
 
+        double now = Time.GetTicksMsec() / 1000.0;
+        if (now < _nextTriggerTime) return;   // 还在冷却，忽略这次触发
+
         _fired = true;
+        _nextTriggerTime = now + Wait;
         foreach (NodePath path in Targets)
         {
             Node target = GetNode(path);
@@ -3422,11 +5063,13 @@ public partial class TriggerZone : Area3D
 }
 ```
 
+> **`Wait` 这个字段不是本教程自己拍的——DOOM 3 的触发体积原生就有这个概念，而且上一版这里完全没做，是一处真实的缺口**：`idTrigger_Multi`（`Trigger.cpp:257-336`）默认构造时 `wait = 0.0f`，`Spawn()` 里 `spawnArgs.GetFloat("wait", "0.5", wait)`——也就是说**默认值就是 0.5 秒**，跟上面 `Wait = 0.5f` 的默认值精确对应。真实的触发逻辑（`Event_Touch`，`Trigger.cpp:465-508`）第一件事就是检查 `nextTriggerTime > gameLocal.time`，是就直接返回、连响应都不触发——这正是"重复触发的开关需不需要防抖"这个问题的标准答案：**需要，而且这是引擎原生支持的能力，不是某个关卡遇到问题之后才加的补丁**。没有这层防抖，`OneShot = false` 的触发器会在玩家站在边界反复横跳、或者角色控制器一帧内因为碰撞体形状产生多次 `BodyEntered` 时被连续触发好几次——如果 `Targets` 指向的是一盏灯的开关，连续触发偶数次会让灯"看起来什么都没发生"（开了又关，肉眼来不及分辨），触发奇怪的次数则会让灯的状态跟玩家预期的相反，两种情况在没有防抖的版本里都真实存在。DOOM 3 甚至比这里做得更细：`random`/`random_delay` 两个字段能给 `wait`/`delay` 叠加一个随机扰动（`nextTriggerTime = gameLocal.time + SEC2MS(wait + random * gameLocal.random.CRandomFloat())`），让好几个并排的触发器不会看起来"整齐划一"地同时冷却完——这属于锦上添花，上面这版为了简单没有实现，如果你想要，思路是在 `_nextTriggerTime` 赋值那一行加一个 `+ (float)GD.RandRange(-RandomWait, RandomWait)`。
+
 把第 7 章的 `Door.Activate()` 方法保留（正好已经叫这个名字），现在触发器可以直接在编辑器的 Inspector 面板里把 `Targets` 数组指向任意数量的门/灯/其他实现了 `Activate()` 方法的节点，**门自己不再需要关心是谁触发了它**。这个"只要有 `Activate` 方法就能被任何触发器调用"的模式，会在第 13 章被正式讨论——你现在已经不知不觉用了好几次这种"只关心方法名、不关心具体类型"的写法（`TakeDamage`、`GiveAmmo`、`Activate`），是时候回头看看这套模式到底是什么、能不能做得更规范了。
 
 ### 11.3 可重复触发的开关
 
-`TriggerZone` 的 `OneShot = false` 已经支持重复触发，但如果你想要"必须主动按按钮才触发，而不是走进某个区域就自动触发"，需要另一种触发方式——留到第 12 章一起讲，那一章专门处理"主动交互"这类场景。
+`TriggerZone` 的 `OneShot = false` 已经支持重复触发，而且上一节刚补上的 `Wait` 防抖同样适用——两次自动触发之间至少要隔 `Wait` 秒。但如果你想要"必须主动按按钮才触发，而不是走进某个区域就自动触发"，需要另一种触发方式——留到第 12 章一起讲，那一章专门处理"主动交互"这类场景；第 12 章的 `Button3D` 同样需要一层防抖，原因和这里完全一样（连续两次 `Interact` 调用之间不该间隔为零），到时候会补上，不在这里重复实现。
 
 ---
 
@@ -3439,6 +5082,7 @@ public partial class TriggerZone : Area3D
 ```csharp
 // PlayerController.cs 追加
 [Export] public float InteractRange = 3.0f;
+[Export(PropertyHint.Layers3DPhysics)] public uint InteractMask = 0b0001;   // 见下面的说明——只探测"可交互"层，不是全部物理层
 private Node3D _currentFocus;
 
 public override void _PhysicsProcess(double delta)
@@ -3454,6 +5098,7 @@ private void UpdateFocus()
     Vector3 to = from + (-_camera.GlobalTransform.Basis.Z) * InteractRange;
 
     var query = PhysicsRayQueryParameters3D.Create(from, to);
+    query.CollisionMask = InteractMask;
     var result = spaceState.IntersectRay(query);
 
     Node3D newFocus = result.Count > 0 ? (Node3D)result["collider"] : null;
@@ -3478,6 +5123,8 @@ public override void _UnhandledInput(InputEvent @event)
 
 记得加 `interact` 输入映射（建议绑 E 键）。
 
+**上一版这里没有设置 `CollisionMask`，这是一处真实的缺口，不是无关紧要的细节**：不设置的话，`PhysicsRayQueryParameters3D` 默认检测**所有**物理层，这条准星射线会打中挡在路上的任何东西——包括第 9 章会动的怪物、第 10 章瘫倒在地上的布娃娃尸体、第 7 章的可推动箱子。设想一个很容易实际发生的场景：墙上有一块第 12 章要做的终端屏幕，恰好一具第 10 章打死后瘫倒的尸体挡在射线和屏幕之间——没有过滤的话，射线会先打中尸体（`Node3D`，但没有 `Interact` 方法），`_currentFocus` 变成这具尸体、`showPrompt` 判定为 `false`，玩家会觉得"我明明对着屏幕，为什么没有交互提示"，而真正的原因是一具挡路的尸体，肉眼很难第一时间看出来。加一条独立的物理层专门给"可交互物体"用（比如项目设置里新建一层叫 `Interactable`，`Button3D`、可点击的屏幕都放在这一层），`InteractMask` 只勾选这一层，射线就会直接穿过怪物、尸体、箱子这些不相关的物体，只在真正的交互目标上停下——这也顺带解决了另一个问题：现在 `UpdateFocus()` 用的是"这条射线打中的第一个东西"，只要交互目标本身没有被挡（不在同一层的物体不会挡路），这就已经是"你准星对着的、离你最近的那个可交互物体"，不需要额外去处理"视野里同时有好几个可交互物体该选哪个"——因为它们本来就不会同时出现在同一条射线上，一条射线的物理意义天然就是"我此刻准星正对着的那一个"。
+
 ### 12.2 一个按钮
 
 ```csharp
@@ -3486,9 +5133,16 @@ using Godot;
 public partial class Button3D : StaticBody3D
 {
     [Export] public NodePath[] Targets = System.Array.Empty<NodePath>();
+    [Export] public float Wait = 0.5f;   // 跟 11.2 节 TriggerZone.Wait 是同一个防抖需求，理由也一样
+
+    private double _nextInteractTime;
 
     public void Interact(Node whoInteracted)
     {
+        double now = Time.GetTicksMsec() / 1000.0;
+        if (now < _nextInteractTime) return;   // 冷却未到，忽略这次按下
+        _nextInteractTime = now + Wait;
+
         GD.Print("按钮被按下");
         foreach (NodePath path in Targets)
         {
@@ -3502,11 +5156,89 @@ public partial class Button3D : StaticBody3D
 }
 ```
 
+**这里的防抖跟 11.2 节的 `TriggerZone.Wait` 是同一个真实存在的问题，只是触发方式不同**：`TriggerZone` 需要防抖是因为角色可能在边界反复横跳、或者一帧内触发多次 `BodyEntered`；`Button3D` 需要防抖的原因略有不同，但同样真实——`_UnhandledInput` 里的 `IsActionPressed` 本身在单次按键内只会触发一次，看起来不需要额外防抖，但真实项目里 `Interact` 完全可能被**别的路径**重复调用：比如手柄的按键连发、或者玩家在交互动画播放到一半时又按了一次（这在没有防抖的版本里会让 `Activate()` 被连续调用两次，如果目标是一扇门，两次调用可能刚好把"开"又立刻叠加成"关"，或者如果目标是加一次性奖励的机关，会被吃两份奖励）。加一层跟 `TriggerZone` 一样的冷却窗口，成本几乎为零，却能挡掉这一整类问题，没有理由不加。
+
 注意 `Button3D.Interact()` 和上一节 `TriggerZone.OnBodyEntered()` 最后做的事情几乎一样——都是遍历一个目标列表，调用 `Activate()`。**触发方式不同（走进区域 vs 主动按键），但触发之后"该发生什么"是同一套逻辑**。这正是第 11 章末尾埋下的伏笔：不管是走进去触发、还是按键触发，最终都收敛到同一个"激活"动作上。
 
 ### 12.3 世界里的可交互屏幕（选学）
 
-如果你想做那种"墙上有一块可以用准星点击的电脑屏幕"的效果（终端、电梯面板这类），Godot 的做法是用 `SubViewport`：把一整套 UI（按钮、文字）渲染到一个独立的"子视口"里，再把这个子视口的画面当贴图贴到一个 3D 网格上。玩家的准星射线打中这块网格时，把命中点换算成这块 UI 上的二维坐标，往子视口里注入一个"鼠标点在这里"的事件——这块内容涉及的知识点（UV 坐标换算、`SubViewport` 事件转发）比较独立，不影响后面任何一章的学习，这里先跳过，等你需要真的做一块"可交互屏幕"的时候再单独查资料实现，思路上跟前面讲的"焦点检测+按键触发"是同一套骨架，只是多了一层"把命中点转换成 UI 坐标"的换算。
+如果你想做那种"墙上有一块可以用准星点击的电脑屏幕"的效果（终端、电梯面板这类），Godot 的做法是用 `SubViewport`：把一整套 UI（按钮、文字）渲染到一个独立的"子视口"里，再把这个子视口的画面当贴图贴到一个 3D 网格上。玩家的准星射线打中这块网格时，把命中点换算成这块 UI 上的二维坐标，往子视口里注入一个"鼠标点在这里"的事件。上一版这里只描述了思路、没有给出真正能跑的代码——这一节的知识点确实比较独立（不影响后面任何一章），但"选学"不等于"可以只讲个大概"，下面是一份真正能跑起来的最小实现：
+
+```
+InteractiveScreen (StaticBody3D)                 # 挂在 InteractMask 那一层（12.1 节），
+├── CollisionShape3D                              # 碰撞体大小跟屏幕网格对齐
+├── MeshInstance3D                                # 一块 QuadMesh，材质的 Albedo 贴图指向 SubViewport 的画面
+└── SubViewport (SubViewportContainer 也可以，但屏幕场景不需要显示在 2D 层，直接用 SubViewport 节点即可)
+    └── Control（你的终端 UI：按钮、Label……）
+```
+
+```csharp
+// InteractiveScreen.cs
+using Godot;
+
+public partial class InteractiveScreen : StaticBody3D
+{
+    [Export] public NodePath ScreenViewportPath;   // 指向上面那个 SubViewport 节点
+    [Export] public NodePath ScreenMeshPath;        // 指向贴了 SubViewport 画面的 MeshInstance3D
+
+    private SubViewport _viewport;
+    private MeshInstance3D _mesh;
+
+    public override void _Ready()
+    {
+        _viewport = GetNode<SubViewport>(ScreenViewportPath);
+        _mesh = GetNode<MeshInstance3D>(ScreenMeshPath);
+        // 子视口默认不会响应"从外部注入"的输入事件，必须显式打开这个开关，
+        // 不然下面 Interact() 里发送的鼠标事件会被无声无息地丢弃——这是最容易漏掉的一步
+        _viewport.HandleInputLocally = false;
+    }
+
+    // 由 12.1 节的焦点系统调用——参数是玩家准星射线在这块屏幕网格上的命中信息
+    public void Interact(Node whoInteracted, Vector3 hitPointWorld)
+    {
+        Vector2 uv = WorldHitToUv(hitPointWorld);
+        if (uv.X < 0 || uv.X > 1 || uv.Y < 0 || uv.Y > 1) return;   // 命中点换算出界，说明打在了网格上但不在有效贴图区域
+
+        Vector2 viewportPos = uv * _viewport.Size;   // 按当前子视口的实际像素尺寸换算——不要写死分辨率，
+                                                       // 不然子视口分辨率一改这里的坐标就全错了，见下面的说明
+
+        var motion = new InputEventMouseMotion { Position = viewportPos, GlobalPosition = viewportPos };
+        _viewport.PushInput(motion);   // 先发一次移动事件，让 Control 树里的悬停/焦点状态先更新对
+
+        var press = new InputEventMouseButton
+        {
+            Position = viewportPos, GlobalPosition = viewportPos,
+            ButtonIndex = MouseButton.Left, Pressed = true
+        };
+        _viewport.PushInput(press);
+
+        var release = (InputEventMouseButton)press.Duplicate();
+        release.Pressed = false;
+        _viewport.PushInput(release);   // 子视口里的按钮通常在"按下+抬起都发生在同一个控件上"才算一次完整点击，
+                                          // 只发按下不发抬起，按钮会卡在"按住"的视觉状态出不来
+    }
+
+    // 把世界坐标的命中点，转换成这块 QuadMesh 表面的 [0,1] UV 坐标——
+    // 这一步假设 MeshInstance3D 用的是一个未经非均匀缩放的 QuadMesh，法线朝 -Z，
+    // 且命中点已经在网格的局部空间内（调用方传世界坐标，这里转一次局部空间）
+    private Vector2 WorldHitToUv(Vector3 hitPointWorld)
+    {
+        Vector3 local = _mesh.GlobalTransform.AffineInverse() * hitPointWorld;
+        var quad = (QuadMesh)_mesh.Mesh;
+        float u = (local.X + quad.Size.X * 0.5f) / quad.Size.X;
+        float v = 1.0f - (local.Y + quad.Size.Y * 0.5f) / quad.Size.Y;   // Godot 的 UV 原点在左上，局部 Y 轴朝上，方向要反一下
+        return new Vector2(u, v);
+    }
+}
+```
+
+12.1 节的 `UpdateFocus()`/`_UnhandledInput()` 需要相应地传入命中点世界坐标（`IntersectRay` 返回的字典里本来就有 `"position"` 这个键），调用 `Interact` 时如果目标实现的是 `Interact(Node, Vector3)` 这个重载，多传一个 `(Vector3)result["position"]`；本教程前面 12.1 节写的 `Interact(Node whoInteracted)` 是单参数版本，两者可以用 `HasMethod`/重载判断共存，这里不重复展开这层适配代码。
+
+**三个容易被忽略、但会直接决定这套方案能不能用的细节，都值得提前知道**：
+
+1. **分辨率/宽高比不是"设一次就不用管"的**：上面 `WorldHitToUv` 算出来的 UV 是跟 `QuadMesh` 的物理尺寸绑定的，而 `viewportPos = uv * _viewport.Size` 是跟 `SubViewport` 的像素尺寸绑定的——两者是两个独立的数字，只要 `QuadMesh` 的宽高比和 `SubViewport` 的宽高比对不上，UI 上的点击位置就会出现整体拉伸偏移（比如你点在按钮左边缘，实际点击点算到了按钮外面）。保证两者比例一致（比如网格 2:1，视口也开 2:1，哪怕分辨率本身是 512×256 还是 1024×512 都不影响，只要比例一致就没问题）是这套方案能正确工作的前提，不是可选的优化。
+2. **半透明部分"点得穿"这件事，取决于你怎么处理射线检测，不是 `SubViewport` 自动帮你做的**：如果这块屏幕的材质本身有透明区域（比如一个圆形按钮贴图，四角是透明的），`IntersectRay` 默认只关心碰撞体的几何形状，不关心贴图的 Alpha 通道——玩家点在按钮之间的透明缝隙上，射线依然会命中整块 `QuadMesh` 的碰撞体，然后把这次点击转发给子视口里那个位置，如果那个位置底下恰好还有一层背景控件在监听点击，就会出现"点在看起来什么都没有的地方，却触发了东西"的违和感。真要做到"像素级别的可点击性由贴图透明度决定"，需要在 `WorldHitToUv` 算出 UV 之后，额外去读一次那张贴图对应像素的 Alpha 值（`Image.GetPixel`，前提是贴图在 CPU 端可读），Alpha 低于某个阈值就当作没点中——这一步会有明显的额外开销（每次交互都要做一次贴图采样），只有真的需要"缝隙不可点"这种精细手感时才值得做，大多数终端/面板类 UI 用矩形按钮摆开，不会紧贴到需要处理这个问题的程度。
+3. **`SubViewportContainer` 和裸 `SubViewport`是两个不同的用法，这里用的是后者**：如果你是照着 Godot 官方"2D UI 叠加在 3D 场景上"的教程搭的，很容易看到 `SubViewportContainer` 包一层 `SubViewport` 的写法——那一套是给"UI 要显示在屏幕上"用的（`SubViewportContainer` 本身是个 2D `Control`，会被塞进 `CanvasLayer`）。这里的场景是"UI 只需要被渲染成一张贴图贴到 3D 网格上，玩家根本看不到、也不该看到 `SubViewportContainer` 本身"，所以直接用一个独立的 `SubViewport` 节点（不挂在任何 `CanvasLayer` 下），把它的 `GetTexture()` 结果丢给 `MeshInstance3D` 的材质当 Albedo 贴图就够了，多包一层 `SubViewportContainer` 反而是不需要的额外节点。
 
 ---
 
@@ -3672,6 +5404,51 @@ public static class CombatUtil
 
 `Weapon.Fire()`、`Weapon.Melee()`、`Enemy.TryAttack()` 现在都可以简化成调用 `CombatUtil.RaycastAttack(this, from, to, damage, mask)` 一行——这不是什么高深的架构模式，就是"发现好几处代码在做同一件事，抽成一个函数"这个最朴素的编程习惯，只是放到这一章讲，是因为**在这之前你可能还没意识到这几处代码之间有这层关系**，先让代码在不同章节里各自独立地存在，走到这一步回头一看才看得出规律，比一开始就要求你设计好这个抽象要自然得多。
 
+### 13.5 信号的生命周期：订阅之后，什么时候该取消订阅
+
+前面几节演示的每一处 `Connect`/`+=`，都只讲了"怎么订阅"，没有讲"这份订阅什么时候该结束"——这不是疏漏，是故意留到这里集中讲，因为这是一个**真实存在、几乎每个用 Godot 信号系统的人都会踩至少一次**的坑，值得单独拿出来，而不是在前面每一处订阅代码旁边都插一句提醒打断阅读节奏。
+
+**先说清楚 Godot 帮你兜住了哪一半**：如果 A 订阅了 B 的信号（`B.SomeSignal += A.Handler`），然后 A 先被 `QueueFree()` 释放——这种情况 Godot 引擎层是安全的，A 被释放时，Godot 会自动清理掉所有以 A 为接收方的信号连接，B 之后正常 `EmitSignal`，不会尝试调用一个已经不存在的对象的方法，不会报错、也不会崩溃。这是 Godot 信号系统内置的保证，不需要你手动做任何事。
+
+**但反过来的情况，Godot 帮不了你**：如果 B（信号的发出方）活得比 A（订阅方）久，而 A 只是被逻辑上"废弃"（比如从场景树移除、或者游戏逻辑上认为它已经"死"了，但 C# 对象因为某个地方还留着引用而没有被真正回收），A 之前订阅的这份连接会一直挂在 B 身上，只要 B 还在发信号，就会一直尝试调用 A 的处理函数。本教程里最容易撞上这个情况的正是第 13.3 节的 `EventBus`——它是一个 Autoload 单例，**生命周期覆盖整局游戏**，而 `Enemy`/`TriggerZone` 这些订阅它的节点，生命周期通常只有一次战斗、一个房间那么长。如果一只 `Enemy` 在 `_Ready()` 里订阅了 `EventBus.Instance.Connect(...)`，死亡后 `QueueFree()` 掉——前面说过，Godot 会自动断开"以这只 `Enemy` 为接收方"的连接，这一点本身没问题；真正的风险出现在**这只 `Enemy` 如果被对象池复用、而不是真正释放**（有些项目为了性能会这么做，本教程目前的写法是直接 `QueueFree()`，还没有引入对象池），或者**回调闭包里捕获了别的、比 `Enemy` 自己活得更久的外部状态**——这两种情况都不是"信号本身没断开"，而是"信号处理函数执行的时候，访问到的数据已经不是你以为的那个状态了"，排查起来比直接报错的空引用异常更隐蔽。
+
+真正应该养成的习惯，是**不依赖引擎的自动清理是不是覆盖了你的场景，而是显式地在 `_ExitTree()` 里断开自己订阅的、生命周期比自己长的信号源**：
+
+```csharp
+// Enemy.cs
+public override void _Ready()
+{
+    // ...
+    EventBus.Instance.Connect(EventBus.SignalName.MonsterDied, new Callable(this, MethodName.OnMonsterDied));
+}
+
+public override void _ExitTree()
+{
+    // EventBus 是 Autoload，活得比这只 Enemy 久——它是不是已经真的没用了，
+    // 由这只 Enemy 自己的生命周期决定，所以断开连接的责任也应该在这只 Enemy 自己身上，
+    // 而不是指望 EventBus 那边知道"这个订阅者已经不需要了"
+    if (EventBus.Instance != null && EventBus.Instance.IsConnected(EventBus.SignalName.MonsterDied, new Callable(this, MethodName.OnMonsterDied)))
+    {
+        EventBus.Instance.Disconnect(EventBus.SignalName.MonsterDied, new Callable(this, MethodName.OnMonsterDied));
+    }
+}
+```
+
+**一个判断标准，帮你决定什么时候需要写这段 `_ExitTree()`，什么时候不需要**：如果信号的发出方和接收方生命周期基本同步（比如 `Hud` 订阅 `PlayerController.HealthChanged`——两者通常从游戏开始活到游戏结束，或者至少同时被卸载），不用特意写这段清理代码，Godot 的自动断开已经够用；一旦发出方是 Autoload（`EventBus`、`SaveManager` 这类"活得比谁都久"的单例），而接收方是会被频繁创建/销毁的东西（怪物、拾取物、任何一次性关卡道具），就应该养成在 `_ExitTree()` 里显式断开的习惯——多写这几行代码的成本，远低于一次"游戏运行很久之后偶发的奇怪报错、但复现不出来"的排查成本。
+
+**另一个容易被忽略的地方：重复订阅**。如果一个节点的 `_Ready()` 因为场景重新加载、或者节点被重新添加进树而执行了不止一次（比如你做了一个"重新进入这个房间就重置怪物"的系统，房间场景被卸载又重新实例化），每次 `_Ready()` 都无条件 `Connect` 一次，而没有先检查是否已经连接过，会导致**同一个信号的同一个处理函数被注册了好几份**——`EmitSignal` 一次，处理函数却被连续调用好几次（比如玩家血量变化的 UI 更新逻辑被触发两次，通常看不出明显的错误，但如果处理函数里有"每次触发加一点数值"这种累加逻辑，就会产生实实在在的数值 bug）。Godot 的 `Connect` 默认允许重复连接同一对信号源和处理函数（不会报错，也不会自动去重），所以这个责任同样在调用方自己身上：
+
+```csharp
+// 订阅前先检查，避免同一个处理函数被注册多次
+var callable = new Callable(this, MethodName.OnMonsterDied);
+if (!EventBus.Instance.IsConnected(EventBus.SignalName.MonsterDied, callable))
+{
+    EventBus.Instance.Connect(EventBus.SignalName.MonsterDied, callable);
+}
+```
+
+**最后，顺带回答一下"信号的触发顺序有没有保证"这个问题**：Godot 的信号是**同步**的——`EmitSignal` 这一行代码会按"连接建立的先后顺序"依次、原地调用每一个订阅者的处理函数，全部执行完毕，`EmitSignal` 这一行才算返回，不存在"排队到下一帧再触发"这种异步语义（除非你自己在处理函数里主动 `await` 或者 `CallDeferred`）。这意味着两件事：第一，如果你订阅的处理函数里有耗时逻辑（比如同步读一个大文件），会直接卡住发出信号的那一次调用，进而卡住那一帧；第二，也是更容易踩到的一个坑——**如果某个处理函数在响应信号的过程中，把另一个订阅者所在的节点 `QueueFree()` 掉了**（比如 `MonsterDied` 的其中一个处理函数负责"清理关卡里跟这只怪物关联的其他对象"），而那个被清理的对象**恰好也订阅了同一个信号、且排在它后面**，`QueueFree()` 本身不会立即从场景树移除节点（要等到这一帧结束），所以理论上不会在同一次 `EmitSignal` 内触发"调用一个已经不存在的对象"的错误，但如果处理函数里做的是更直接的清理（比如手动断开连接、或者把某个字段置空），后续同一次广播里排在后面的处理函数访问到的可能已经是"半清理"状态。这种"一个处理函数的副作用影响同一次广播里另一个处理函数看到的状态"的情况并不常见，但一旦发生会很难定位，因为报错现场（后面那个处理函数）离真正的原因（前面那个处理函数做了什么）在代码里可能隔得很远——如果你的处理函数会产生"删除/使某个对象失效"这类副作用，值得留意它是不是也被同一个信号的其他订阅者依赖着。
+
 ---
 
 ## 14. 数据驱动：把"这只怪物"变成"一份配置"
@@ -3726,7 +5503,7 @@ public partial class Enemy : CharacterBody3D
         // ...
     }
 
-    // TryAttack()/PickMeleeAttack() 等照 9.4.1 节的版本不变，直接读 Attacks，
+    // TryAttack()/PickMeleeAttack() 等照 9.4.1/9.4.2 节的版本不变，直接读 Attacks，
     // 不经过 Stats——那几个字段的"数据驱动"已经靠 AttackDefinition 自己是 Resource 这件事解决了
 }
 ```
@@ -3740,6 +5517,27 @@ public partial class Enemy : CharacterBody3D
 ### 14.4 什么时候不该数据驱动
 
 不是所有东西都该拆成 `Resource`。一个判断标准：**如果这个数值/行为在整个游戏里只会出现一次，硬拆成独立配置文件反而是额外的间接层，没有实际收益**。比如"最终 boss 房间那扇门的开启条件"，这种独一无二、只在一个地方用一次的逻辑，直接写在具体的脚本里就好，不需要为了"看起来更规范"而强行抽象成数据——过度数据驱动和过度抽象是同一类问题：多绕了一层，却没有换来真正的复用收益。
+
+### 14.5 一个真实的坑：共享的 `Resource` 不能当可变状态用
+
+这一节要单独拿出来讲，因为它不是"理论上可能发生"的边缘情况——`.tres` 资源在 Godot 里默认是**引用共享**的：场景里 10 只小怪的 `Stats` 字段都拖进同一份 `imp_stats.tres`，这 10 个 `[Export] public EnemyStats Stats` 字段在内存里指向的是**同一个 `EnemyStats` C# 对象**，不是各自独立的副本。14.1/14.2 节讲的"三份 `.tres` 就是三种手感的怪物"能成立，前提正是这份共享——这本身是数据驱动的优点，不是缺陷；但它有一个必须知道的边界：**任何时候只要有代码尝试在运行时修改 `Stats` 上的字段，这次修改会同时影响到所有引用同一份 `.tres` 的怪物实例，不只是你以为的"这一只"**。
+
+上面 14.2 节的 `Enemy.cs` 目前是安全的——`_health = Stats.MaxHealth` 只是把值**读出来、拷贝进** `Enemy` 自己的字段，之后所有扣血/回血都发生在 `_health` 这个每个实例各自独立的字段上，`Stats.MaxHealth` 本身从始至终没有被写过。真正会踩坑的是后续你自己扩展系统时很容易写出来的代码，比如给怪物加一个"精英词缀"系统，想让某一只怪物的移动速度临时翻倍：
+
+```csharp
+// 危险写法——如果 Stats 是从共享的 .tres 拖进来的，这一行会让所有用同一份 .tres 的怪物
+// 全部变成两倍速度，包括场景里跟这只怪物毫不相干的其他实例，且这个修改会一直生效到游戏重启
+Stats.MoveSpeed *= 2.0f;
+```
+
+这行代码本身编译、运行都完全正常，不会有任何报错或警告，Bug 只会在"为什么我加了一个精英词缀之后满屏怪物突然都变快了"这种排查起来毫无头绪的场景里暴露出来——这正是这一类问题最阴险的地方：**没有异常、没有崩溃，只有一个跟你的修改意图不符的、悄悄扩散出去的副作用**。这不是本教程编出来的假想问题，是这一类"共享 `Resource` + 运行时可变字段"的组合本身就自带的一个坑，用过 Godot `Resource` 系统的人几乎都遇到过至少一次。
+
+**解法只有一条原则：需要在运行时被修改的状态，永远不要直接存在共享的 `Resource` 字段上**，有两种具体做法：
+
+1. **不修改 `Stats` 本身，把"修改结果"存在 `Enemy` 自己的字段上**——跟 `_health` 现在的做法完全一样，这是首选。精英词缀的例子应该写成 `EffectiveMoveSpeed`（9.9 节 Boss 阶段系统已经示范过这个模式：`EffectiveMoveSpeed => MoveSpeed * (...)`，这里同理）而不是直接改 `Stats.MoveSpeed`。
+2. **如果确实需要"这一份配置从此以后专属于这一个实例、可以被随便改"**（比较少见，比如一个"boss 房间里独一份、要在战斗过程中动态调整数值"的特殊怪），Godot 提供了 `Duplicate()`：`Stats = (EnemyStats)Stats.Duplicate();` 在 `_Ready()` 里执行一次，之后这只怪物拿到的就是一份专属副本，随便怎么改都不会影响到其他实例——但代价是从这一刻起，这份配置**不再享受"改一份 `.tres` 全场同步生效"的数据驱动收益**，如果你后来想统一调整这个怪物类型的基础速度，这只用了 `Duplicate()` 的实例不会跟着变。Godot 编辑器里 `Resource` 的 Inspector 面板也有一个等价的开关叫 `resource_local_to_scene`，效果是"这份资源在当前场景里自动变成独立副本"，跟代码手动 `Duplicate()` 是同一件事的另一种入口，适合"我知道这份资源就是要跟这个场景绑死"的场景。
+
+`AttackDefinition`（9.4.1 节）、`BossPhase`（9.9 节）这两个已经在用的 `Resource` 子类，同样适用上面这条原则——事实上 9.4.2 节把"上一次使用时间"从直觉上应该属于 `AttackDefinition` 自己的字段，特意搬到 `Enemy._attackReadyTime`（一个以 `AttackDefinition` 为 key 的字典）上，理由跟这里完全一致：`AttackDefinition` 可能被多只怪物共享，把运行时状态存在共享资源自己身上，会导致多只怪物的攻击冷却互相污染。回头看那一节的原话——"`AttackDefinition` 是 `Resource`，同一份资源理论上可能被多只怪物实例共享，如果把'上次使用时间'这种运行时状态也塞进 `Resource` 里，多只怪物共用同一条 `AttackDefinition` 时就会互相污染对方的冷却计时"——说的正是这一节讲的这同一类问题，只是那里没有点破"这是一类通用问题，不是 `AttackDefinition` 这一个类型独有的"，这里把它归纳成一条通用规则：**判断一个字段该不该放在共享的 `Resource` 上，只需要问一句"这个字段的值，是不是应该在所有引用同一份 `.tres` 的实例之间保持一致"——是，放 `Resource` 上；不是（哪怕只是"运行时会变化"这一点不一致），就必须挪到具体实例自己的类（`Enemy`）上，或者用字典按实例/按资源引用分别记账**。
 
 ---
 
@@ -3791,6 +5589,127 @@ public partial class Enemy : CharacterBody3D, ISaveable
 ```
 
 `AmmoPickup`、`Door` 之类需要存"是否已触发/已拾取"这类状态的节点，照同样的模式各自实现一份。
+
+### 15.2.1 存档要跟上第 9 章的状态机——不能停留在"血量+位置"
+
+上面这版 `Enemy.GetSaveData()` 是本教程刚引入存档概念时的最简版本，只存了 `position`/`health`/`is_dead` 三样。但第 9 章给 `Enemy` 加了一整套运行时状态——`_state`（`Idle/Alert/Combat/Reposition/Charging/Dead`）、`_lastKnownPlayerPos`（警觉状态要去查看的最后已知位置）、`_currentPatrolPoint`（巡逻打断后要从哪个路点继续）、`_attackReadyTime`（每条招式各自的冷却）、`_lastUsedAttack`（`WeightedPick` 用来避免连续两次出同一招）、`_activePhase`/`_enraged`（Boss 阶段与激怒）——这些字段现在**一个都没有被存进去**。如果你的项目支持"战斗过程中随时存档、读档后从原地继续打"（这是大多数商业 FPS 的标准玩法，而不是只能在安全区存档），上面这版存档在读档瞬间会让所有敌人集体"失忆"：正在追你的怪物读档后变回站桩警觉，Boss 明明血量只剩 20% 却读档后又能立刻用满血阶段的招式（因为 `_activePhase` 归零重算前不会有问题，但如果玩家是存在了无敌窗口或者巡逻点走到一半的状态，行为衔接会非常突兀），所有招式的冷却全部清零（读档瞬间敌人可能对着你连续打出好几条刚才明明还在冷却的招式）。
+
+**这不是这份教程自己拍脑袋加的顾虑**：翻真实 DOOM 3 源码的 `idAI::Save()`（`AI.cpp:411-543`）就知道，商业级 FPS 对这件事的态度是"AI 身上几乎所有运行时状态都要存"，随手挑几行能跟这里直接对上号的：`lastAttackTime`（对应这里的攻击冷却）、`enemy`（当前锁定的目标引用，用 `idEntityPtr::Save()`）、`lastVisibleEnemyPos`（对应这里的 `_lastKnownPlayerPos`）——DOOM 3 允许玩家在任意时刻（包括激烈战斗中）按下快速存档键，读档后战场状态要能完整复原，这不是一个可以退让的边缘需求。下面是补全后的版本，**替换掉上面 15.2 节那份简化的 `GetSaveData()`/`LoadSaveData()`**：
+
+```csharp
+// Enemy.cs —— 替换 15.2 节的 GetSaveData()/LoadSaveData()
+using System.Collections.Generic;
+
+public Godot.Collections.Dictionary GetSaveData()
+{
+    var data = new Godot.Collections.Dictionary
+    {
+        { "position", GlobalPosition },
+        { "health", _health },
+        { "state", (int)_state },
+    };
+
+    if (_lastKnownPlayerPos.HasValue)
+        data["last_known_player_pos"] = _lastKnownPlayerPos.Value;
+
+    if (_currentPatrolPoint != null)
+        data["patrol_point_path"] = _currentPatrolPoint.GetPath().ToString();
+
+    // AttackDefinition/BossPhase 都是 Resource，不能直接塞进存档字典——StoreVar 没有办法把
+    // "游戏里到底是哪一份 Resource 引用"这件事原样落盘再原样读回来。改存它在这只怪物自己的
+    // 攻击/阶段表里的下标，读档时反查回具体引用。14.5 节讲过"共享 Resource 不能存运行时可变状态"，
+    // 这里是同一条原则的另一个体现：_attackReadyTime 的 key 本身就是 Resource 引用，
+    // 存档格式必须经过一层"下标"才能落地，不能指望直接序列化这个引用
+    var allAttacks = AllPossibleAttacks();
+    var cooldowns = new Godot.Collections.Dictionary();
+    double now = Time.GetTicksMsec() / 1000.0;
+    foreach (var kv in _attackReadyTime)
+    {
+        int index = allAttacks.IndexOf(kv.Key);
+        if (index < 0) continue;   // 理论上不会发生，除非场景在存读档之间改过 Attacks/Phases 配置
+        double remaining = kv.Value - now;
+        // 冷却是用 Time.GetTicksMsec() 起算的绝对时刻，读档时游戏计时器已经从零重新开始，
+        // 直接存这个绝对值没有意义——存"还剩多久才能再用"这个相对值，读档时以读档那一刻重新起算
+        if (remaining > 0) cooldowns[index.ToString()] = remaining;
+    }
+    data["attack_cooldowns"] = cooldowns;
+
+    if (_lastUsedAttack != null)
+    {
+        int lastIndex = allAttacks.IndexOf(_lastUsedAttack);
+        if (lastIndex >= 0) data["last_used_attack"] = lastIndex;
+    }
+
+    if (Phases.Count > 0)
+        data["active_phase"] = _activePhase != null ? Phases.IndexOf(_activePhase) : -1;
+
+    data["enraged"] = _enraged;
+
+    return data;
+}
+
+public void LoadSaveData(Godot.Collections.Dictionary data)
+{
+    GlobalPosition = (Vector3)data["position"];
+    _health = (float)data["health"];
+
+    var allAttacks = AllPossibleAttacks();
+    double now = Time.GetTicksMsec() / 1000.0;
+    _attackReadyTime.Clear();
+    if (data.ContainsKey("attack_cooldowns"))
+    {
+        var cooldowns = (Godot.Collections.Dictionary)data["attack_cooldowns"];
+        foreach (var key in cooldowns.Keys)
+        {
+            int index = int.Parse((string)key);
+            if (index < 0 || index >= allAttacks.Count) continue;
+            _attackReadyTime[allAttacks[index]] = now + (double)cooldowns[key];
+        }
+    }
+
+    if (data.ContainsKey("last_used_attack"))
+    {
+        int lastIndex = (int)data["last_used_attack"];
+        if (lastIndex >= 0 && lastIndex < allAttacks.Count) _lastUsedAttack = allAttacks[lastIndex];
+    }
+
+    if (Phases.Count > 0 && data.ContainsKey("active_phase"))
+    {
+        int phaseIndex = (int)data["active_phase"];
+        _activePhase = phaseIndex >= 0 && phaseIndex < Phases.Count ? Phases[phaseIndex] : null;
+    }
+
+    _enraged = data.ContainsKey("enraged") && (bool)data["enraged"];
+
+    if (data.ContainsKey("last_known_player_pos"))
+        _lastKnownPlayerPos = (Vector3)data["last_known_player_pos"];
+
+    if (data.ContainsKey("patrol_point_path"))
+        _currentPatrolPoint = GetTree().Root.GetNodeOrNull<PatrolPoint>((string)data["patrol_point_path"]);
+
+    var state = (State)(int)data["state"];
+    if (state == State.Dead)
+        Die();
+    else
+        _state = state;
+}
+
+// Attacks 和每一阶段的 PhaseAttacks 拼在一起、按固定顺序去重，给存档用的稳定下标——
+// 这份顺序只要 Attacks/Phases 在编辑器里配置好之后不再运行时改动就是稳定的。普通怪物
+// （Phases 为空）这个列表就等于 Attacks 本身；Boss 的 PhaseAttacks 可能包含不在 Attacks
+// 里的招式（9.9 节提到过两者"可以完全独占"），所以两边都要收进来，不能只用 Attacks
+private List<AttackDefinition> AllPossibleAttacks()
+{
+    var all = new List<AttackDefinition>();
+    foreach (var atk in Attacks) if (!all.Contains(atk)) all.Add(atk);
+    foreach (var phase in Phases)
+        foreach (var atk in phase.PhaseAttacks)
+            if (!all.Contains(atk)) all.Add(atk);
+    return all;
+}
+```
+
+**哪些字段特意没有存，也说明一下理由，避免看起来像是漏掉的**：9.5 节的 `_lastPainTime`/`_staggerUntil`（疼痛硬直的计时）、9.9 节的 `_combatStartTime`（激怒计时的起点）都没有存——这几个都是"绝对时间戳"，而不是"剩余时长"，读档瞬间游戏的时间基准（`Time.GetTicksMsec()`）已经重新从零开始，如果不加处理直接照抄绝对时间戳，读档后这些计时器的语义会整个错乱（比如 `_staggerUntil` 存的是一个"游戏启动以来第几毫秒"，读档后这个数字大概率已经"过期"，效果上等于读档就自动解除硬直——这个副作用不算严重，甚至可以说是无伤大雅的巧合，但如果反过来 `_combatStartTime` 恰好没过期，会出现"读档瞬间激怒计时器里比原来的进度更靠后"这种说不清楚的状态）。按 15.1 节的判断标准衡量：疼痛硬直丢一次玩家完全感觉不到（下一次挨打会重新触发），激怒计时器丢一次顶多是"这场 Boss 战的风筝耐心值被重置了一点"，都不是"读档后世界看起来不连贯"的那类问题，值得为了省事而不存——这跟上面 `_attackReadyTime`/`_activePhase` 这些"不存的话，读档瞬间会打出明显不该出现的行为"的字段，是两类不同性质的取舍，不是"图省事漏掉一部分、认真做完另一部分"这种不一致的处理。
 
 ### 15.3 存档管理器：Autoload 单例
 
@@ -3896,8 +5815,6 @@ public partial class Hud : CanvasLayer
 
         var player = GetTree().GetFirstNodeInGroup("player");
         player.Connect(PlayerController.SignalName.HealthChanged, new Callable(this, MethodName.OnHealthChanged));
-
-        // 弹药信息目前是 Weapon 自己管理的（第 5 章），同样给它加一个信号，思路和血量一样，这里不重复展开代码
     }
 
     private void OnHealthChanged(float current, float max)
@@ -3910,7 +5827,39 @@ public partial class Hud : CanvasLayer
 
 这正是第 13 章讲的信号系统第一次真正派上用场的地方——`Hud` 完全不需要每帧去读玩家血量，玩家血量变化时自己会通知它。回头对比一下，如果没有第 13 章的信号系统，你可能会写成"`Hud` 在 `_Process` 里每帧读一次 `player.Health`"——能跑，但每帧查询是浪费，而且血量以外的每一种状态都要重复这个模式，信号系统在这里的收益是实打实的。
 
-### 16.2 受伤反馈：屏幕红一下
+**弹药这一栏不能照抄血量的写法，直接复制粘贴——上一版这里写了句"思路和血量一样"就跳过了，但实际上不一样**：`PlayerController.Health` 从第 8 章开始就是一个单一的数字，而弹药从 5.2.2 节开始就已经不是了——`WeaponManager` 管的是一个按 `AmmoType` 索引的共享储备字典，同一个"弹药数字"要看你问的是"当前手上这把枪的弹匣还剩几发"（`Weapon.CurrentAmmo`，每把枪各自独立）还是"这把枪用的这种弹药，储备还有多少"（`GetReserveAmmo(weapon.AmmoType)`，同类型武器共享）。HUD 通常只需要显示"当前手持这把枪"对应的这两个数字，不需要（也不该）把玩家身上所有弹药类型的库存都摆出来。要做到这一点，通知的时机也比血量复杂——不只是"挨打了才变"，开火、换弹、切枪、5.2.2 节以及 11.1 节的捡弹药，任何一个都可能改变这两个数字：
+
+```csharp
+// WeaponManager.cs 追加——弹药 HUD 要显示的是"当前手持武器的弹匣 + 它所用弹药类型的共享储备"，
+// 两者任何一处变化都要通知一次，所以专门开一个信号，而不是让 Hud 自己每帧去读 CurrentWeapon 的字段
+[Signal] public delegate void AmmoDisplayChangedEventHandler(int clipAmmo, int reserveAmmo);
+
+public void NotifyAmmoDisplayChanged()
+{
+    if (CurrentWeapon == null) return;
+    EmitSignal(SignalName.AmmoDisplayChanged, CurrentWeapon.CurrentAmmo, GetReserveAmmo(CurrentWeapon.AmmoType));
+}
+```
+
+在 `Weapon.Fire()`、`Weapon.Reload()` 结尾，`WeaponManager` 切枪逻辑结尾，以及 11.1 节 `AddReserveAmmo`/`GiveAmmo` 结尾，各补一行调用 `NotifyAmmoDisplayChanged()`——凡是会改变"当前弹匣还有几发"或者"这种弹药还剩多少储备"这两个数字里任意一个的地方，都要触发一次这个通知，漏掉任何一处，HUD 在那个操作之后到下一次开火之前都会显示过期的数字（比如切枪之后弹药栏还停留在上一把枪的数字，直到你对着新枪开一枪才刷新）：
+
+```csharp
+// Hud.cs 追加
+public override void _Ready()
+{
+    // ...原有初始化...
+    var player = GetTree().GetFirstNodeInGroup("player");
+    var weaponManager = player.GetNode<WeaponManager>("WeaponManager");   // 路径按你项目实际的节点树结构改
+    weaponManager.Connect(WeaponManager.SignalName.AmmoDisplayChanged, new Callable(this, MethodName.OnAmmoDisplayChanged));
+}
+
+private void OnAmmoDisplayChanged(int clipAmmo, int reserveAmmo)
+{
+    _ammoLabel.Text = $"{clipAmmo} / {reserveAmmo}";
+}
+```
+
+### 16.2 受伤反馈：屏幕红一下，以及伤害是从哪个方向来的
 
 ```csharp
 // Hud.cs 追加
@@ -3937,6 +5886,69 @@ private async void FlashDamage()
     await ToSignal(tween, Tween.SignalName.Finished);
 }
 ```
+
+**这一屏幕闪红，只回答了"我挨打了"，回答不了商业 FPS 玩家真正在意的下一个问题——"从哪边打过来的"**。全屏一致地闪一下红色，玩家没有任何线索知道该往哪个方向转身应对，尤其是被身后或者侧面的敌人偷袭时，这个信息缺失会直接影响玩家能不能做出合理反应。**先说清楚这不是从 DOOM 3 抄来的**：真实源码 `idPlayer::Damage()` 确实会算一个 `lastDamageDir`（伤害来向，`Player.cpp:8564-8565`），但它拿这个方向去做的事跟现代 FPS 常见的"HUD 方向指示箭头"完全不同——`playerView.DamageImpulse(lastDamageDir * viewAxis.Transpose(), &def->dict)`（`Player.cpp:10131`）把这个方向转换到玩家自己的视角空间，喂给 `idPlayerView::DamageImpulse()`（`PlayerView.cpp:241`），效果是**按受击方向给镜头一次瞬间的甩动（head kick）+ 一段"双重视觉"（double vision，画面短暂重影/模糊）**——本质上是"让玩家的视野本身受到冲击"，不是在屏幕边缘画一个箭头。2004 年的 FPS 设计语言里，"受击方向指示箭头"这个 HUD 元素还不是行业标配，它更多是后来（大致从 2007 年前后的《使命召唤 4》一类游戏开始）才逐渐变成主流第一人称射击游戏的标准配置。所以这里要加的方向指示器，**是一个本教程基于"现代商业 FPS 通用手感"主动补充的功能，不是对 DOOM 3 源码的复原**——如果你想要更贴近 DOOM 3 原版那种"镜头甩动+重影"的手感，也完全可以做，思路是复用第 3 章视角系统已经搭好的效果叠加机制，给镜头再叠加一次基于受击方向的瞬时旋转冲量，这里不展开，跟方向指示箭头两者并不冲突，可以同时做。
+
+要显示方向，`TakeDamage` 得知道伤害是从哪里来的——但 6 章以来所有调用点都是 `hitObject.Call("TakeDamage", damage)` 这种单参数写法，13.3 节已经明确说过"改 `TakeDamage` 签名会牵连所有调用点，这里不做"，同样的顾虑在这里依然成立。解法是**不碰 `TakeDamage` 本身，另开一个独立的、可选调用的方法**，两者各自负责各自的事——不知道这个方法存在的调用点完全不受影响，伤害结算和 `HealthChanged` 信号照常工作：
+
+```csharp
+// PlayerController.cs 追加——独立于 TakeDamage，谁想要方向反馈就顺手多调一次，不想要就不调，
+// 完全不影响 6 章以来已经写好的所有 TakeDamage 调用点
+[Signal] public delegate void DamageTakenEventHandler(Vector3 sourcePosition);
+
+public void NotifyDamageDirection(Vector3 sourcePosition)
+{
+    EmitSignal(SignalName.DamageTaken, sourcePosition);
+}
+```
+
+`Enemy.ExecuteMeleeAttack()`/`AttackRanged()`（9.4.2/9.8 节）里调用 `_player.Call("TakeDamage", finalDamage)` 的地方，紧挨着补一行 `_player.Call("NotifyDamageDirection", GlobalPosition);`——**这一行不是强制的**：不加这一行，游戏完全正常运行，只是这一次命中不会触发方向指示，不会报错、也不会有任何副作用，你可以按自己的节奏挑"值得做方向反馈"的伤害来源（比如只给怪物近战/远程攻击加，不给环境陷阱加）逐个补上。
+
+```csharp
+// Hud.cs 追加
+[Export] public NodePath DamageDirectionIndicatorPath;
+[Export] public NodePath CameraPath;   // 指向 3 章那台第一人称 Camera3D
+
+private TextureRect _damageDirectionIndicator;   // 一张箭头贴图，Pivot 对齐图片中心，默认朝上（指向正前方）
+private PlayerController _player;
+private Camera3D _camera;
+
+public override void _Ready()
+{
+    // ...原有初始化...
+    _damageDirectionIndicator = GetNode<TextureRect>(DamageDirectionIndicatorPath);
+    _damageDirectionIndicator.Visible = false;
+    _player = GetTree().GetFirstNodeInGroup("player") as PlayerController;
+    _camera = GetNode<Camera3D>(CameraPath);
+    _player.Connect(PlayerController.SignalName.DamageTaken, new Callable(this, MethodName.OnDamageTaken));
+}
+
+private void OnDamageTaken(Vector3 sourcePosition)
+{
+    Vector3 toSource = sourcePosition - _player.GlobalPosition;
+    toSource.Y = 0;   // 只处理水平方向上"从哪一侧打过来的"，不处理"从楼上/楼下"这种垂直分量——
+                       // 这是商业 FPS 方向指示器的通行做法，不是这里省事简化的
+    if (toSource.LengthSquared() < 0.01f) return;   // 贴身命中，方向没有意义
+
+    Vector3 camForward = -_camera.GlobalTransform.Basis.Z; camForward.Y = 0; camForward = camForward.Normalized();
+    Vector3 camRight = _camera.GlobalTransform.Basis.X; camRight.Y = 0; camRight = camRight.Normalized();
+    toSource = toSource.Normalized();
+
+    // atan2(右侧分量, 前方分量)：正前方为 0，右侧为正角度，左侧为负角度——
+    // 直接拿这个角度旋转一张"默认朝上"的箭头贴图，角度和箭头朝向的对应关系正好一致
+    float angle = Mathf.Atan2(camRight.Dot(toSource), camForward.Dot(toSource));
+
+    _damageDirectionIndicator.PivotOffset = _damageDirectionIndicator.Size / 2f;
+    _damageDirectionIndicator.Rotation = angle;
+    _damageDirectionIndicator.Visible = true;
+
+    var tween = CreateTween();
+    tween.TweenInterval(0.6f);
+    tween.TweenCallback(Callable.From(() => _damageDirectionIndicator.Visible = false));
+}
+```
+
+`DamageDirectionIndicator` 建议做成一个摆在屏幕正中央、初始朝向"正上方"的箭头图标（`TextureRect`），上面这段代码只负责转它的角度、控制它的显隐——真实商业 FPS 通常会做成"箭头沿着一个以准星为圆心的圆周分布在受击方向那一侧"而不是原地转向，效果更精细，但原理是同一个角度计算，摆位方式属于美术呈现层面的选择，这里只搭最基础的骨架。**这个 tween 每次受击都会重新创建一个**——如果连续两次受击间隔很短，前一个 tween 还没跑完，后一个会覆盖它的显隐结果（`Visible = true` 会被立刻重新设置），不会报错也不会叠加出奇怪的效果，只是指示器会跟着最新一次命中重新计时，这正是你想要的行为（永远反映"最近一次受击的方向"），不需要额外处理。
 
 ### 16.3 交互提示文字
 
@@ -3997,6 +6009,47 @@ public void RequestDamage(float amount)
 
 原本直接调用 `TakeDamage(amount)` 的地方（比如 `CombatUtil.RaycastAttack`），改成调用 `enemy.RpcId(1, MethodName.RequestDamage, amount)`（`RpcId(1, ...)` 表示"把这次调用发给编号为 1 的对等端"，host 默认就是编号 1）——任何一端都能发起这个请求，但只有 host 真正执行伤害。
 
+### 17.2.1 只把伤害判定挡住，AI 这一侧还留着一个更大的口子
+
+**上面这条规则只处理了"谁掉血、谁死了"，但第 9 章的 `Enemy` 现在远不止"扣血"这一件需要权威判定的事**——这里要老实指出一个如果不特别处理、这一章的方案根本无法真正联机运行的问题：`Enemy._PhysicsProcess()` 里跑的那一整套状态机（`TickIdle`/`TickAlert`/`TickCombat`/`TickReposition`，9.2 节的视觉/听觉感知，9.4.2 节 `WeightedPick` 的随机权重选招，9.9 节冲锋的路径验证，9.9 节 Boss 的阶段切换判定），从第 8 章写下第一行代码开始，**从来没有被限制成"只在某一端跑"**——按目前的写法，一旦联机，host 和每一个客户端会各自独立地对同一只 `Enemy` 跑一遍完整的 AI 决策，包括各自独立的 `RandomNumberGenerator` 抽样。这意味着：host 这边 `WeightedPick` 可能抽中了近战攻击，客户端那边因为随机数不同抽中了远程攻击，两边的怪物做出的实际动作会从这一刻开始彻底分叉——玩家在客户端屏幕上看到的怪物行为，和 host 屏幕上看到的、真正决定伤害判定的那一份行为，可能完全对不上。这不是"伤害判定不同步"这一类问题（那一类已经被上面的 `RequestDamage` RPC 挡住了），而是**表现层面就已经不一致**：客户端玩家会看到怪物在原地放一个火箭筒动画，但被 `RequestDamage` 真正判定命中的却是（host 视角里）它其实正在近战挥爪，两边对不上号，观感上会非常诡异。
+
+**这不是从 DOOM 3 里来的、可以照抄的答案**——DOOM 3 BFG 的怪物系统设计年代早于它的多人对战模式，多人模式里出现的都是玩家角色之间的战斗，源码里找不到"多个客户端各自独立运行同一只 AI 决策逻辑"这种场景需要解决的问题，所以这里没有源码可以对照，纯粹是本教程基于"只要 AI 状态机在多台机器上各自独立运行、又依赖随机数或者其他非确定性输入，就必然会分叉"这条通用的网络同步原理，主动指出的一个必须处理的缺口。解法跟"伤害判定只在 host 生效"是同一个思路的延伸——**AI 的决策逻辑本身也只应该在 host 一侧真正跑**，客户端只负责显示 host 算出来的结果：
+
+```csharp
+// Enemy.cs —— 替换 8/9 章的 _PhysicsProcess()
+public override void _PhysicsProcess(double delta)
+{
+    float dt = (float)delta;
+    Vector3 velocity = Velocity;
+    if (!IsOnFloor()) velocity.Y -= Gravity * dt;
+    Velocity = velocity;
+
+    // 只有 host（或者单机模式，这时 Multiplayer.HasMultiplayerPeer() 为 false）才真正跑状态机——
+    // 客户端完全不参与决策，它们的 Position/Rotation/当前动画状态全部交给 MultiplayerSynchronizer
+    // （17.3 节）从 host 同步过来，本地这份状态机代码在客户端上根本不会被执行，
+    // 自然也就不存在"客户端自己抽了一个不一样的随机数"这类分叉的可能
+    if (Multiplayer.HasMultiplayerPeer() && !Multiplayer.IsServer())
+    {
+        MoveAndSlide();   // 客户端仍然需要走一次物理更新，让本地的碰撞体跟上同步过来的 Position，
+                           // 但不做任何"决定怪物接下来要干什么"的判断
+        return;
+    }
+
+    switch (_state)
+    {
+        case State.Idle: TickIdle(); break;
+        case State.Alert: TickAlert(); break;
+        case State.Combat: TickCombat(dt); break;
+        // ...其余分支不变...
+        case State.Dead: MoveAndSlide(); return;
+    }
+
+    MoveAndSlide();
+}
+```
+
+`MultiplayerSynchronizer`（17.3 节）除了 `Position`/`Rotation`，还需要把**决定了怪物"看起来在干什么"的那部分状态**也加进同步列表——至少是 `_state`（决定播放哪一组动画）和"当前正在执行的具体是哪一条 `AttackDefinition`"（决定播放哪一段攻击动画）。`_attackReadyTime`/`_lastUsedAttack` 这类只影响 host 自己"下一次该选哪一招"的内部决策状态，不需要同步给客户端——客户端反正不会用它们做任何判断，同步了也没有意义，只会浪费带宽。
+
 ### 17.3 位置同步
 
 角色的位置/朝向这类"持续变化、需要让所有端看到基本一致"的状态，不需要为每一帧手写一个 RPC——给 `Enemy`/`PlayerController` 加一个 `MultiplayerSynchronizer` 子节点，在它的 Inspector 面板里把 `Position`、`Rotation` 这些属性加进"要同步的属性"列表，Godot 会自动处理好"host 的值周期性广播给其他端"这件事，你不需要手写任何同步代码。
@@ -4015,11 +6068,11 @@ public void RequestDamage(float amount)
 | 第 4-6 章：武器系统 | 精读第 7 章 | 代码组织：DOOM 3 的武器状态机用它自己发明的 DOOM Script 写，本教程直接用 C#——因为 C# 本身已经是热重载友好的脚本语言，不需要再嵌一层脚本虚拟机（精读 9.8 节详细论证过这个取舍）；切枪时"举枪动画播完才允许收枪"、火箭筒范围伤害的遮挡判定、近战推力接入增益查询点这几处都已对齐，5.2.1 节"开火打断装弹"和 5.4 节追踪导弹的随机抖动/抵近脱锁两处仍是明确标注过的未实现项 |
 | 第 7 章：物理与门/电梯 | 精读第 6、10 章 | 平台能力：DOOM 3 手写了完整的推挤/防穿模算法（`idPush`），Godot 用 `AnimatableBody3D` + `SyncToPhysics` 内置解决了同一个问题；团队门联动的重定向模式、以及"中途被挡住会整队反向"这个团队系统真正存在的理由，都已经对齐；7.3 节也澄清了"两站式升降台"（结构等同门）和真正的多楼层 `idElevator`（独立的大协调器）不是同一回事，本教程只实现前者 |
 | 第 8-9 章：AI | 精读第 8 章 | 平台能力：DOOM 3 的寻路系统（AAS）是自己写的一整套区域图+缓存路由算法，Godot 用内置导航网格系统解决同一个问题；两阶段近战检测、疼痛三道门、保底不死、难度数值表已逐项对齐；9.4.1 节把原来"一只怪物一个 `AttackDamage`"的写法换成了 `AttackDefinition` 招式表，对应源码里近战/远程/冲锋分别接受名字或关节参数、能表达"一只怪物多种打法"这件事；9.9 节的冲锋攻击还留有一处没有完全数据驱动的不对称（借用表里一条近战条目的数值，但执行时不走 9.4.1 的保底判定，正文里已经说明原因和边界） |
-| 第 10 章：布娃娃 | 精读 6.5 节 | 平台能力：DOOM 3 的布娃娃约束求解器是自己手写的（拉格朗日乘子法），Godot 用内置物理引擎的 `PhysicalBoneSimulator3D` 解决同一个问题；慢动作沉降效果因为 Godot 不支持单物体时间缩放，改用阻尼渐变实现，这一点在 10.2.1 节已经明确说明是不同机制、相近效果，不是偷懒；10.2.1 节的摩擦力凹陷曲线（真实源码是 V 形双时间线，关节和接触各走各的）目前也只用了单调阻尼近似，正文同样已经标注清楚不是逐段还原 |
-| 第 11-12 章：关卡工具 | 精读第 10 章 | 代码组织：DOOM 3 原版有几十种专门的 `target_*` 类，本教程用"只要有 `Activate` 方法就能被调用"这一个更通用的模式覆盖了同样的需求 |
-| 第 13 章：事件系统 | 精读第 2 章 | 平台能力：DOOM 3 自己实现了一整套类型反射+事件派发系统（`idClass`/`idEvent`），因为 C++ 没有这些能力；C# 本身自带反射和信号，不需要自己造 |
-| 第 14 章：数据驱动 | 精读第 3 章 | 平台能力：DOOM 3 用纯字符串的键值字典（`spawnArgs`）做数据驱动，因为它面向的是文本编辑的 `.map`/`.def` 文件；`Resource` 是 Godot 编辑器原生支持的强类型资源，两者目的相同 |
-| 第 15 章：存档 | 精读第 4 章 | 代码组织+有意简化：DOOM 3 用的是两阶段索引式序列化（先枚举全部对象、按索引建立空壳、再统一回填数据），能支持"场景结构在存读档之间发生变化"这种更通用的情况；本教程 15.3 节为了教学连贯性，用了更简单的"按 `node_path` 直接找回已存在节点"的实现，15.3 节末尾已经明确写清楚这个简化的适用边界（假设场景结构没变）以及要支持真正的关卡重载该怎么补 |
+| 第 10 章：布娃娃 | 精读 6.5 节 | 平台能力：DOOM 3 的布娃娃约束求解器是自己手写的（拉格朗日乘子法），Godot 用内置物理引擎的 `PhysicalBoneSimulator3D` 解决同一个问题；慢动作沉降效果因为 Godot 不支持单物体时间缩放，改用阻尼渐变实现，这一点在 10.2.1 节已经明确说明是不同机制、相近效果，不是偷懒；10.2.1 节的摩擦力凹陷曲线（真实源码是 V 形双时间线，关节和接触各走各的）目前也只用了单调阻尼近似，正文同样已经标注清楚不是逐段还原；10.3 节的肢解在结构上（整体切换掉 + 单独生成飞散碎块，而不是从活体骨架上拆一根骨头）其实是对齐的，`AFEntity.cpp` 里 `Gib()`/`SpawnGibs()`/`GIB_DELAY` 已在正文中逐条核对；10.4 节的尸体数量上限是本教程主动加的，源码里没有对应机制，正文已明确标注这一条不算差异（不是"该对齐却没对齐"，是源码本身也没有这个东西） |
+| 第 11-12 章：关卡工具 | 精读第 10 章 | 代码组织：DOOM 3 原版有几十种专门的 `target_*` 类，本教程用"只要有 `Activate` 方法就能被调用"这一个更通用的模式覆盖了同样的需求；11.2/12.2 节的重复触发防抖（`Wait` 字段）现在是对齐过的——`idTrigger_Multi` 的 `wait`/`nextTriggerTime` 机制（`Trigger.cpp:257-336`）已经在正文中核对并还原，默认值 0.5 秒也是源码本身的默认值，不是本教程另挑的数字 |
+| 第 13 章：事件系统 | 精读第 2 章 | 平台能力：DOOM 3 自己实现了一整套类型反射+事件派发系统（`idClass`/`idEvent`），因为 C++ 没有这些能力；C# 本身自带反射和信号，不需要自己造；13.5 节讲的信号生命周期管理（`_ExitTree` 里断开订阅、避免重复订阅）是 C#/Godot 这套实现自己特有的注意事项，DOOM 3 的 `idEvent` 系统不存在对应的坑，不需要类比 |
+| 第 14 章：数据驱动 | 精读第 3 章 | 平台能力：DOOM 3 用纯字符串的键值字典（`spawnArgs`）做数据驱动，因为它面向的是文本编辑的 `.map`/`.def` 文件；`Resource` 是 Godot 编辑器原生支持的强类型资源，两者目的相同；14.5 节讲的共享 `Resource` 运行时可变状态陷阱，同样是 Godot 这套强类型资源系统自己特有的坑，`spawnArgs` 那种纯文本字典不会有这个问题（每个实体各自持有自己那份字典的拷贝），不需要类比 |
+| 第 15 章：存档 | 精读第 4 章 | 代码组织+有意简化：DOOM 3 用的是两阶段索引式序列化（先枚举全部对象、按索引建立空壳、再统一回填数据），能支持"场景结构在存读档之间发生变化"这种更通用的情况；本教程 15.3 节为了教学连贯性，用了更简单的"按 `node_path` 直接找回已存在节点"的实现，15.3 节末尾已经明确写清楚这个简化的适用边界（假设场景结构没变）以及要支持真正的关卡重载该怎么补；15.2.1 节把第 9 章新增的战斗/感知/阶段状态也补进了存档，这一点的必要性是照着 `idAI::Save()`（`AI.cpp:411-543`）核实过的——真实源码确实把 `lastAttackTime`/`lastVisibleEnemyPos` 这类运行时 AI 状态当作存档的一部分，不是本教程过度设计 |
 
 还剩下两处**明确标注过是有意选择、不是简化**的地方，值得在这里再强调一遍，避免被误认为是疏漏：第 4.4 节的命中部位缩放依赖角色有细分碰撞体积，本教程用的单胶囊体碰撞暂时不支持，给出了两条扩展路径；第 6.4 节的视图/世界模型分离是纯单机、纯第一人称项目可以直接跳过的可选内容。这两处都在正文里明确写清楚了原因和补全方式，不是含糊带过。
 
