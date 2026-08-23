@@ -129,6 +129,8 @@ namespace EGame
         private readonly Vector2 _PitchLimit = new Vector2(-90f, 90f);
         private float _PitchAngle = 0f;
 
+        private Vector2 ViewAngleDegrees => new Vector2(_PitchAngle, RotationDegrees.Y);
+
         private void HandleCameraRotation(Vector2 mouse_delta)
         {
             float x_delta = -mouse_delta.X * _RotateSensity.X;
@@ -141,35 +143,54 @@ namespace EGame
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //////                                       视角 Lean
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private Node3D _CameraLeanNode;
+
+        private readonly float _RunPitchAmount = 0.0035f; //纯速度驱动的前后倾
+        private readonly float _RunRollAmount = 0.0018f;   //纯速度驱动的左右倾
+
+        private Vector3 _ViewRunLeanAngles;
+
+        private void UpdateCameraLean()
+        {
+            var local_vel = Transform.Basis.Inverse() * Velocity;   // 角色本体现在自己就是 Yaw，直接用自己的 Transform 转到局部坐标
+            _ViewRunLeanAngles = new Vector3(local_vel.Z * _RunPitchAmount, 0f, -local_vel.X * _RunRollAmount);
+
+            // 直接赋值，不是叠加——每帧都是全新算出来的目标角度，不会有累积问题
+            _CameraLeanNode.Rotation = _ViewRunLeanAngles;
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //////                                       相机Bob
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private Node3D _CameraBobNode;
-        
+
         private readonly float _WalkBobRate = 0.8f;
         private readonly float _RunBobRate = 0.8f;
         private readonly float _CrouchBobRate = 1.0f;
-        private readonly float _BobUpAmount = 0.02f;     //垂直位置起伏幅度
-        private readonly float _BobPitchAmount = 0.003f; //点头角度幅度
-        private readonly float _BobRollAmount = 0.0012f;  //左右摇摆角度幅度
-        private readonly float _RunPitchAmount = 0.0035f; //纯速度驱动的前后倾（非周期性）
-        private readonly float _RunRollAmount = 0.0035f;   //纯速度驱动的左右倾（非周期性）
         private readonly float _MinBobSpeed = 0.3f;      //低于这个速度直接清零，不产生 bob
 
+        private readonly float _CameraBobRightScale = 0.01f;   //Bob水平幅度
+        private readonly float _CameraBobUpScale = 0.0035f;      //Bob垂直幅度
+        private readonly float _CameraLookAheadDistance = 15f;
+
         private float _BobCycle;
-        private Vector3 _ViewBobOffset;
-        private Vector3 _ViewBobAngles;
+        private Vector3 _ViewBobPosition;
+
+        private float _XySpeed;
 
         private void UpdateViewBob(double dt)
         {
             var horizontal_vel = new Vector3(Velocity.X, 0f, Velocity.Z);
-            float xy_speed = horizontal_vel.Length();
+            _XySpeed = horizontal_vel.Length();
 
-            if (!IsOnFloor() || xy_speed <= _MinBobSpeed)
+            if (!IsOnFloor() || _XySpeed <= _MinBobSpeed)
             {
                 _BobCycle = 0f;
-                _ViewBobOffset = _ViewBobOffset.Lerp(Vector3.Zero, (float)dt * 10f);
-                _ViewBobAngles = _ViewBobAngles.Lerp(Vector3.Zero, (float)dt * 10f);
+                _ViewBobPosition = _ViewBobPosition.Lerp(Vector3.Zero, (float)dt * 10f);
                 ApplyBobToCamera();
                 return;
             }
@@ -179,30 +200,26 @@ namespace EGame
             float bob_rate = is_crouching ? _CrouchBobRate : (Input.IsActionPressed(EGInput.RUN) ? _RunBobRate : _WalkBobRate);
             _BobCycle += bob_rate * (float)dt * Mathf.Tau;
 
-            float bob_frac_sin = Mathf.Abs(Mathf.Sin(_BobCycle));
-            bool second_half = Mathf.Sin(_BobCycle) < 0f;            // 对应 bobFoot 的奇偶——决定这一步是"左脚"还是"右脚"
-
-            // 位置：垂直起伏，钳制上限
-            float vertical = Mathf.Min(bob_frac_sin * xy_speed * _BobUpAmount, 0.08f);
-
-            float pitch_bob = bob_frac_sin * _BobPitchAmount * xy_speed;
-            float roll_bob = bob_frac_sin * _BobRollAmount * xy_speed;
-            if (second_half)
-                roll_bob = -roll_bob;
-
-            var local_vel = Transform.Basis.Inverse() * Velocity;   // 角色本体现在自己就是 Yaw，直接用自己的 Transform 转到局部坐标
-            float run_pitch = local_vel.Z * _RunPitchAmount;
-            float run_roll = -local_vel.X * _RunRollAmount;
-
-            _ViewBobOffset = new Vector3(0f, vertical, 0f);
-            _ViewBobAngles = new Vector3(pitch_bob + run_pitch, 0f, roll_bob + run_roll);
+            _ViewBobPosition = ComputeCameraBobOffset(_BobCycle, _XySpeed);
 
             ApplyBobToCamera();
         }
+
+        //视角的水平和垂直位置偏移
+        private Vector3 ComputeCameraBobOffset(float bob_cycle, float xy_speed)
+        {
+            float bob_right = xy_speed * _CameraBobRightScale * Mathf.Sin(bob_cycle);
+            float bob_up = xy_speed * _CameraBobUpScale * Mathf.Cos(2f * bob_cycle);
+            return new Vector3(bob_right, bob_up, 0f);
+        }
+
         private void ApplyBobToCamera()
         {
-            _CameraBobNode.Position = _ViewBobOffset;
-            _CameraBobNode.Rotation = new Vector3(_ViewBobAngles.X, 0f, _ViewBobAngles.Z);
+            _CameraBobNode.Position = _ViewBobPosition;
+
+            Vector3 look_target = _CameraLeanNode.ToGlobal(new Vector3(0f, 0f, -_CameraLookAheadDistance));
+            Vector3 lean_up = _CameraLeanNode.GlobalTransform.Basis.Y;
+            _CameraBobNode.LookAt(look_target, lean_up);
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -218,6 +235,8 @@ namespace EGame
         private readonly float _LandReturnTime = 0.3f;       //回弹时间
         private float _LastFallSpeed;
 
+        private Vector3 LandingDipOffset => new Vector3(0f, _LandOffset, 0f);
+
         private void TrachFallSpeed()
         {
             if (!IsOnFloor())
@@ -227,7 +246,7 @@ namespace EGame
             }
             if (_LastFallSpeed < -3.0f)   // 有意义的下落速度才触发，轻微的台阶步进不该有反馈
             {
-                // 按冲击力度分四档——对应 DOOM3 原版 -8/-16/-24/-32 那四个档位，这里按比例换算
+                // 按冲击力度分四档，越重摔得越明显
                 float severity = Mathf.Abs(_LastFallSpeed);
                 _LandStregth = severity switch
                 {
@@ -262,6 +281,143 @@ namespace EGame
             }
 
             _CameraLandNode.Position = new Vector3(0.0f, _LandOffset, 0.0f);
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //////                                       武器 Bob
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private Node3D _WeaponBobNode;
+
+        private readonly bool _WeaponBobEnabled = true;
+
+        private readonly float _WeaponBobRightScale = -0.002f;
+        private readonly float _WeaponBobUpScale = 0.001f;
+
+        private void UpdateWeaponBob(double dt)
+        {
+            if (_WeaponBobNode == null)
+                return;
+
+            _WeaponBobNode.Position = _WeaponBobEnabled
+                ? ComputeWeaponBobOffset(_BobCycle, _XySpeed)
+                : Vector3.Zero;
+        }
+        
+        private Vector3 ComputeWeaponBobOffset(float bob_cycle, float xy_speed)
+        {
+            float bob_right = xy_speed * _WeaponBobRightScale * Mathf.Sin(bob_cycle);
+            float bob_up = xy_speed * _WeaponBobUpScale * Mathf.Cos(2f * bob_cycle);
+            return new Vector3(bob_right, bob_up, 0f);
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //////                                       武器 Sway
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private Node3D _WeaponSwayNode;
+
+        private readonly bool _WeaponSwayEnabled = true;   // 转头滞后，跟脚步相位无关
+
+        private readonly float _WeaponTurnSwayScale = 0.15f;
+        private readonly float _WeaponTurnSwayMaxDegrees = 6.0f;
+        private readonly int _WeaponTurnSwayAverageFrames = 10;
+
+        // 视角历史用数组+游标模拟环形缓冲，而不是 Queue——这样可以按"帧号"直接索引取值，
+        // 不用每帧都做一次出队/入队
+        private readonly Vector2[] _ViewAngleHistory = new Vector2[64];
+        private int _ViewAngleWriteIndex;
+        private int _ViewAngleFrameCount;
+
+        private void UpdateWeaponSway(double dt)
+        {
+            if (_WeaponSwayNode == null)
+                return;
+
+            if (!_WeaponSwayEnabled)
+            {
+                _WeaponSwayNode.RotationDegrees = Vector3.Zero;
+                return;
+            }
+
+            Vector2 view_angle_degrees = ViewAngleDegrees;
+            LogViewAngle(view_angle_degrees);
+
+            _WeaponSwayNode.RotationDegrees = ComputeWeaponTurnOffset(view_angle_degrees);
+        }
+
+        private void LogViewAngle(Vector2 view_angle_degrees)
+        {
+            _ViewAngleHistory[_ViewAngleWriteIndex % _ViewAngleHistory.Length] = view_angle_degrees;
+            _ViewAngleWriteIndex++;
+            _ViewAngleFrameCount = Mathf.Min(_ViewAngleFrameCount + 1, _ViewAngleHistory.Length);
+        }
+
+        private Vector3 ComputeWeaponTurnOffset(Vector2 current_view_angle)
+        {
+            if (_ViewAngleFrameCount == 0) return Vector3.Zero;
+
+            //取最近n帧
+            int n = Mathf.Min(_WeaponTurnSwayAverageFrames, _ViewAngleFrameCount);
+
+            //计算最近n帧内，视角的评价偏移
+            Vector2 avg = current_view_angle;
+            for (int j = 1; j < n; j++)
+            {
+                int idx = (_ViewAngleWriteIndex - 1 - j + _ViewAngleHistory.Length) % _ViewAngleHistory.Length;
+                Vector2 sample = _ViewAngleHistory[idx];
+                float yaw_delta = sample.Y - current_view_angle.Y;
+                if (yaw_delta > 180f) yaw_delta -= 360f;
+                else if (yaw_delta < -180f) yaw_delta += 360f;
+                avg += new Vector2(sample.X - current_view_angle.X, yaw_delta) / n;
+            }
+
+            //移动的平均偏移越大，武器越偏
+            Vector2 diff = (avg - current_view_angle) * _WeaponTurnSwayScale;
+            diff.X = Mathf.Clamp(diff.X, -_WeaponTurnSwayMaxDegrees, _WeaponTurnSwayMaxDegrees);
+            diff.Y = Mathf.Clamp(diff.Y, -_WeaponTurnSwayMaxDegrees, _WeaponTurnSwayMaxDegrees);
+            return new Vector3(diff.X, diff.Y, 0);
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //////                                       武器 速度后拉
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private Node3D _WeaponSpeedPullNode;
+
+        private readonly float _WeaponSpeedPullReferenceSpeed = 6f;   // 用来把 xy_speed 归一化到 0~1，再套缓动曲线
+        private readonly float _WeaponSpeedPullMax = 0.06f;           // 曲线顶点对应的最大后拉幅度
+        
+        private void UpdateWeaponSpeedPull(double dt)
+        {
+            if (_WeaponSpeedPullNode == null)
+                return;
+
+            _WeaponSpeedPullNode.Position = ComputeWeaponSpeedPullOffset(_XySpeed);
+        }
+
+        // 先把速度归一化到 0~1，再套 InCubic 缓动(t^3)：跟 OutSine 相反，低速时后拉起步很慢、
+        // 几乎感觉不到，快到参考速度时才陡然冲起来，触顶前反而是最快的一段
+        private Vector3 ComputeWeaponSpeedPullOffset(float xy_speed)
+        {
+            float t = Mathf.Clamp(xy_speed / _WeaponSpeedPullReferenceSpeed, 0f, 1f);
+            float eased = t * t * t;
+            float pull = eased * _WeaponSpeedPullMax;
+            return new Vector3(0f, 0f, pull);
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //////                                       武器 Landing
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private Node3D _WeaponLandingNode;
+
+        private void UpdateWeaponLanding(double dt)
+        {
+            if (_WeaponLandingNode == null)
+                return;
+
+            _WeaponLandingNode.Position = LandingDipOffset * 0.25f;   // 武器自己的落地冲击，强度是摄像机那份的 0.25 倍
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -300,8 +456,13 @@ namespace EGame
             _YawNode = this;
             _PitchNode = GetNode<Node3D>("%Pitch");
             _RealCamera = GetNode<Camera3D>("%RealCamera");
+            _CameraLeanNode = GetNode<Node3D>("%CameraLean");
             _CameraBobNode = GetNode<Node3D>("%CameraBob");
             _CameraLandNode = GetNode<Node3D>("%CameraLand");
+            _WeaponBobNode = GetNodeOrNull<Node3D>("%WeaponBob");
+            _WeaponSwayNode = GetNodeOrNull<Node3D>("%WeaponSway");
+            _WeaponSpeedPullNode = GetNodeOrNull<Node3D>("%WeaponSpeedPull");
+            _WeaponLandingNode = GetNodeOrNull<Node3D>("%WeaponLanding");
 
             _EyesPos = _StandHeight - _EyeOffsetFromTop;
             _PitchNode.Position = new Vector3(0.0f, _EyesPos, 0.0f);
@@ -325,19 +486,21 @@ namespace EGame
                 Input.MouseMode = is_locked ? Input.MouseModeEnum.Visible : Input.MouseModeEnum.Captured;
             }
         }
+        
+        private bool _JustJumped;
 
         public override void _PhysicsProcess(double delta)
         {
-            bool justJumped = false;
+            _JustJumped = false;
 
             if (IsOnFloor() && Input.IsActionJustPressed(EGInput.JUMP))
             {
                 Velocity = ApplyJump(Velocity);
-                justJumped = true;
+                _JustJumped = true;
             }
 
             //如果已经起跳了就不要加摩擦力了，否则会吃掉兔子跳的速度
-            if (IsOnFloor() && !justJumped)
+            if (IsOnFloor() && !_JustJumped)
             {
                 Velocity = ApplyFriction(Velocity, _Friction, delta);
                 Velocity = GroundMove(Velocity, _YawNode.Quaternion * GetMoveDir(), delta);
@@ -348,10 +511,15 @@ namespace EGame
             Velocity = ApplyGravity(Velocity, delta);
             UpdateCrouch(delta);
             MoveAndSlide();
+            UpdateCameraLean();
             UpdateViewBob(delta);
 
             TrachFallSpeed();
             UpdateLandingOffset();
+            UpdateWeaponBob(delta);
+            UpdateWeaponSway(delta);
+            UpdateWeaponSpeedPull(delta);
+            UpdateWeaponLanding(delta);
         }
     }
 }

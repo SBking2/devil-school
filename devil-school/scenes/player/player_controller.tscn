@@ -16,23 +16,39 @@ script = ExtResource("1_iivv4")
 unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
 
-[node name="CameraBob" type="Node3D" parent="Pitch" unique_id=1328708813]
+[node name="CameraLean" type="Node3D" parent="Pitch" unique_id=-633040138]
 unique_name_in_owner = true
 
-[node name="CameraLand" type="Node3D" parent="Pitch/CameraBob" unique_id=56480376]
+[node name="CameraBob" type="Node3D" parent="Pitch/CameraLean" unique_id=1328708813]
 unique_name_in_owner = true
 
-[node name="RealCamera" type="Camera3D" parent="Pitch/CameraBob/CameraLand" unique_id=1806356304]
+[node name="CameraLand" type="Node3D" parent="Pitch/CameraLean/CameraBob" unique_id=56480376]
+unique_name_in_owner = true
+
+[node name="RealCamera" type="Camera3D" parent="Pitch/CameraLean/CameraBob/CameraLand" unique_id=1806356304]
 unique_name_in_owner = true
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, 0)
 
-[node name="arms_rig" parent="Pitch/CameraBob/CameraLand/RealCamera" unique_id=1301901003 instance=ExtResource("2_iivv4")]
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 1.4404417e-08, -1.7593261, -0.16476732)
-
-[node name="WeaponHolder" type="Node3D" parent="Pitch/CameraBob/CameraLand/RealCamera" unique_id=1469028181 node_paths=PackedStringArray("_RealCamera", "_Muzzle")]
+[node name="WeaponHolder" type="Node3D" parent="Pitch/CameraLean/CameraBob/CameraLand/RealCamera" unique_id=1469028181]
 script = ExtResource("3_0cfoe")
-_RealCamera = NodePath("..")
-_Muzzle = NodePath("..")
+
+[node name="WeaponBob" type="Node3D" parent="Pitch/CameraLean/CameraBob/CameraLand/RealCamera/WeaponHolder" unique_id=-1446858772]
+unique_name_in_owner = true
+
+[node name="WeaponSway" type="Node3D" parent="Pitch/CameraLean/CameraBob/CameraLand/RealCamera/WeaponHolder/WeaponBob" unique_id=-1097384845]
+unique_name_in_owner = true
+
+[node name="WeaponSpeedPull" type="Node3D" parent="Pitch/CameraLean/CameraBob/CameraLand/RealCamera/WeaponHolder/WeaponBob/WeaponSway" unique_id=816042753]
+unique_name_in_owner = true
+
+[node name="WeaponLanding" type="Node3D" parent="Pitch/CameraLean/CameraBob/CameraLand/RealCamera/WeaponHolder/WeaponBob/WeaponSway/WeaponSpeedPull" unique_id=-186404905]
+unique_name_in_owner = true
+
+[node name="Recoil" type="Node3D" parent="Pitch/CameraLean/CameraBob/CameraLand/RealCamera/WeaponHolder/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding" unique_id=1017113471]
+unique_name_in_owner = true
+
+[node name="arms_rig" parent="Pitch/CameraLean/CameraBob/CameraLand/RealCamera/WeaponHolder/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil" unique_id=1301901003 instance=ExtResource("2_iivv4")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 1.4404417e-08, -1.7593261, -0.16476732)
 
 [node name="MoveCollider" type="CollisionShape3D" parent="." unique_id=745978355]
 unique_name_in_owner = true
