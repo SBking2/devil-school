@@ -3,6 +3,13 @@ namespace EGame
 {
     public class Player
     {
-        public Creature CreatureData { get; private set; } = new Creature();
+        public Player()
+        {
+            this.PlayerModel = ModelDB.Player<PlayerModel>();
+            CreatureData = new Creature(this.PlayerModel);
+        }
+
+        public Creature CreatureData { get; private set; }
+        public PlayerModel PlayerModel { get; private set; }
     }
 }

@@ -1,5 +1,6 @@
 
 using Godot;
+using System;
 
 namespace EGame
 {
@@ -9,11 +10,19 @@ namespace EGame
         public static NPlayer Create(Player player)
         {
             var instance = SceneHelper.LoadScene<NPlayer>(_PrefabPath);
-            instance.Data = player.CreatureData;
+            instance.PlayerData = player;
             return instance;
         }
 
-        public Creature Data { get; private set; }
+        public Player PlayerData { get; private set; }
+        
+        public Creature Data
+        {
+            get
+            {
+                return PlayerData.CreatureData;
+            }
+        }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //////                                      人物移动

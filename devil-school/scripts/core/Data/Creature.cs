@@ -5,6 +5,14 @@ namespace EGame
 {
     public class Creature
     {
+        public Creature(CharacterModel model)
+        {
+            CharacterModel = model;
+            HP = model.MaxHP;
+        }
+
+        public CharacterModel CharacterModel { get; private set; }
+
         private int _HP;
         private Action<int, int> _OnHPChanged;
 
