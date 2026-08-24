@@ -3,8 +3,18 @@ using Godot;
 
 namespace EGame
 {
-    public partial class NPlayerController : CharacterBody3D
+    public partial class NPlayer : CharacterBody3D, INCharacter
     {
+        private const string _PrefabPath = "player/player";
+        public static NPlayer Create(Player player)
+        {
+            var instance = SceneHelper.LoadScene<NPlayer>(_PrefabPath);
+            instance.Data = player.CreatureData;
+            return instance;
+        }
+
+        public Creature Data { get; private set; }
+
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //////                                      人物移动
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////

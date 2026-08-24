@@ -45,6 +45,11 @@ namespace EGame
             return Get($"Monster.{name}") as MonsterModel;
         }
 
+        public static CharacterModel Character<T>() where T : CharacterModel
+        {
+            return Get<T>() as CharacterModel;
+        }
+
         public static PlayerModel Player<T>() where T : PlayerModel
         {
             return Get<T>() as PlayerModel;

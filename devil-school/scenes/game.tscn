@@ -5,7 +5,6 @@
 [ext_resource type="Script" uid="uid://dsy8h32r4tgwf" path="res://scripts/Core/Nodes/Input/NInputManager.cs" id="3_lbhrr"]
 [ext_resource type="Material" uid="uid://22eyivixs4e3" path="res://material/world/init_world/ground_material.tres" id="4_0tnpc"]
 [ext_resource type="PackedScene" uid="uid://drjgdl7h8yx3o" path="res://scenes/dev_console/dev_console.tscn" id="4_lbhrr"]
-[ext_resource type="PackedScene" uid="uid://buqwigxw4vjjt" path="res://scenes/player/player_controller.tscn" id="4_p57ef"]
 [ext_resource type="ArrayMesh" uid="uid://sfy0lc88sv3n" path="res://models/characters/FieldFighter/FieldFighter.obj" id="5_vtaks"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_rmeui"]
@@ -56,7 +55,8 @@ collision_mask = 2
 [node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Ground" unique_id=810556509]
 shape = SubResource("BoxShape3D_a8vgt")
 
-[node name="PlayerController" parent="RootSceneContainer/InitWorld" unique_id=1502327299 instance=ExtResource("4_p57ef")]
+[node name="CreatureParent" type="Node3D" parent="RootSceneContainer/InitWorld" unique_id=269897668]
+unique_name_in_owner = true
 
 [node name="InputManager" type="Node" parent="." unique_id=2078358983]
 script = ExtResource("3_lbhrr")
