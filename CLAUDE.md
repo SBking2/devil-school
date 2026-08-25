@@ -26,6 +26,7 @@ git 仓库根目录（`DevilSchool/`）只是一个外层容器；真正的 Godo
 - **单例**：静态单例基本用 `public static X Instance { get; } = new X();`（纯 C# 类，立即初始化）或者 `public static X Instance { get; private set; }`，在 `_EnterTree`/`_Ready` 里赋值一次（Godot 节点类）。
 - **目录按功能分组，且 `Core/` 与 `Core/Nodes/` 成对镜像**：`scripts/Core/<Feature>/` 放纯 C# 逻辑/数据类，`scripts/Core/Nodes/<Feature>/` 放对应的节点包装类，两边文件夹名一一对应（`Core/Combat/` ↔ `Core/Nodes/Combat/`，`Core/Enviroment/` ↔ `Core/Nodes/Enviroment/`）。`scenes/` 下的文件夹也镜像同一套功能划分（`scenes/combat/`、`scenes/enviroments/` 等）。新增功能时应该保持这个三方（逻辑类/节点类/场景）的目录对应关系。
 - **场景加载**：统一走 `Core/Utils/SceneHelper.LoadScene<T>(path)`，`path` 会被解析为相对于 `res://scenes/` 的路径。
+- **禁止目标类型 `new()`**：`new` 后面必须写明确类型，写 `new List<T>()`、`new AgentIntent()`，不要写 `new()`。
 - **现有的"错别字"就是既定拼法，不要去"修正"它们**（改了反而会和其余代码不一致）：`Enviroment`/`Enviroments`（不是 Environment，遍布文件夹名、类名、场景路径）、`Excute`（不是 Execute，`GameAction.Excute()`）、`Settins`（不是 Settings，`Utils/Settins.cs`）、`Catogory`（`ModelDB` 内部）、`MonsterWithSlost`（`EncounterModel.GenerateMonsterWithSlost()`）。
 - **注释以中文为主，标识符（类名/方法名/变量名）用英文**：写新代码时延续这个混合风格。
 - `.editorconfig` 只规定了 UTF-8 编码，没有强制缩进规则；实际代码里 tab/空格是按文件各自为政的，改某个文件时跟随该文件已有的缩进风格即可。
