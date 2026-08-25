@@ -28,19 +28,19 @@ namespace EGame
         //////                                      人物移动
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        private readonly float _WalkSpeed = 8f;
+        private float WalkSpeed => PlayerData.PlayerModel.MoveSpeed;
         private readonly float _MinStopSpeed = 2.54f;
         private readonly float _Friction = 6f;
         private readonly float _AccelerationRate = 10f;
         
         private Vector3 GroundMove(Vector3 source, Vector3 wish_dir, double dt)
         {
-            return ApplyAcceleration(source, wish_dir, _AccelerationRate, _WalkSpeed, dt);
+            return ApplyAcceleration(source, wish_dir, _AccelerationRate, WalkSpeed, dt);
         }
 
         private Vector3 AirMove(Vector3 source, Vector3 wish_dir, double dt)
         {
-            return ApplyAcceleration(source, wish_dir, _AccelerationRate * 0.1f, _WalkSpeed, dt);
+            return ApplyAcceleration(source, wish_dir, _AccelerationRate * 0.1f, WalkSpeed, dt);
         }
 
         private Vector3 ApplyAcceleration(Vector3 source, Vector3 wish_dir, float acceleration_rate, float move_speed, double dt)

@@ -31,7 +31,7 @@ namespace EGame
 
             if (Input.IsActionJustPressed(EGInput.SWITCHLEFT))
                 SetWeapon((_CurrentWeaponIndex - 1 + _Weapons.Count) % _Weapons.Count);
-            else
+            else if(Input.IsActionJustPressed(EGInput.SWITCHRIGHT))
                 SetWeapon((_CurrentWeaponIndex + 1) % _Weapons.Count);
         }
     }

@@ -17,6 +17,9 @@ namespace EGame
         [GeneratedRegex("^A-Za-z0-9")]
         private static partial Regex SpecialRegex();
 
+        /// <summary>
+        /// 大写转全小写，并且单词用"_"划开
+        /// </summary>
         public static string Slugify(this string txt)
         {
             var result = txt.Trim();

@@ -1,5 +1,6 @@
 
 using System;
+using Godot;
 
 namespace EGame
 {
@@ -32,5 +33,20 @@ namespace EGame
                     _OnHPChanged.Invoke(old, _HP);
             }
         }
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////                                             为了让数据与表现分离，尽量不要让表现端去访问内部结构
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        
+        public NAgent CreateAgent()
+        {
+            AgentModel model = CharacterModel as AgentModel;
+            if (model == null)
+                throw new InvalidOperationException("Trying to create agent from un-agent model!");
+
+            var prefab = SceneHelper.LoadScene<NAgent>(model.PrefabPath);
+            return prefab;
+        }
+
     }
 }
