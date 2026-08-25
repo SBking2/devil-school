@@ -5,7 +5,7 @@ namespace EGame
     {
         public Player()
         {
-            this.PlayerModel = ModelDB.Player<PlayerModel>();
+            this.PlayerModel = ModelDB.Player<PlayerModel>().MutableClone() as PlayerModel;
             CreatureData = new Creature(this.PlayerModel);
         }
 

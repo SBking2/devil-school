@@ -1,28 +1,47 @@
 
+using System.Collections.Generic;
+
 namespace EGame
 {
-    // 依次尝试子节点，第一个不是 Failure 的结果就是整个 Selector 的结果——
-    // 用来表达"优先级"：数组靠前的选项优先，前面走不通（Failure）才轮到后面。
-    // 每次 Tick 都从第一个子节点重新开始试，不记"上次停在哪个子节点"——
-    // 现在还没有具体行为节点用得上"跨帧保持在同一个 Running 子节点"这个需求，先按最简单的来
+    // 按优先级依次尝试子节点，第一个不是 Failure 的结果就是整体结果
     public class AgentBehaviorSelector : AbstractAgentBehaviorNode
     {
-        private readonly AbstractAgentBehaviorNode[] _Children;
+        private readonly List<AbstractAgentBehaviorNode> _Children = new List<AbstractAgentBehaviorNode>();
 
-        public AgentBehaviorSelector(params AbstractAgentBehaviorNode[] children)
+        public AgentBehaviorSelector(IReadOnlyList<AbstractAgentBehaviorNode> children)
         {
-            _Children = children;
+            _Children.AddRange(children);
         }
 
-        public override BehaviorStatus Tick(NAgent agent, double dt)
+        public void Add(AbstractAgentBehaviorNode child)
         {
-            foreach (var child in _Children)
+            _Children.Add(child);
+        }
+
+        protected override BehaviorStatus OnTick(NAgent agent, double dt)
+        {
+            for (int i = 0; i < _Children.Count; i++)
             {
-                var status = child.Tick(agent, dt);
+                var status = _Children[i].Tick(agent, dt);
                 if (status != BehaviorStatus.Failure)
+                {
+                    ResetFrom(i + 1);
                     return status;
+                }
             }
             return BehaviorStatus.Failure;
+        }
+
+        public override void ResetRunning()
+        {
+            base.ResetRunning();
+            ResetFrom(0);
+        }
+
+        private void ResetFrom(int index)
+        {
+            for (int i = index; i < _Children.Count; i++)
+                _Children[i].ResetRunning();
         }
     }
 }

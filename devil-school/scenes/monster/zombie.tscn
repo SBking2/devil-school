@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://ddrk1xhbttxac"]
+
+[ext_resource type="Script" uid="uid://dl1go8mnem103" path="res://scripts/Core/Nodes/Character/NAgent.cs" id="1_6pnib"]
+[ext_resource type="PackedScene" uid="uid://725b0ffd1asp" path="res://models/characters/test/UAL2_Standard.glb" id="2_vv25b"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_u5sy4"]
+
+[node name="Zombie" type="CharacterBody3D" unique_id=1983749670]
+collision_layer = 8
+collision_mask = 14
+script = ExtResource("1_6pnib")
+
+[node name="UAL2_Standard" parent="." unique_id=625916314 instance=ExtResource("2_vv25b")]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=379700867]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+shape = SubResource("CapsuleShape3D_u5sy4")

@@ -1,27 +1,47 @@
 
+using System.Collections.Generic;
+
 namespace EGame
 {
-    // 依次执行子节点，全部 Success 才算这个 Sequence 成功——
-    // 用来表达"一串必须按顺序都做到的步骤"，中途任何一步 Failure/Running，整个序列就停在那一步。
-    // 跟 Selector 一样，每次 Tick 都从第一个子节点重新开始
+    // 子节点全部 Success 才算成功，中途 Failure/Running 就停在那一步
     public class AgentBehaviorSequence : AbstractAgentBehaviorNode
     {
-        private readonly AbstractAgentBehaviorNode[] _Children;
+        private readonly List<AbstractAgentBehaviorNode> _Children = new List<AbstractAgentBehaviorNode>();
 
-        public AgentBehaviorSequence(params AbstractAgentBehaviorNode[] children)
+        public AgentBehaviorSequence(IReadOnlyList<AbstractAgentBehaviorNode> children)
         {
-            _Children = children;
+            _Children.AddRange(children);
         }
 
-        public override BehaviorStatus Tick(NAgent agent, double dt)
+        public void Add(AbstractAgentBehaviorNode child)
         {
-            foreach (var child in _Children)
+            _Children.Add(child);
+        }
+
+        protected override BehaviorStatus OnTick(NAgent agent, double dt)
+        {
+            for (int i = 0; i < _Children.Count; i++)
             {
-                var status = child.Tick(agent, dt);
+                var status = _Children[i].Tick(agent, dt);
                 if (status != BehaviorStatus.Success)
+                {
+                    ResetFrom(i + 1);
                     return status;
+                }
             }
             return BehaviorStatus.Success;
+        }
+
+        public override void ResetRunning()
+        {
+            base.ResetRunning();
+            ResetFrom(0);
+        }
+
+        private void ResetFrom(int index)
+        {
+            for (int i = index; i < _Children.Count; i++)
+                _Children[i].ResetRunning();
         }
     }
 }

@@ -63,6 +63,7 @@ exit={
 
 3d_physics/layer_2="Player"
 3d_physics/layer_3="Ground"
+3d_physics/layer_4="Monster"
 
 [physics]
 

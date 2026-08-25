@@ -10,7 +10,7 @@ namespace EGame
 	public partial class NGame : Node
 	{
 		public static NGame Instance { get; private set; }
-		private NPlayer _PlayerNode;
+		public NPlayer PlayerNode { get; private set; }
 	
 		public override void _EnterTree()
 		{
@@ -30,8 +30,11 @@ namespace EGame
 		private void CreatePlayer()
         {
             var creautre_parent = GetNode<Node3D>("%CreatureParent");
-            _PlayerNode = NPlayer.Create(new Player());
-            creautre_parent.AddChild(_PlayerNode);
+            PlayerNode = NPlayer.Create(new Player());
+            creautre_parent.AddChild(PlayerNode);
+
+			var monster = NAgent.Create(new Creature(ModelDB.Monster<ZombieModel>().MutableClone() as ZombieModel));
+			creautre_parent.AddChild(monster);
         }
 	}
 }
