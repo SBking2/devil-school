@@ -1,6 +1,5 @@
 
 using System;
-using System.Collections.Generic;
 using Godot;
 
 namespace EGame
@@ -11,6 +10,7 @@ namespace EGame
         {
             var prefab = data.CreateAgent();
             prefab.Data = data;
+            prefab.Data.OnAgentCreated(prefab);
             return prefab;
         }
 
@@ -19,50 +19,20 @@ namespace EGame
         //模拟角色的输入
         public AgentIntent Intent { get; private set; }
 
-        private Dictionary<string, AbstractAgentState> _StateDic;
+        private AbstractAgentBehaviorNode _Root;
 
-        public void BuildStateMachine(IEnumerable<AbstractAgentState> states, AbstractAgentState init_state)
+        public void SetBehaviorTree(AbstractAgentBehaviorNode root)
         {
-            if(_StateDic != null)
-                throw new InvalidOperationException("Agent already has state-machine!");
+            if (_Root != null)
+                throw new InvalidOperationException("Agent already has a behavior tree!");
 
-            _StateDic = new Dictionary<string, AbstractAgentState>();
-
-            foreach(var state in states)
-                _StateDic.Add(state.StateName, state);
-
-            if (_StateDic.ContainsKey(init_state.StateName) == false)
-                throw new InvalidOperationException("init-state does't exist in state-dic!");
-
-            _CurState = init_state;
-            _CurState.OnEnter(this);
-        }
-
-        protected AbstractAgentState _CurState;
-
-        public void ChangeState(string name)
-        {
-            AbstractAgentState state = null;
-            _StateDic.TryGetValue(name, out state);
-
-            if(state != null)
-            {
-                _CurState.OnExit(this);
-                _CurState = state;
-                _CurState.OnEnter(this);
-            }
-        }
-
-        public override void _Process(double delta)
-        {
-            base._Process(delta);
-            _CurState.OnProcess(this, delta);
+            _Root = root;
         }
 
         public override void _PhysicsProcess(double delta)
         {
             base._PhysicsProcess(delta);
-            _CurState.OnPhysicalProcess(this, delta);
+            _Root?.Tick(this, delta);
         }
     }
 }
