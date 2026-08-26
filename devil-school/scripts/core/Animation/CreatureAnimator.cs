@@ -21,8 +21,6 @@ namespace EGame
         {
             _CurrentState = init_state;
             _AnyState = new AnimState("any");
-
-            _AnimPlayer.AnimationFinished += OnAnimPlayerCompleted;
             PlayAnimation(_CurrentState);
         }
 
@@ -32,6 +30,7 @@ namespace EGame
                 throw new InvalidOperationException("Creature Animator already has animation-player!");
 
             _AnimPlayer = player;
+            _AnimPlayer.AnimationFinished += OnAnimPlayerCompleted;
         }
 
         public void AddAnyBranch(string trigger, AnimState state, Func<bool> condition = null)

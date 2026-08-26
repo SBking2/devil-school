@@ -14,7 +14,7 @@ ambient_light_source = 2
 ambient_light_color = Color(0.84709084, 0.87673146, 0.99999875, 1)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_a8vgt"]
-size = Vector3(200, 0.13, 200)
+size = Vector3(200, 0.01, 200)
 
 [node name="NGame" type="Node" unique_id=943147096]
 script = ExtResource("1_uwrxv")

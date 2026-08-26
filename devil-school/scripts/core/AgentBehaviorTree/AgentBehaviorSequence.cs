@@ -3,10 +3,11 @@ using System.Collections.Generic;
 
 namespace EGame
 {
-    // 子节点全部 Success 才算成功，中途 Failure/Running 就停在那一步
+    // Sequence with memory：Running 就停在当前子节点，下次直接从这继续，不重新跑前面已经 Success 的子节点
     public class AgentBehaviorSequence : AbstractAgentBehaviorNode
     {
         private readonly List<AbstractAgentBehaviorNode> _Children = new List<AbstractAgentBehaviorNode>();
+        private int _CurrentChild;
 
         public AgentBehaviorSequence(IReadOnlyList<AbstractAgentBehaviorNode> children)
         {
@@ -20,28 +21,36 @@ namespace EGame
 
         protected override BehaviorStatus OnTick(NAgent agent, double dt)
         {
-            for (int i = 0; i < _Children.Count; i++)
+            while (_CurrentChild < _Children.Count)
             {
-                var status = _Children[i].Tick(agent, dt);
-                if (status != BehaviorStatus.Success)
+                var status = _Children[_CurrentChild].Tick(agent, dt);
+                if (status == BehaviorStatus.Running)
+                    return BehaviorStatus.Running;
+
+                if (status == BehaviorStatus.Failure)
                 {
-                    ResetFrom(i + 1);
-                    return status;
+                    Restart();
+                    return BehaviorStatus.Failure;
                 }
+
+                _CurrentChild++;
             }
+
+            Restart();
             return BehaviorStatus.Success;
         }
 
         public override void ResetRunning()
         {
             base.ResetRunning();
-            ResetFrom(0);
+            Restart();
         }
 
-        private void ResetFrom(int index)
+        private void Restart()
         {
-            for (int i = index; i < _Children.Count; i++)
+            for (int i = 0; i < _Children.Count; i++)
                 _Children[i].ResetRunning();
+            _CurrentChild = 0;
         }
     }
 }

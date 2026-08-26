@@ -11,17 +11,15 @@ namespace EGame
         
         protected override AbstractAgentBehaviorNode BuildBehaviorTree()
         {
-            MonsterBehaviorNodeCheckPlayer check_player = new MonsterBehaviorNodeCheckPlayer();
             MonsterBehaviorNodeChase chase = new MonsterBehaviorNodeChase();
-
-            AgentBehaviorSequence chase_seq = new AgentBehaviorSequence(new List<AbstractAgentBehaviorNode>() { check_player, chase});
+            MonsterBehaviorNodeCheckPlayer check_player_chase = new MonsterBehaviorNodeCheckPlayer(chase);
 
             MonsterBehaviorNodeIdle idle = new MonsterBehaviorNodeIdle();
             MonsterBehaviorNodePatrol patrol = new MonsterBehaviorNodePatrol();
 
             AgentBehaviorSequence patrol_seq = new AgentBehaviorSequence(new List<AbstractAgentBehaviorNode>() { idle, patrol });
 
-            AgentBehaviorSelector root = new AgentBehaviorSelector(new List<AbstractAgentBehaviorNode>() { chase_seq, patrol_seq });
+            AgentBehaviorSelector root = new AgentBehaviorSelector(new List<AbstractAgentBehaviorNode>() { check_player_chase, patrol_seq });
 
             return root;
         }

@@ -5,7 +5,7 @@ namespace EGame
 {
     public class MonsterBehaviorNodePatrol : AbstractAgentBehaviorNode
     {
-        private const float PatrolRadius = 6f;
+        private const float PatrolRadius = 15f;
         private const float ArriveDistance = 0.5f;
 
         private Vector3? _Target;

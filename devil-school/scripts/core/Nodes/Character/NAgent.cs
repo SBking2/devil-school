@@ -24,6 +24,7 @@ namespace EGame
 
         //模拟角色的输入
         public AgentIntent Intent { get; private set; } = new AgentIntent();
+        public Blackboard Blackboard { get; private set; } = new Blackboard();
 
         private void OnIntentMovingChanged(Vector3 old_vel, Vector3 new_vel)
         {
@@ -97,7 +98,7 @@ namespace EGame
             if (animator == null)
                 return;
 
-            var player = GetNode<AnimationPlayer>("%AnimationPlayer");
+            var player = FindChild("AnimationPlayer", recursive: true, owned: false) as AnimationPlayer;
             if (player == null)
                 return;
 

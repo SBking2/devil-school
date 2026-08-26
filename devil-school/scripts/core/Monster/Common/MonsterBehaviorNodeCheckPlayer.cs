@@ -1,14 +1,16 @@
 
 namespace EGame
 {
-    public class MonsterBehaviorNodeCheckPlayer : AbstractAgentBehaviorCondition
+    public class MonsterBehaviorNodeCheckPlayer : AbstractAgentBehaviorDecorator
     {
         private const float ChaseEnterRange = 5f;
         private const float ChaseExitRange = 10f;
 
         private bool _IsChasing;
 
-        protected override bool Check(NAgent agent, double dt)
+        public MonsterBehaviorNodeCheckPlayer(AbstractAgentBehaviorNode child) : base(child) { }
+
+        protected override bool ShouldRun(NAgent agent, double dt)
         {
             var player = NGame.Instance?.PlayerNode;
             if (player == null)
