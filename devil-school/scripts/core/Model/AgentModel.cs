@@ -5,16 +5,20 @@ namespace EGame
     {
         public abstract string PrefabPath { get; }
 
-        // 具体 Model 子类覆盖这个方法，返回自己的行为树根节点——
-        // 不覆盖就保持 null，agent 会是一个"挂着但什么都不做"的空壳，不会报错
-        protected virtual AbstractAgentBehaviorNode BuildBehaviorTree(NAgent agent)
+        public override void OnAgentCreated(NAgent agent)
         {
-            return null;
+            agent.SetBehaviorTree(BuildBehaviorTree());
         }
 
-        public virtual void OnAgentCreated(NAgent agent)
+        public override void OnCharacterCreated(INCharacter character)
         {
-            agent.SetBehaviorTree(BuildBehaviorTree(agent));
+            var agent = character as NAgent;
+            agent.BuildAnimator(BuildAnimator(character));
+        }
+
+        protected virtual AbstractAgentBehaviorNode BuildBehaviorTree()
+        {
+            return null;
         }
     }
 }

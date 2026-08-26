@@ -1,7 +1,7 @@
 
 namespace EGame
 {
-    // 判断本次 Tick 有没有收到指定事件，配合 NAgent.NotifyEvent 使用
+    // 判断本次 TreeTick 有没有收到指定事件，配合 NAgent.NotifyEvent 使用
     public class AgentBehaviorEventCondition : AbstractAgentBehaviorCondition
     {
         private readonly string _EventName;

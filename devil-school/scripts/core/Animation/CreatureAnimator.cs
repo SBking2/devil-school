@@ -10,21 +10,28 @@ namespace EGame
     /// </summary>
     public class CreatureAnimator
     {
-        private readonly AnimationPlayer _AnimPlayer;
+        private AnimationPlayer _AnimPlayer;
 
         private AnimState _CurrentState;
 
         private readonly AnimState _AnyState;   //CallTrigger的时候优先查这个状态
         private Log.Logger _Logger = new Log.Logger(Log.LogType.World);
 
-        public CreatureAnimator(AnimationPlayer anim_player, AnimState init_state)
+        public CreatureAnimator(AnimState init_state)
         {
-            _AnimPlayer = anim_player;
             _CurrentState = init_state;
             _AnyState = new AnimState("any");
 
             _AnimPlayer.AnimationFinished += OnAnimPlayerCompleted;
             PlayAnimation(_CurrentState);
+        }
+
+        public void SetPlayer(AnimationPlayer player)
+        {
+            if (_AnimPlayer != null)
+                throw new InvalidOperationException("Creature Animator already has animation-player!");
+
+            _AnimPlayer = player;
         }
 
         public void AddAnyBranch(string trigger, AnimState state, Func<bool> condition = null)

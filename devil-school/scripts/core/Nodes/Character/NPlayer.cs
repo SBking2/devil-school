@@ -11,6 +11,8 @@ namespace EGame
         {
             var instance = SceneHelper.LoadScene<NPlayer>(_PrefabPath);
             instance.PlayerData = player;
+            instance.Data.CharacterModel.OnCharacterCreated(instance);
+            instance.Data.CharacterModel.OnPlayerCreated(instance);
             return instance;
         }
 
