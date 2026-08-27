@@ -31,6 +31,33 @@ namespace EGame
             Data.ApplyDamage(info.Amount);
         }
 
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    Animator
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private CreatureAnimator _Animator;
+
+        public void BuildAnimator(CreatureAnimator animator)
+        {
+            if (animator == null)
+                return;
+
+            var player = FindChild("AnimationPlayer", recursive: true, owned: false) as AnimationPlayer;
+            if (player == null)
+                return;
+
+            if (_Animator != null)
+                throw new InvalidOperationException("Animator already had value!");
+
+            _Animator = animator;
+            _Animator.SetPlayer(player);
+        }
+
+        public void AnimTrigger(string trigger)
+        {
+            _Animator?.CallTrigger(trigger);
+        }
+
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //////                                      人物移动
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////

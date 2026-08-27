@@ -10,12 +10,6 @@ namespace EGame
             agent.SetBehaviorTree(BuildBehaviorTree());
         }
 
-        public override void OnCharacterCreated(INCharacter character)
-        {
-            var agent = character as NAgent;
-            agent.BuildAnimator(BuildAnimator(character));
-        }
-
         protected virtual AbstractAgentBehaviorNode BuildBehaviorTree()
         {
             return null;

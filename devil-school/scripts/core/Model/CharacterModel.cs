@@ -12,5 +12,10 @@ namespace EGame
         {
             return null;
         }
+
+        public override void OnCharacterCreated(INCharacter character)
+        {
+            character.BuildAnimator(BuildAnimator(character));
+        }
     }
 }

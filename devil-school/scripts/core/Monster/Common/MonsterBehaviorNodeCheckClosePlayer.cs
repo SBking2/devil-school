@@ -3,8 +3,8 @@ namespace EGame
 {
     public class MonsterBehaviorNodeCheckClosePlayer : AbstractAgentBehaviorDecorator
     {
-        private const float _IdleEnterRange = 1.5f;
-        private const float _IdleExitRange = 2f;
+        private const float _IdleEnterRange = 2f;
+        private const float _IdleExitRange = 3f;
 
         private bool _IsIdling;
 
