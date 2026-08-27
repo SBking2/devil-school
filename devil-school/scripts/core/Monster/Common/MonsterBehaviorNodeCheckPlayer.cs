@@ -3,8 +3,8 @@ namespace EGame
 {
     public class MonsterBehaviorNodeCheckPlayer : AbstractAgentBehaviorDecorator
     {
-        private const float ChaseEnterRange = 5f;
-        private const float ChaseExitRange = 10f;
+        private const float _ChaseEnterRange = 5f;
+        private const float _ChaseExitRange = 10f;
 
         private bool _IsChasing;
 
@@ -20,7 +20,7 @@ namespace EGame
             }
 
             float distance = agent.GlobalPosition.DistanceTo(player.GlobalPosition);
-            float threshold = _IsChasing ? ChaseExitRange : ChaseEnterRange;
+            float threshold = _IsChasing ? _ChaseExitRange : _ChaseEnterRange;
             _IsChasing = distance <= threshold;
             return _IsChasing;
         }
