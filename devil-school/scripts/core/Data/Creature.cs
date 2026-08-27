@@ -15,7 +15,7 @@ namespace EGame
         public CharacterModel CharacterModel { get; private set; }
 
         private int _HP;
-        private Action<int, int> _OnHPChanged;
+        public event Action<int, int> OnHPChanged;
 
         public int HP
         {
@@ -29,9 +29,13 @@ namespace EGame
                 int old = _HP;
                 _HP = value;
 
-                if (_OnHPChanged != null)
-                    _OnHPChanged.Invoke(old, _HP);
+                OnHPChanged?.Invoke(old, _HP);
             }
+        }
+
+        public void ApplyDamage(int amount)
+        {
+            HP = Mathf.Clamp(HP - amount, 0, CharacterModel.MaxHP);
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

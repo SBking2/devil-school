@@ -1,10 +1,10 @@
 [gd_scene format=3 uid="uid://dge3avc7g1le2"]
 
 [ext_resource type="Script" uid="uid://bgg7dp3nm278q" path="res://scripts/Core/Nodes/NGame.cs" id="1_uwrxv"]
-[ext_resource type="PackedScene" uid="uid://dks11c81aon2h" path="res://models/worlds/test/test.fbx" id="3_gee14"]
 [ext_resource type="Script" uid="uid://dsy8h32r4tgwf" path="res://scripts/Core/Nodes/Input/NInputManager.cs" id="3_lbhrr"]
 [ext_resource type="Material" uid="uid://22eyivixs4e3" path="res://material/world/init_world/ground_material.tres" id="4_0tnpc"]
 [ext_resource type="PackedScene" uid="uid://drjgdl7h8yx3o" path="res://scenes/dev_console/dev_console.tscn" id="4_lbhrr"]
+[ext_resource type="Script" uid="uid://cewmuls0i8ism" path="res://scripts/Core/Nodes/Level/MonsterSpawnPoint.cs" id="5_u5sy4"]
 [ext_resource type="ArrayMesh" uid="uid://sfy0lc88sv3n" path="res://models/characters/FieldFighter/FieldFighter.obj" id="5_vtaks"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_rmeui"]
@@ -24,9 +24,6 @@ unique_name_in_owner = true
 
 [node name="InitWorld" type="Node3D" parent="RootSceneContainer" unique_id=1678437961]
 
-[node name="test" parent="RootSceneContainer/InitWorld" unique_id=602417196 instance=ExtResource("3_gee14")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 46.84336, 11.820948, 0)
-
 [node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld" unique_id=1781123623]
 transform = Transform3D(100, 0, 0, 0, 100, 0, 0, 0, 100, 0.003, 0, -0.002)
 material_override = ExtResource("4_0tnpc")
@@ -39,10 +36,6 @@ environment = SubResource("Environment_rmeui")
 transform = Transform3D(0.70640296, 0.4434682, -0.5516618, 0, 0.77939266, 0.6265358, 0.70780987, -0.44258672, 0.5505653, 0, 0, 0)
 shadow_enabled = true
 shadow_bias = 0.0
-
-[node name="PlayerStartPoint" type="Node3D" parent="RootSceneContainer/InitWorld" unique_id=419480346]
-unique_name_in_owner = true
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.524, 1.24, -12.929)
 
 [node name="FieldFighter" type="MeshInstance3D" parent="RootSceneContainer/InitWorld" unique_id=1050709987]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.767331, 0, 3.3834777)
@@ -57,6 +50,33 @@ shape = SubResource("BoxShape3D_a8vgt")
 
 [node name="CreatureParent" type="Node3D" parent="RootSceneContainer/InitWorld" unique_id=269897668]
 unique_name_in_owner = true
+
+[node name="MonsterSpawnPoints" type="Node3D" parent="RootSceneContainer/InitWorld/CreatureParent" unique_id=1078451910]
+
+[node name="Node3D" type="Node3D" parent="RootSceneContainer/InitWorld/CreatureParent/MonsterSpawnPoints" unique_id=1696866567]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2176132, 7.6293945e-06, 19.36975)
+script = ExtResource("5_u5sy4")
+MonsterName = "Zombie"
+
+[node name="Node3D2" type="Node3D" parent="RootSceneContainer/InitWorld/CreatureParent/MonsterSpawnPoints" unique_id=1444319004]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26.133701, 7.6293945e-06, 14.208246)
+script = ExtResource("5_u5sy4")
+MonsterName = "Zombie"
+
+[node name="Node3D3" type="Node3D" parent="RootSceneContainer/InitWorld/CreatureParent/MonsterSpawnPoints" unique_id=316316452]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17.763943, 5.722046e-06, 10.934172)
+script = ExtResource("5_u5sy4")
+MonsterName = "Zombie"
+
+[node name="Node3D4" type="Node3D" parent="RootSceneContainer/InitWorld/CreatureParent/MonsterSpawnPoints" unique_id=555041673]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.579596, -1.9073486e-06, -16.995554)
+script = ExtResource("5_u5sy4")
+MonsterName = "Zombie"
+
+[node name="Node3D5" type="Node3D" parent="RootSceneContainer/InitWorld/CreatureParent/MonsterSpawnPoints" unique_id=1919646709]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18.730509, -7.6293945e-06, -10.6411)
+script = ExtResource("5_u5sy4")
+MonsterName = "Zombie"
 
 [node name="InputManager" type="Node" parent="." unique_id=2078358983]
 script = ExtResource("3_lbhrr")

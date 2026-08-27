@@ -32,9 +32,6 @@ namespace EGame
             var creautre_parent = GetNode<Node3D>("%CreatureParent");
             PlayerNode = NPlayer.Create(new Player());
             creautre_parent.AddChild(PlayerNode);
-
-			var monster = NAgent.Create(new Creature(ModelDB.Monster<ZombieModel>().MutableClone() as ZombieModel));
-			creautre_parent.AddChild(monster);
         }
 	}
 }

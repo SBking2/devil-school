@@ -1,7 +1,7 @@
 
 namespace EGame
 {
-    public interface INCharacter
+    public interface INCharacter : INDamageable
     {
         public Creature Data { get; }
     }

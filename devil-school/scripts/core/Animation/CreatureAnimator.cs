@@ -31,6 +31,7 @@ namespace EGame
 
             _AnimPlayer = player;
             _AnimPlayer.AnimationFinished += OnAnimPlayerCompleted;
+            PlayAnimation(_CurrentState);
         }
 
         public void AddAnyBranch(string trigger, AnimState state, Func<bool> condition = null)

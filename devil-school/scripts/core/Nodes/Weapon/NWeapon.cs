@@ -30,6 +30,13 @@ namespace EGame
 
         private float _Timer = 0f;
 
+        public INCharacter Shooter { get; private set; }
+
+        // 命中检测用哪些层，实例可以按需覆盖；默认打环境+怪物+玩家
+        public uint HitMask { get; set; } = (uint)(CollisionMask.GrandMask | CollisionMask.MonsterMask | CollisionMask.PlayerMask);
+
+        private const int _Damage = 10;    // 单发伤害
+
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //////                                      开火后坐：时间窗口模型
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -75,13 +82,17 @@ namespace EGame
             var to = from + (-_RealCamera.GlobalTransform.Basis.Z) * 100f;
 
             var query = PhysicsRayQueryParameters3D.Create(from, to);
-            query.CollisionMask = CollisionMask.GrandMask;
+            query.CollisionMask = HitMask;
 
             var result = space_state.IntersectRay(query);
             if(result.Count > 0)
             {
                 Node3D hitObject = (Node3D)result["collider"];
-                GD.Print($"hit {hitObject.Name}");
+                Vector3 hitPoint = (Vector3)result["position"];
+                Vector3 hitNormal = (Vector3)result["normal"];
+
+                var damageInfo = new DamageInfo(hitObject, hitPoint, hitNormal, Shooter, _Damage);
+                DamageSystem.Instance.ReportHit(damageInfo);
             }
 
             ApplyMuzzleKick();
@@ -110,6 +121,8 @@ namespace EGame
             _RealCamera = GetNode<Camera3D>("%RealCamera");
             _Muzzle = _RealCamera;    // 目前枪口射线就是从摄像机原点发出的，没有单独的枪口节点
             _Recoil = GetNodeOrNull<Node3D>("%Recoil");
+
+            Shooter = GetOwner() as INCharacter;    // player.tscn 里 WeaponHolder 的 Owner 就是 PlayerController
 
             Equip();
         }

@@ -59,22 +59,22 @@ namespace EGame
             }
         }
 
-        private static void VeryDebug(string message, bool is_show_stack_trace = false, int skip_frame = 2)
+        public static void VeryDebug(string message, bool is_show_stack_trace = false, int skip_frame = 2)
         {
             LogMessage(LogLevel.VeryDebug, message, is_show_stack_trace, skip_frame);
         }
 
-        private static void Debug(string message, bool is_show_stack_trace = false, int skip_frame = 2)
+        public static void Debug(string message, bool is_show_stack_trace = false, int skip_frame = 2)
         {
             LogMessage(LogLevel.Debug, message, is_show_stack_trace, skip_frame);
         }
 
-        private static void Warn(string message, bool is_show_stack_trace = false, int skip_frame = 2)
+        public static void Warn(string message, bool is_show_stack_trace = false, int skip_frame = 2)
         {
             LogMessage(LogLevel.Warn, message, is_show_stack_trace, skip_frame);
         }
 
-        private static void Error(string message, bool is_show_stack_trace = true, int skip_frame = 2)
+        public static void Error(string message, bool is_show_stack_trace = true, int skip_frame = 2)
         {
             LogMessage(LogLevel.Error, message, is_show_stack_trace, skip_frame);
         }

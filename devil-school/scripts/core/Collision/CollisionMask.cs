@@ -7,5 +7,6 @@ namespace EGame
     {
         public static UInt16 PlayerMask => 1 << 1;
         public static UInt16 GrandMask => 1 << 2;
+        public static UInt16 MonsterMask => 1 << 3;
     }
 }
