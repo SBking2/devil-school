@@ -63,13 +63,24 @@ namespace EGame
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private float WalkSpeed => PlayerData.PlayerModel.MoveSpeed;
+        private float RunSpeed => PlayerData.PlayerModel.RunSpeed;
+        private float CrouchSpeed => PlayerData.PlayerModel.CrouchSpeed;
+
         private readonly float _MinStopSpeed = 2.54f;
         private readonly float _Friction = 6f;
         private readonly float _AccelerationRate = 10f;
-        
+
+        private bool RunInput
+        {
+            get
+            {
+                return Input.IsActionPressed(EGInput.RUN) && IsCrouch == false;
+            }
+        }
+
         private Vector3 GroundMove(Vector3 source, Vector3 wish_dir, double dt)
         {
-            return ApplyAcceleration(source, wish_dir, _AccelerationRate, WalkSpeed, dt);
+            return ApplyAcceleration(source, wish_dir, _AccelerationRate, IsCrouch ? CrouchSpeed : (RunInput ? RunSpeed : WalkSpeed), dt);
         }
 
         private Vector3 AirMove(Vector3 source, Vector3 wish_dir, double dt)
@@ -118,7 +129,7 @@ namespace EGame
             if (IsOnFloor())
             {
                 if (source.Y < 0f)
-                    source.Y = -0.5f;
+                    source.Y = IsCrouch ? -3.0f : -0.5f;
                 return source;
             }
 
@@ -156,12 +167,11 @@ namespace EGame
         private void UpdateCrouch(double dt)
         {
             float target_crouch_height = IsCrouch ? _CrouchHeight : _StandHeight;
-
             var capsule = (CapsuleShape3D)_MoveCollisionShape.Shape;
             capsule.Height = target_crouch_height;
-            _MoveCollisionShape.Position = new Vector3(0.0f, target_crouch_height * 0.5f, 0.0f);
+            _MoveCollisionShape.Position = new Vector3(0.0f, _StandHeight - target_crouch_height * 0.5f, 0.0f);
 
-            float target_eyes_offset = target_crouch_height - _EyeOffsetFromTop;
+            float target_eyes_offset = _StandHeight - _EyeOffsetFromTop;
             float weight = 1f - Mathf.Exp(-_CrouchChangeSpeed * (float)dt);
             _EyesPos = Mathf.Lerp(_EyesPos, target_eyes_offset, weight);
 
@@ -222,8 +232,8 @@ namespace EGame
         private Node3D _CameraBobNode;
 
         private readonly float _WalkBobRate = 0.8f;
-        private readonly float _RunBobRate = 0.8f;
-        private readonly float _CrouchBobRate = 1.0f;
+        private readonly float _RunBobRate = 1.2f;
+        private readonly float _CrouchBobRate = 0.6f;
         private readonly float _MinBobSpeed = 0.3f;      //低于这个速度直接清零，不产生 bob
 
         private readonly float _CameraBobRightScale = 0.01f;   //Bob水平幅度
@@ -250,7 +260,7 @@ namespace EGame
 
             bool is_crouching = IsCrouch;
 
-            float bob_rate = is_crouching ? _CrouchBobRate : (Input.IsActionPressed(EGInput.RUN) ? _RunBobRate : _WalkBobRate);
+            float bob_rate = is_crouching ? _CrouchBobRate : (RunInput ? _RunBobRate : _WalkBobRate);
             _BobCycle += bob_rate * (float)dt * Mathf.Tau;
 
             _ViewBobPosition = ComputeCameraBobOffset(_BobCycle, _XySpeed);
