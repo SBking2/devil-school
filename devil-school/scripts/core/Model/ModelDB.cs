@@ -54,6 +54,12 @@ namespace EGame
         {
             return Get<T>() as PlayerModel;
         }
+
+        public static WeaponModel Weapon<T>() where T : WeaponModel
+        {
+            return Get<T>() as WeaponModel;
+        }
+
         private static AbstractModel Get<T>() where T : AbstractModel
         {
             return Get(typeof(T));
