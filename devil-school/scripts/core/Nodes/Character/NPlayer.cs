@@ -1,6 +1,7 @@
 
 using Godot;
 using System;
+using System.Collections.Generic;
 
 namespace EGame
 {
@@ -11,24 +12,24 @@ namespace EGame
         {
             var instance = SceneHelper.LoadScene<NPlayer>(_PrefabPath);
             instance.PlayerData = player;
-            instance.Data.CharacterModel.OnCharacterCreated(instance);
-            instance.Data.CharacterModel.OnPlayerCreated(instance);
+            instance.Data.OnCharacterCreated(instance);
+            instance.Data.OnPlayerCreated(instance);
             return instance;
         }
 
         public Player PlayerData { get; private set; }
         
-        public Creature Data
+        public CharacterModel Data
         {
             get
             {
-                return PlayerData.CreatureData;
+                return PlayerData.PlayerModel;
             }
         }
 
         public void TakeDamage(DamageInfo info)
         {
-            Data.ApplyDamage(info.Amount);
+            Data.HP -= info.Amount;
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -167,13 +168,15 @@ namespace EGame
         private void UpdateCrouch(double dt)
         {
             float target_crouch_height = IsCrouch ? _CrouchHeight : _StandHeight;
+
             var capsule = (CapsuleShape3D)_MoveCollisionShape.Shape;
-            capsule.Height = target_crouch_height;
-            _MoveCollisionShape.Position = new Vector3(0.0f, _StandHeight - target_crouch_height * 0.5f, 0.0f);
 
             float target_eyes_offset = _StandHeight - _EyeOffsetFromTop;
             float weight = 1f - Mathf.Exp(-_CrouchChangeSpeed * (float)dt);
+
             _EyesPos = Mathf.Lerp(_EyesPos, target_eyes_offset, weight);
+            capsule.Height = Mathf.Lerp(capsule.Height, target_crouch_height, weight);
+            _MoveCollisionShape.Position.Lerp(new Vector3(0f, _StandHeight - target_crouch_height * 0.5f, 0f), weight);
 
             _PitchNode.Position = new Vector3(0.0f, _EyesPos, 0.0f);
         }
@@ -507,6 +510,68 @@ namespace EGame
             return dir;
         }
 
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //////                                          武器管理
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private Node3D _WeaponParent;
+        private List<NWeapon> _Weapons = new List<NWeapon>();
+        private int _CurrentWeaponIndex = -1;
+        private bool WeaponIndexValid => _CurrentWeaponIndex >= 0 && _CurrentWeaponIndex < _Weapons.Count;
+
+        private void PickWeapon(NWeapon weapon)
+        {
+            _WeaponParent.AddChild(weapon);
+
+            _Weapons.Add(weapon);
+            SetWeapon(_Weapons.Count - 1);
+        }
+
+        private void RemoveWeapon(int index)
+        {
+            _Weapons.RemoveAt(index);
+            if (_CurrentWeaponIndex == index)
+                SetWeapon(0);
+        }
+
+        private void SetWeapon(int index)
+        {
+            AssertWeaponIndex(index);
+            if (index != _CurrentWeaponIndex)
+            {
+                if (WeaponIndexValid)
+                {
+                    var cur_weapon = _Weapons[_CurrentWeaponIndex];
+                    cur_weapon.UnEquip();
+                }
+
+                _CurrentWeaponIndex = index;
+                var weapon = _Weapons[_CurrentWeaponIndex];
+                weapon.Equip();
+                AnimTrigger(weapon.Data.SwitchAnimTrigger);
+            }
+        }
+
+        private void HandleWeapon()
+        {
+            if (Input.IsActionJustPressed(EGInput.SWITCHLEFT))
+                SetWeapon((_CurrentWeaponIndex - 1 + _Weapons.Count) % _Weapons.Count);
+            else if (Input.IsActionJustPressed(EGInput.SWITCHRIGHT))
+                SetWeapon((_CurrentWeaponIndex + 1) % _Weapons.Count);
+
+            if(WeaponIndexValid)
+            {
+                _Weapons[_CurrentWeaponIndex].Intent.Pressing = Input.IsActionPressed(EGInput.FIRE);
+                _Weapons[_CurrentWeaponIndex].Intent.JustPressed = Input.IsActionJustPressed(EGInput.FIRE);
+            }
+        }
+
+        private void AssertWeaponIndex(int index)
+        {
+            if (index < 0 && index >= _Weapons.Count)
+                throw new ArgumentException("Weapon Index is overflow!");
+        }
+
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         public override void _Ready()
@@ -526,9 +591,13 @@ namespace EGame
             _WeaponSwayNode = GetNodeOrNull<Node3D>("%WeaponSway");
             _WeaponSpeedPullNode = GetNodeOrNull<Node3D>("%WeaponSpeedPull");
             _WeaponLandingNode = GetNodeOrNull<Node3D>("%WeaponLanding");
+            _WeaponParent = GetNode<Node3D>("%WeaponParent");
 
             _EyesPos = _StandHeight - _EyeOffsetFromTop;
             _PitchNode.Position = new Vector3(0.0f, _EyesPos, 0.0f);
+
+            var hand = ModelDB.Weapon<HandModel>() as WeaponModel;
+            PickWeapon(NWeapon.Create(this, hand));
         }
 
         public override void _Input(InputEvent @event)
@@ -548,6 +617,8 @@ namespace EGame
                 var is_locked = Input.MouseMode == Input.MouseModeEnum.Captured;
                 Input.MouseMode = is_locked ? Input.MouseModeEnum.Visible : Input.MouseModeEnum.Captured;
             }
+
+            HandleWeapon();
         }
         
         private bool _JustJumped;

@@ -21,7 +21,7 @@ namespace EGame
                 var instance = (AbstractModel)Activator.CreateInstance(type);
                 var id = ToModelID(type);
                 _ModelInstance.Add(id, instance);
-                _Logger.Debug($"Loaded Model : {id.ToString()}");
+                _Logger.Debug($"Loaded Data : {id.ToString()}");
             }
         }
 
@@ -78,7 +78,7 @@ namespace EGame
             var slipt = id.Split(".");
 
             if (slipt.Length != 2)
-                throw new InvalidOperationException($"Invalid Model ID : {id}!");
+                throw new InvalidOperationException($"Invalid Data ID : {id}!");
 
             var category = slipt[0].Slugify();
             var entry = slipt[1].Slugify();

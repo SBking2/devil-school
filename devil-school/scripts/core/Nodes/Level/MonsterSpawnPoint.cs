@@ -17,8 +17,7 @@ namespace EGame
                 return;
             }
 
-            var data = new Creature(model.MutableClone() as MonsterModel);
-            var monster = NAgent.Create(data);
+            var monster = NAgent.Create(model.MutableClone() as MonsterModel);
             AddChild(monster);
 
             monster.Position = this.Position;

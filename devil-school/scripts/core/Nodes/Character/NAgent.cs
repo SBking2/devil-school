@@ -7,20 +7,21 @@ namespace EGame
 {
     public partial class NAgent : CharacterBody3D, INCharacter
     {
-        public static NAgent Create(Creature data)
+        public static NAgent Create(AgentModel data)
         {
-            var prefab = data.CreateAgent();
-            prefab.Data = data;
-            prefab.Data.CharacterModel.OnCharacterCreated(prefab);
-            prefab.Data.CharacterModel.OnAgentCreated(prefab);
+            var prefab = SceneHelper.LoadScene<NAgent>(data.PrefabPath);
+            prefab._AgentModel = data;
+            prefab.Data.OnCharacterCreated(prefab);
+            prefab.Data.OnAgentCreated(prefab);
             return prefab;
         }
 
-        public Creature Data { get; private set; }
+        public CharacterModel Data => _AgentModel as CharacterModel;
+        private AgentModel _AgentModel;
 
         public void TakeDamage(DamageInfo info)
         {
-            Data.ApplyDamage(info.Amount);
+            Data.HP -= info.Amount;
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -45,7 +46,7 @@ namespace EGame
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private const float _Gravity = 14f;
-        private float WalkSpeed => Data.CharacterModel.MoveSpeed;
+        private float WalkSpeed => Data.MoveSpeed;
         private const float _MinStopSpeed = 2.54f;
         private const float _Friction = 6f;
         private const float _AccelerationRate = 10f;

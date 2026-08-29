@@ -3,7 +3,7 @@ namespace EGame
 {
     public interface INCharacter : INDamageable
     {
-        public Creature Data { get; }
+        public CharacterModel Data { get; }
         public void BuildAnimator(CreatureAnimator animator);
         public void AnimTrigger(string trigger);
     }

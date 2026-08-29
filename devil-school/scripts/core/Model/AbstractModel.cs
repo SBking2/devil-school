@@ -15,7 +15,7 @@ namespace EGame
 		{
 			Type type = this.GetType();
 			if (ModelDB.Contains(type))
-				throw new ModelDBException($"Abstract Model can't initialize repeatly! {type}");
+				throw new ModelDBException($"Abstract Data can't initialize repeatly! {type}");
 			ID = ModelDB.GetID(type);
 		}
 
@@ -72,6 +72,11 @@ namespace EGame
 		}
 
 		public virtual void OnAgentCreated(NAgent agent)
+		{
+
+		}
+
+		public virtual void OnWeaponCreated(NWeapon weapon)
 		{
 
 		}

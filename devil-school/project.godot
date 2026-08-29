@@ -58,6 +58,14 @@ exit={
 "deadzone": 0.2,
 "events": []
 }
+switch_left={
+"deadzone": 0.2,
+"events": []
+}
+switch_right={
+"deadzone": 0.2,
+"events": []
+}
 
 [layer_names]
 
@@ -72,4 +80,4 @@ exit={
 [rendering]
 
 rendering_device/driver.windows="d3d12"
-anti_aliasing/quality/msaa_3d=1
+anti_aliasing/quality/msaa_3d=2

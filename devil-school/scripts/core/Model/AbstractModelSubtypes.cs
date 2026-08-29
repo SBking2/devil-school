@@ -11,7 +11,8 @@ namespace EGame
 		private static Type[] _ModelSubtypes = new Type[]
 		{
 			typeof(PlayerModel),
-			typeof(ZombieModel)
+			typeof(ZombieModel),
+			typeof(HandModel)
 		};
 	}
 }

@@ -6,10 +6,8 @@ namespace EGame
         public Player()
         {
             this.PlayerModel = ModelDB.Player<PlayerModel>().MutableClone() as PlayerModel;
-            CreatureData = new Creature(this.PlayerModel);
         }
 
-        public Creature CreatureData { get; private set; }
         public PlayerModel PlayerModel { get; private set; }
     }
 }
