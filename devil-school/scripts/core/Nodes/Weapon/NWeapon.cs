@@ -46,6 +46,11 @@ namespace EGame
             this.SetActive(false);
         }
 
+        public void TriggerAnim()
+        {
+            _Owner.AnimTrigger(Data.FireAnimTrigger);
+        }
+
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
         ///////                                        State-Machine
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -93,9 +98,19 @@ namespace EGame
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         /// <summary>
-        /// 做射线检测
+        /// 远程走射线检测，近战走距离判断
         /// </summary>
         public void FireInternal()
+        {
+            TriggerAnim();
+
+            if (Data.MeleeRange > 0f)
+                FireMelee();
+            else
+                FireRanged();
+        }
+
+        private void FireRanged()
         {
             var space_state = GetWorld3D().DirectSpaceState;
             var from = ShootPos.GlobalPosition;
@@ -114,6 +129,17 @@ namespace EGame
                 var damageInfo = new DamageInfo(hitObject, hitPoint, hitNormal, _Owner.Data, Data.Attack);
                 DamageSystem.Instance.ReportHit(damageInfo);
             }
+        }
+
+        private void FireMelee()
+        {
+            Vector3 forward = -_RealCamera.GlobalTransform.Basis.Z;
+            var target = MeleeDetection.FindTarget(GetWorld3D(), _Owner.GlobalPosition, forward, Data.MeleeRange, HitMask);
+            if (target == null)
+                return;
+
+            var damageInfo = new DamageInfo(target, target.GlobalPosition, Vector3.Up, _Owner.Data, Data.Attack);
+            DamageSystem.Instance.ReportHit(damageInfo);
         }
     }
 }

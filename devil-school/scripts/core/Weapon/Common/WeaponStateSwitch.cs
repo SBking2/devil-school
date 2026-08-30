@@ -15,7 +15,7 @@ namespace EGame
         {
             base.OnProcess(weapon, dt);
 
-            if(dt > GetSwitchTime(weapon))
+            if(_RunningTime > GetSwitchTime(weapon))
             {
                 weapon.ChangeState(WeaponConfig.Idle);
             }

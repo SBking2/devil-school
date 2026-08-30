@@ -21,25 +21,31 @@ namespace EGame
 
         public void TakeDamage(DamageInfo info)
         {
+            if (Data.HP <= 0)
+                return;    // 已经死了，不再触发受伤反馈
+
             Data.HP -= info.Amount;
+            NotifyEvent("TookDamage");
+
+            if (Data.HP <= 0)
+                OnDead();
+        }
+
+        public void OnDead()
+        {
+            AnimTrigger(AnimationConfig.DeadTrigger);
+            NotifyEvent("Dead");
+
+            GetTree().CreateTimer(3.0).Timeout += QueueFree;
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
         ////////                                    Intent 意图机制
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
-
+        
         //模拟角色的输入
         public AgentIntent Intent { get; private set; } = new AgentIntent();
         public Blackboard Blackboard { get; private set; } = new Blackboard();
-
-        private void OnIntentMovingChanged(Vector3 old_vel, Vector3 new_vel)
-        {
-            if (old_vel != Vector3.Zero && new_vel == Vector3.Zero)
-                AnimTrigger(AnimationConfig.IdleTrigger);
-
-            else if (old_vel == Vector3.Zero && new_vel != Vector3.Zero)
-                AnimTrigger(AnimationConfig.WalkTrigger);
-        }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
         ////////                                    Movement
@@ -200,12 +206,6 @@ namespace EGame
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-        public override void _Ready()
-        {
-            base._Ready();
-            Intent.OnWishDirChanged += OnIntentMovingChanged;
-        }
-
         public override void _PhysicsProcess(double delta)
         {
             base._PhysicsProcess(delta);

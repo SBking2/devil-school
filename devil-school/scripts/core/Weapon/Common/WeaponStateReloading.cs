@@ -9,7 +9,7 @@ namespace EGame
         {
             base.OnProcess(weapon, dt);
 
-            if (dt > GetReloadTime(weapon))
+            if (_RunningTime > GetReloadTime(weapon))
             {
                 weapon.ChangeState(WeaponConfig.Idle);
             }

@@ -29,7 +29,17 @@ namespace EGame
 
         public void TakeDamage(DamageInfo info)
         {
+            if (Data.HP <= 0)
+                return;    // 已经死了，不再触发受伤反馈
+
             Data.HP -= info.Amount;
+            if (Data.HP <= 0)
+                OnDead();
+        }
+
+        public void OnDead()
+        {
+            AnimTrigger(AnimationConfig.DeadTrigger);
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -238,9 +248,9 @@ namespace EGame
         private readonly float _RunBobRate = 1.2f;
         private readonly float _CrouchBobRate = 0.6f;
         private readonly float _MinBobSpeed = 0.3f;      //低于这个速度直接清零，不产生 bob
-
-        private readonly float _CameraBobRightScale = 0.01f;   //Bob水平幅度
-        private readonly float _CameraBobUpScale = 0.0035f;      //Bob垂直幅度
+        
+        private readonly float _CameraBobRightScale = 0.012f;   //Bob水平幅度
+        private readonly float _CameraBobUpScale = 0.004f;      //Bob垂直幅度
         private readonly float _CameraLookAheadDistance = 15f;
 
         private float _BobCycle;
@@ -598,6 +608,9 @@ namespace EGame
 
             var hand = ModelDB.Weapon<HandModel>() as WeaponModel;
             PickWeapon(NWeapon.Create(this, hand));
+
+            var pistol = ModelDB.Weapon<PistolModel>() as WeaponModel;
+            PickWeapon(NWeapon.Create(this, pistol));
         }
 
         public override void _Input(InputEvent @event)

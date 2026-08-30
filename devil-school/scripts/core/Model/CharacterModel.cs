@@ -6,6 +6,11 @@ namespace EGame
 {
     public abstract class CharacterModel : AbstractModel
     {
+        public CharacterModel()
+        {
+            _HP = MaxHP;
+        }
+
         public virtual int MaxHP => 10;
         public virtual float MoveSpeed => 8f;
         
@@ -27,6 +32,8 @@ namespace EGame
                 OnHPChanged?.Invoke(old, _HP);
             }
         }
+
+        public bool IsDead => _HP <= 0;
 
         protected virtual CreatureAnimator BuildAnimator(INCharacter character)
         {

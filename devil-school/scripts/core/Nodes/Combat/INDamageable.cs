@@ -3,6 +3,6 @@ namespace EGame
 {
     public interface INDamageable
     {
-        void TakeDamage(DamageInfo info);
+        public void TakeDamage(DamageInfo info);
     }
 }

@@ -17,7 +17,7 @@ namespace EGame
         {
             base.OnProcess(weapon, dt);
 
-            if (dt > GetFireGap(weapon))
+            if (_RunningTime > GetFireGap(weapon))
             {
                 weapon.ChangeState(WeaponConfig.Idle);
             }
