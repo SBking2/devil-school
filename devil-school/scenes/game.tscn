@@ -4,8 +4,11 @@
 [ext_resource type="Script" uid="uid://dsy8h32r4tgwf" path="res://scripts/Core/Nodes/Input/NInputManager.cs" id="3_lbhrr"]
 [ext_resource type="Material" uid="uid://22eyivixs4e3" path="res://material/world/init_world/ground_material.tres" id="4_0tnpc"]
 [ext_resource type="PackedScene" uid="uid://drjgdl7h8yx3o" path="res://scenes/dev_console/dev_console.tscn" id="4_lbhrr"]
+[ext_resource type="Texture2D" uid="uid://jp7i350gm2py" path="res://images/debug/godot_grey.png" id="5_0tnpc"]
 [ext_resource type="Script" uid="uid://cewmuls0i8ism" path="res://scripts/Core/Nodes/Level/MonsterSpawnPoint.cs" id="5_u5sy4"]
 [ext_resource type="ArrayMesh" uid="uid://sfy0lc88sv3n" path="res://models/characters/FieldFighter/FieldFighter.obj" id="5_vtaks"]
+[ext_resource type="Texture2D" uid="uid://45qnisd623xy" path="res://images/world/init_world/interior_tiles_arm_1k.jpg" id="6_vtaks"]
+[ext_resource type="Texture2D" uid="uid://cstharqsr6klo" path="res://images/world/init_world/interior_tiles_disp_1k.png" id="7_kvpfn"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_rmeui"]
 
@@ -15,6 +18,23 @@ ambient_light_color = Color(0.84709084, 0.87673146, 0.99999875, 1)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_a8vgt"]
 size = Vector3(200, 0.01, 200)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_p57ef"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dinhu"]
+albedo_texture = ExtResource("5_0tnpc")
+metallic = 1.0
+metallic_texture = ExtResource("6_vtaks")
+metallic_texture_channel = 2
+roughness_texture = ExtResource("6_vtaks")
+roughness_texture_channel = 1
+normal_texture = ExtResource("7_kvpfn")
+ao_enabled = true
+ao_texture = ExtResource("6_vtaks")
+heightmap_enabled = true
+
+[sub_resource type="BoxMesh" id="BoxMesh_p57ef"]
+material = SubResource("StandardMaterial3D_dinhu")
 
 [node name="NGame" type="Node" unique_id=943147096]
 script = ExtResource("1_uwrxv")
@@ -78,7 +98,53 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18.730509, -7.6293945e-06, -
 script = ExtResource("5_u5sy4")
 MonsterName = "Zombie"
 
+[node name="Box" type="StaticBody3D" parent="RootSceneContainer/InitWorld" unique_id=1406649030]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Box" unique_id=471000497]
+shape = SubResource("BoxShape3D_p57ef")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Box" unique_id=847940814]
+mesh = SubResource("BoxMesh_p57ef")
+
+[node name="Box2" type="StaticBody3D" parent="RootSceneContainer/InitWorld" unique_id=226901097]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1612031, 0.5, -0.99750876)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Box2" unique_id=2085984562]
+shape = SubResource("BoxShape3D_p57ef")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Box2" unique_id=1080302572]
+mesh = SubResource("BoxMesh_p57ef")
+
+[node name="Box3" type="StaticBody3D" parent="RootSceneContainer/InitWorld" unique_id=216748258]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.4931784, 1.7704881, -2.3775191)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Box3" unique_id=471782342]
+shape = SubResource("BoxShape3D_p57ef")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Box3" unique_id=1347634968]
+mesh = SubResource("BoxMesh_p57ef")
+
 [node name="InputManager" type="Node" parent="." unique_id=2078358983]
 script = ExtResource("3_lbhrr")
 
+[node name="UI" type="CanvasLayer" parent="." unique_id=1732458139]
+
+[node name="UIParent" type="Control" parent="UI" unique_id=1995746212]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
 [node name="DevConsole" parent="." unique_id=1579904544 instance=ExtResource("4_lbhrr")]
+layer = 2
+visible = false

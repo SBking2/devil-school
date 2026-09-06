@@ -26,7 +26,7 @@ namespace EGame
             float distance = agent.GlobalPosition.DistanceTo(player.GlobalPosition);
             if (distance > GetRange())
                 return BehaviorStatus.Failure;
-
+            
             agent.Intent.WishDir = Vector3.Zero;
             agent.Velocity = new Vector3(0, agent.Velocity.Y, 0);
 

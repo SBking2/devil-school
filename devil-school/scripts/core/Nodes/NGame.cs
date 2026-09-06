@@ -24,7 +24,15 @@ namespace EGame
         public override void _Ready()
         {
             base._Ready();
-			CreatePlayer();
+
+			InitManager();
+            CreatePlayer();
+        }
+
+		private void InitManager()
+		{
+            var ui_parent = GetNode<Control>("%UIParent");
+            UIManager.Instance.Init(ui_parent);
         }
 
 		private void CreatePlayer()
@@ -32,6 +40,8 @@ namespace EGame
             var creautre_parent = GetNode<Node3D>("%CreatureParent");
             PlayerNode = NPlayer.Create(new Player());
             creautre_parent.AddChild(PlayerNode);
+
+			UIManager.Instance.Show(UIPanelType.HudPanel);
         }
 	}
 }
