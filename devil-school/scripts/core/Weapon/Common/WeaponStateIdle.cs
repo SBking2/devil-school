@@ -9,7 +9,7 @@ namespace EGame
         {
             base.OnProcess(weapon, dt);
             if (weapon.Intent.Pressing)
-                weapon.ChangeState(WeaponConfig.Fire);
+                weapon.ChangeState(weapon.AttackStateName);
         }
     }
 }

@@ -17,7 +17,7 @@ namespace EGame
 
         protected virtual float GetReloadTime(NWeapon weapon)
         {
-            return weapon.ReloadTime;
+            return weapon.RangedData.ReloadTime;
         }
     }
 }

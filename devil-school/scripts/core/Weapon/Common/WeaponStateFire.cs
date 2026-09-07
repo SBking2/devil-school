@@ -25,7 +25,7 @@ namespace EGame
 
         protected virtual float GetFireGap(NWeapon weapon)
         {
-            return weapon.FireTime;
+            return weapon.RangedData.FireTime;
         }
     }
 }

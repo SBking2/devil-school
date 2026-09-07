@@ -4,6 +4,7 @@ using System.Collections.Generic;
 
 namespace EGame
 {
+    // 远程武器专用 Model：走射线检测，跟近战的 MeleeModel 是完全独立的两套
     public abstract class WeaponModel : AbstractModel
     {
         public virtual string PrefabName => "weapon/" + ID.Entry.ToLowerInvariant();
@@ -12,7 +13,6 @@ namespace EGame
         public virtual float ReloadTime => 2f;
         public virtual float FireTime => 1f;
         public virtual UInt16 HitMask => (UInt16)(CollisionMask.GrandMask | CollisionMask.MonsterMask);
-        public virtual float MeleeRange => 0f;    // 0 = 远程(走射线检测)，大于 0 = 近战(走距离判断)，值就是攻击距离
         public virtual string SwitchAnimTrigger => "switch";
         public virtual string ReloadAnimTrigger => "reload";
         public virtual string FireAnimTrigger => "fire";

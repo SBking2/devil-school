@@ -558,7 +558,7 @@ namespace EGame
                 _CurrentWeaponIndex = index;
                 var weapon = _Weapons[_CurrentWeaponIndex];
                 weapon.Equip();
-                AnimTrigger(weapon.Data.SwitchAnimTrigger);
+                AnimTrigger(weapon.SwitchAnimTrigger);
             }
         }
 
@@ -606,7 +606,7 @@ namespace EGame
             _EyesPos = _StandHeight - _EyeOffsetFromTop;
             _PitchNode.Position = new Vector3(0.0f, _EyesPos, 0.0f);
 
-            var hand = ModelDB.Weapon<HandModel>() as WeaponModel;
+            var hand = ModelDB.Melee<HandModel>() as MeleeModel;
             PickWeapon(NWeapon.Create(this, hand));
 
             var pistol = ModelDB.Weapon<PistolModel>() as WeaponModel;

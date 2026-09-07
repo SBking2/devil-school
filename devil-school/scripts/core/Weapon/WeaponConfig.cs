@@ -7,5 +7,6 @@ namespace EGame
         public static string Fire = "fire";
         public static string Reload = "reload";
         public static string Switch = "switch";
+        public static string MeleeAttack = "melee_attack";
     }
 }

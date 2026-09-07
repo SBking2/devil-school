@@ -10,15 +10,27 @@ namespace EGame
         public static NWeapon Create(NPlayer player, WeaponModel model)
         {
             var instance = SceneHelper.LoadScene<NWeapon>(model.PrefabName);
-            instance.Data = model;
+            instance.RangedData = model;
             instance._Owner = player;
-            instance.Data.OnWeaponCreated(instance);
+            instance.RangedData.OnWeaponCreated(instance);
+            return instance;
+        }
+
+        public static NWeapon Create(NPlayer player, MeleeModel model)
+        {
+            var instance = SceneHelper.LoadScene<NWeapon>(model.PrefabName);
+            instance.MeleeData = model;
+            instance._Owner = player;
+            instance.MeleeData.OnWeaponCreated(instance);
             return instance;
         }
 
         private Camera3D _RealCamera;
         private NPlayer _Owner;
-        public WeaponModel Data { get; private set; }
+
+        // 远程和近战是两套完全独立的 Model，一把武器只会用到其中一个，另一个是 null
+        public WeaponModel RangedData { get; private set; }
+        public MeleeModel MeleeData { get; private set; }
 
         public override void _Ready()
         {
@@ -27,11 +39,12 @@ namespace EGame
         }
 
         public Node3D ShootPos => _RealCamera;
-        public float ReloadTime => Data.ReloadTime;
-        public float SwitchTime => Data.SwitchTime;
-        public float FireTime => Data.FireTime;
-        public UInt16 HitMask => Data.HitMask;
+        public float SwitchTime => RangedData != null ? RangedData.SwitchTime : MeleeData.SwitchTime;
+        public string SwitchAnimTrigger => RangedData != null ? RangedData.SwitchAnimTrigger : MeleeData.SwitchAnimTrigger;
         public WeaponIntent Intent { get; set; } = new WeaponIntent();
+
+        // 按下攻击键之后该进哪个状态：近战走连招状态，远程直接开火
+        public string AttackStateName => MeleeData != null ? WeaponConfig.MeleeAttack : WeaponConfig.Fire;
 
         public void Equip()
         {
@@ -46,9 +59,9 @@ namespace EGame
             this.SetActive(false);
         }
 
-        public void TriggerAnim()
+        public void TriggerAnim(string trigger)
         {
-            _Owner.AnimTrigger(Data.FireAnimTrigger);
+            _Owner.AnimTrigger(trigger);
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -97,17 +110,11 @@ namespace EGame
         ///////                                        State-Machine
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        /// <summary>
-        /// 远程走射线检测，近战走距离判断
-        /// </summary>
+        // 远程：WeaponStateFire 进入时立刻打一发（近战不走这个状态，见 AttackStateName）
         public void FireInternal()
         {
-            TriggerAnim();
-
-            if (Data.MeleeRange > 0f)
-                FireMelee();
-            else
-                FireRanged();
+            TriggerAnim(RangedData.FireAnimTrigger);
+            FireRanged();
         }
 
         private void FireRanged()
@@ -117,7 +124,7 @@ namespace EGame
             var to = from + (-_RealCamera.GlobalTransform.Basis.Z) * 100f;
 
             var query = PhysicsRayQueryParameters3D.Create(from, to);
-            query.CollisionMask = HitMask;
+            query.CollisionMask = RangedData.HitMask;
 
             var result = space_state.IntersectRay(query);
             if (result.Count > 0)
@@ -126,20 +133,9 @@ namespace EGame
                 Vector3 hitPoint = (Vector3)result["position"];
                 Vector3 hitNormal = (Vector3)result["normal"];
 
-                var damageInfo = new DamageInfo(hitObject, hitPoint, hitNormal, _Owner.Data, Data.Attack);
+                var damageInfo = new DamageInfo(hitObject, hitPoint, hitNormal, _Owner.Data, RangedData.Attack);
                 DamageSystem.Instance.ReportHit(damageInfo);
             }
-        }
-
-        private void FireMelee()
-        {
-            Vector3 forward = -_RealCamera.GlobalTransform.Basis.Z;
-            var target = MeleeDetection.FindTarget(GetWorld3D(), _Owner.GlobalPosition, forward, Data.MeleeRange, HitMask);
-            if (target == null)
-                return;
-
-            var damageInfo = new DamageInfo(target, target.GlobalPosition, Vector3.Up, _Owner.Data, Data.Attack);
-            DamageSystem.Instance.ReportHit(damageInfo);
         }
     }
 }

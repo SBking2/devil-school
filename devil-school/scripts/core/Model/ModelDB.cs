@@ -60,6 +60,11 @@ namespace EGame
             return Get<T>() as WeaponModel;
         }
 
+        public static MeleeModel Melee<T>() where T : MeleeModel
+        {
+            return Get<T>() as MeleeModel;
+        }
+
         private static AbstractModel Get<T>() where T : AbstractModel
         {
             return Get(typeof(T));
