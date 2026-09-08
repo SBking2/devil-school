@@ -46,11 +46,18 @@ unique_name_in_owner = true
 [node name="arms_rig" parent="CameraLand/Pitch/CameraLean/CameraBob/RealCamera/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil" unique_id=211908957 instance=ExtResource("2_iivv4")]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 1.1104848e-08, -1.7900554, -0.12702465)
 
-[node name="WeaponParent" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/RealCamera/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil" unique_id=1098136366]
+[node name="BoneAttachment3D" type="BoneAttachment3D" parent="CameraLand/Pitch/CameraLean/CameraBob/RealCamera/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil/arms_rig/ArmsRig/Skeleton3D" parent_id_path=PackedInt32Array(211908957, 632050430) index="1" unique_id=955433695]
+transform = Transform3D(-0.23898768, 0.22770408, 0.94394684, 0.28498244, -0.9128598, 0.2923565, 0.928262, 0.33887804, 0.15327081, -0.0030683489, -0.0024624788, 0.015237749)
+bone_name = "hand.R"
+bone_idx = 4
+
+[node name="WeaponParent" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/RealCamera/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil/arms_rig/ArmsRig/Skeleton3D/BoneAttachment3D" unique_id=1098136366]
 unique_name_in_owner = true
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 5.3106843e-09, -1.7593261, -0.060747147)
+transform = Transform3D(0.010000001, 0, 0, 0, 0.009999997, 0, 0, 0, 0.01, 0, 0, 0)
 
 [node name="MoveCollider" type="CollisionShape3D" parent="." unique_id=745978355]
 unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 shape = SubResource("CapsuleShape3D_dcsok")
+
+[editable path="CameraLand/Pitch/CameraLean/CameraBob/RealCamera/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil/arms_rig"]

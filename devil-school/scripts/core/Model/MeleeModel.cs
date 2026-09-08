@@ -13,11 +13,10 @@ namespace EGame
         // 连击段数，每一段自己一套时间轴，下标按 comboIndex 取
         public virtual int ComboCount => 1;
 
-        // 攻击阶段时间轴，顺序不重叠：lock -> 前摇(windup) -> release_input -> combo -> exit
-        // lock：完全锁定，不读输入；windup：播前摇动画；release_input：期间的输入会被记录，留到 combo 阶段一进入就触发下一段；
+        // 攻击阶段时间轴，顺序不重叠：lock -> release_input -> combo -> exit
+        // lock：完全锁定，不读输入，前摇动画就在这段播；release_input：期间的输入会被记录，留到 combo 阶段一进入就触发下一段；
         // combo：期间只要有输入（含 release_input 阶段缓冲下来的）就立刻进下一段；exit：连击已经断了，纯等这段攻击收尾
-        public virtual float GetLockTime(int comboIndex) => 0.05f;
-        public virtual float GetWindupTime(int comboIndex) => 0.2f;
+        public virtual float GetLockTime(int comboIndex) => 0.25f;
         public virtual float GetReleaseInputTime(int comboIndex) => 0.1f;
         public virtual float GetComboTime(int comboIndex) => 0.2f;
         public virtual float GetExitTime(int comboIndex) => 0.3f;

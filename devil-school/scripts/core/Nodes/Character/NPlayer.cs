@@ -607,10 +607,21 @@ namespace EGame
             _PitchNode.Position = new Vector3(0.0f, _EyesPos, 0.0f);
 
             var hand = ModelDB.Melee<HandModel>() as MeleeModel;
-            PickWeapon(NWeapon.Create(this, hand));
+            var hand_weapon = NWeapon.Create(this, hand);
+            PickWeapon(hand_weapon); // AddChild 之后 NWeapon._Ready() 才跑完，AttackCollision 才有值
+            hand_weapon.AttackCollision.BodyEntered += (body) => OnMeleeHit(hand_weapon, body);
 
             var pistol = ModelDB.Weapon<PistolModel>() as WeaponModel;
             PickWeapon(NWeapon.Create(this, pistol));
+        }
+
+        // 近战武器的 AttackCollision 扫到目标时调用，伤害按这一下命中时的连击段数取
+        private void OnMeleeHit(NWeapon weapon, Node3D body)
+        {
+            Log.Debug($"[MeleeHit] 打到了: {body.Name}");
+            int damage = weapon.MeleeData.GetDamage(weapon.CurrentComboIndex);
+            var damageInfo = new DamageInfo(body, body.GlobalPosition, Vector3.Up, Data, damage);
+            DamageSystem.Instance.ReportHit(damageInfo);
         }
 
         public override void _Input(InputEvent @event)

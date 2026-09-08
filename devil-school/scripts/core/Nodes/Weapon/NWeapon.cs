@@ -7,6 +7,10 @@ namespace EGame
 {
     public partial class NWeapon : Node3D
     {
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////                                        Create
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
         public static NWeapon Create(NPlayer player, WeaponModel model)
         {
             var instance = SceneHelper.LoadScene<NWeapon>(model.PrefabName);
@@ -25,6 +29,10 @@ namespace EGame
             return instance;
         }
 
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////                                        Data
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
         private Camera3D _RealCamera;
         private NPlayer _Owner;
 
@@ -32,19 +40,34 @@ namespace EGame
         public WeaponModel RangedData { get; private set; }
         public MeleeModel MeleeData { get; private set; }
 
-        public override void _Ready()
-        {
-            base._Ready();
-            _RealCamera = _Owner.GetNode<Camera3D>("%RealCamera");
-        }
+        public WeaponIntent Intent { get; set; } = new WeaponIntent();
+
+        // 近战武器身上开关的攻击判定区域，不是每把武器都有（远程武器就是 null）
+        public Area3D AttackCollision { get; private set; }
+
+        // WeaponStateMeleeAttack 维护，当前打到第几段连击，AttackCollision 命中时用这个查这一下的伤害
+        public int CurrentComboIndex { get; set; }
 
         public Node3D ShootPos => _RealCamera;
         public float SwitchTime => RangedData != null ? RangedData.SwitchTime : MeleeData.SwitchTime;
         public string SwitchAnimTrigger => RangedData != null ? RangedData.SwitchAnimTrigger : MeleeData.SwitchAnimTrigger;
-        public WeaponIntent Intent { get; set; } = new WeaponIntent();
 
         // 按下攻击键之后该进哪个状态：近战走连招状态，远程直接开火
         public string AttackStateName => MeleeData != null ? WeaponConfig.MeleeAttack : WeaponConfig.Fire;
+
+        public override void _Ready()
+        {
+            base._Ready();
+            _RealCamera = _Owner.GetNode<Camera3D>("%RealCamera");
+
+            AttackCollision = GetNodeOrNull<Area3D>("%AttackCollision");
+            if (AttackCollision != null)
+                AttackCollision.Monitoring = false;    // 默认关着，只有攻击开窗那段时间才打开
+        }
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////                                        Equip
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         public void Equip()
         {
@@ -107,7 +130,7 @@ namespace EGame
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
-        ///////                                        State-Machine
+        ///////                                        Ranged Attack
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         // 远程：WeaponStateFire 进入时立刻打一发（近战不走这个状态，见 AttackStateName）

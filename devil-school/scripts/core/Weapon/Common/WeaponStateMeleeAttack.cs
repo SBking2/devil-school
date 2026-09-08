@@ -1,13 +1,13 @@
 
 namespace EGame
 {
-    // 近战攻击：阶段轨道 lock -> 前摇(windup) -> release_input -> combo -> exit 决定连击怎么走；
+    // 近战攻击：阶段轨道 lock -> release_input -> combo -> exit 决定连击怎么走；
     // 碰撞体开关是另一套独立轨道，从每段攻击的 lock 开始单独计时，不受阶段切换影响
     public class WeaponStateMeleeAttack : WeaponState
     {
         public override string StateName => WeaponConfig.MeleeAttack;
 
-        private enum Phase { Lock, Windup, ReleaseInput, Combo, Exit }
+        private enum Phase { Lock, ReleaseInput, Combo, Exit }
 
         private Phase _Phase;
         private double _PhaseTime;
@@ -16,7 +16,7 @@ namespace EGame
         private bool _BufferedNextAttack;
         private bool _HitboxOpen;
 
-        public override void OnEnter(NWeapon weapon)
+        public override void OnEnter(NWeapon weapon) 
         {
             base.OnEnter(weapon);
             _ComboIndex = 0;
@@ -34,11 +34,6 @@ namespace EGame
             {
                 case Phase.Lock:
                     if (_PhaseTime > model.GetLockTime(_ComboIndex))
-                        EnterPhase(weapon, Phase.Windup);
-                    break;
-
-                case Phase.Windup:
-                    if (_PhaseTime > model.GetWindupTime(_ComboIndex))
                         EnterPhase(weapon, Phase.ReleaseInput);
                     break;
 
@@ -68,24 +63,23 @@ namespace EGame
                     break;
             }
 
-            UpdateHitbox(model);
+            UpdateHitbox(weapon, model);
         }
 
-        private void UpdateHitbox(MeleeModel model)
+        private void UpdateHitbox(NWeapon weapon, MeleeModel model)
         {
             bool should_open = _StepTime >= model.GetHitboxOpenTime(_ComboIndex) && _StepTime < model.GetHitboxCloseTime(_ComboIndex);
-            if (should_open == _HitboxOpen)
+            SetHitboxOpen(weapon, should_open);
+        }
+
+        private void SetHitboxOpen(NWeapon weapon, bool open)
+        {
+            if (open == _HitboxOpen)
                 return;
 
-            _HitboxOpen = should_open;
-            if (_HitboxOpen)
-            {
-                // TODO: 开启碰撞体
-            }
-            else
-            {
-                // TODO: 关闭碰撞体
-            }
+            _HitboxOpen = open;
+            if (weapon.AttackCollision != null)
+                weapon.AttackCollision.Monitoring = open;
         }
 
         private void EnterPhase(NWeapon weapon, Phase phase)
@@ -97,11 +91,8 @@ namespace EGame
             {
                 _StepTime = 0;
                 _BufferedNextAttack = false;
-                if (_HitboxOpen)
-                {
-                    _HitboxOpen = false;
-                    // TODO: 关闭碰撞体
-                }
+                weapon.CurrentComboIndex = _ComboIndex;
+                SetHitboxOpen(weapon, false);
                 weapon.TriggerAnim(weapon.MeleeData.GetAnimTrigger(_ComboIndex));
             }
         }

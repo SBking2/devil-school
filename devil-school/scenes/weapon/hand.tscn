@@ -2,5 +2,18 @@
 
 [ext_resource type="Script" uid="uid://cs6iryxdoic8n" path="res://scripts/Core/Nodes/Weapon/NWeapon.cs" id="1_ojdan"]
 
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_ojdan"]
+radius = 0.17
+height = 0.54
+
 [node name="Hand" type="Node3D" unique_id=1575290324]
 script = ExtResource("1_ojdan")
+
+[node name="AttackCollision" type="Area3D" parent="." unique_id=35614392]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 0.94147056, -0.33709526, 0, 0.33709526, 0.94147056, 0, 0.194, 0.056)
+collision_layer = 16
+collision_mask = 8
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="AttackCollision" unique_id=2058048797]
+shape = SubResource("CapsuleShape3D_ojdan")
