@@ -9,15 +9,30 @@ namespace EGame
     {
         private double _CooldownTimer;
 
+        // 前摇：进节点先播动画，等前摇打完才真正判定伤害，不能一进节点就秒打
+        private bool _IsWindingUp;
+        private double _WindupTimer;
+
         protected override BehaviorStatus OnTick(NAgent agent, double dt)
         {
-            _CooldownTimer -= dt;
-            if (_CooldownTimer > 0)
+            agent.Intent.WishDir = Vector3.Zero;
+            agent.Velocity = new Vector3(0, agent.Velocity.Y, 0);
+
+            if (_IsWindingUp)
             {
-                agent.Intent.WishDir = Vector3.Zero;
-                agent.Velocity = new Vector3(0, agent.Velocity.Y, 0);
+                _WindupTimer -= dt;
+                if (_WindupTimer > 0)
+                    return BehaviorStatus.Running;
+
+                _IsWindingUp = false;
+                FireMelee(agent);
+                _CooldownTimer = GetCooldown();
                 return BehaviorStatus.Running;
             }
+
+            _CooldownTimer -= dt;
+            if (_CooldownTimer > 0)
+                return BehaviorStatus.Running;
 
             var player = NGame.Instance?.PlayerNode;
             if (player == null)
@@ -26,21 +41,17 @@ namespace EGame
             float distance = agent.GlobalPosition.DistanceTo(player.GlobalPosition);
             if (distance > GetRange())
                 return BehaviorStatus.Failure;
-            
-            agent.Intent.WishDir = Vector3.Zero;
-            agent.Velocity = new Vector3(0, agent.Velocity.Y, 0);
 
             agent.AnimTrigger(AnimationConfig.AttackTrigger);
-            FireMelee(agent);
-
-            _CooldownTimer = GetCooldown();
+            _IsWindingUp = true;
+            _WindupTimer = GetWindupTime();
             return BehaviorStatus.Running;
         }
 
         private void FireMelee(NAgent agent)
         {
             Vector3 forward = -agent.GlobalTransform.Basis.Z;
-            var target = MeleeDetection.FindTarget(agent.GetWorld3D(), agent.GlobalPosition, forward, GetRange(), CollisionMask.PlayerMask);
+            var target = CollisionDetection.FindMeleeTarget(agent.GetWorld3D(), agent.GlobalPosition, forward, GetRange(), CollisionMask.PlayerMask);
             if (target == null)
                 return;
 
@@ -61,6 +72,11 @@ namespace EGame
         protected virtual float GetCooldown()
         {
             return 1.5f;
+        }
+
+        protected virtual float GetWindupTime()
+        {
+            return 0.5f;
         }
     }
 }

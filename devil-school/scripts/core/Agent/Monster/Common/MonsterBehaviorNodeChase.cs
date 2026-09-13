@@ -11,7 +11,7 @@ namespace EGame
             if (player == null)
                 return BehaviorStatus.Failure;
 
-            if (RunningTime <= 0)
+            if (IsFirstTick)
                 agent.AnimTrigger(AnimationConfig.WalkTrigger);
 
             Vector3 toPlayer = player.GlobalPosition - agent.GlobalPosition;

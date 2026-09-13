@@ -249,8 +249,8 @@ namespace EGame
         private readonly float _CrouchBobRate = 0.6f;
         private readonly float _MinBobSpeed = 0.3f;      //低于这个速度直接清零，不产生 bob
         
-        private readonly float _CameraBobRightScale = 0.012f;   //Bob水平幅度
-        private readonly float _CameraBobUpScale = 0.004f;      //Bob垂直幅度
+        private readonly float _CameraBobRightScale = 0.009f;   //Bob水平幅度
+        private readonly float _CameraBobUpScale = 0.0025f;      //Bob垂直幅度
         private readonly float _CameraLookAheadDistance = 15f;
 
         private float _BobCycle;
@@ -524,14 +524,37 @@ namespace EGame
         //////                                          武器管理
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        private Node3D _WeaponParent;
+        private Dictionary<string, BoneAttachment3D> _BoneAttachmentDic = new Dictionary<string, BoneAttachment3D>();
         private List<NWeapon> _Weapons = new List<NWeapon>();
         private int _CurrentWeaponIndex = -1;
         private bool WeaponIndexValid => _CurrentWeaponIndex >= 0 && _CurrentWeaponIndex < _Weapons.Count;
 
+        private void RegisterWeaponBoneAttachment()
+        {
+            var model = GetNodeOrNull<Node3D>("%Model");
+            if(model != null)
+            {
+                var bone_attach_ments = FindChildren("*", nameof(BoneAttachment3D), true);
+                foreach(var bone in bone_attach_ments)
+                {
+                    if (_BoneAttachmentDic.ContainsKey(bone.Name) == false)
+                        _BoneAttachmentDic.Add(bone.Name, bone as BoneAttachment3D);
+                }
+            }
+        }
+
         private void PickWeapon(NWeapon weapon)
         {
-            _WeaponParent.AddChild(weapon);
+            var parent_name = weapon.Data.ParentName;
+            if (_BoneAttachmentDic.ContainsKey(parent_name))
+            {
+                _BoneAttachmentDic[parent_name].AddChild(weapon);
+                weapon.Position = Vector3.Zero;
+                weapon.Quaternion = Quaternion.Identity;
+                weapon.Scale = Vector3.One * 0.01f;
+            }
+            else
+                throw new InvalidOperationException($"Unknow weapon parent : {parent_name}");
 
             _Weapons.Add(weapon);
             SetWeapon(_Weapons.Count - 1);
@@ -558,7 +581,7 @@ namespace EGame
                 _CurrentWeaponIndex = index;
                 var weapon = _Weapons[_CurrentWeaponIndex];
                 weapon.Equip();
-                AnimTrigger(weapon.SwitchAnimTrigger);
+                AnimTrigger(weapon.Data.SwitchAnimTrigger);
             }
         }
 
@@ -601,24 +624,25 @@ namespace EGame
             _WeaponSwayNode = GetNodeOrNull<Node3D>("%WeaponSway");
             _WeaponSpeedPullNode = GetNodeOrNull<Node3D>("%WeaponSpeedPull");
             _WeaponLandingNode = GetNodeOrNull<Node3D>("%WeaponLanding");
-            _WeaponParent = GetNode<Node3D>("%WeaponParent");
 
             _EyesPos = _StandHeight - _EyeOffsetFromTop;
             _PitchNode.Position = new Vector3(0.0f, _EyesPos, 0.0f);
 
-            var hand = ModelDB.Melee<HandModel>() as MeleeModel;
+            RegisterWeaponBoneAttachment();
+
+            var hand = ModelDB.MeleeWeapon<SwordModel>() as MeleeWeaponModel;
             var hand_weapon = NWeapon.Create(this, hand);
             PickWeapon(hand_weapon); // AddChild 之后 NWeapon._Ready() 才跑完，AttackCollision 才有值
             hand_weapon.AttackCollision.BodyEntered += (body) => OnMeleeHit(hand_weapon, body);
 
-            var pistol = ModelDB.Weapon<PistolModel>() as WeaponModel;
-            PickWeapon(NWeapon.Create(this, pistol));
+            /*var pistol = ModelDB.RangedWeapon<PistolModel>() as RangedWeaponModel;
+            PickWeapon(NWeapon.Create(this, pistol));*/
         }
 
         // 近战武器的 AttackCollision 扫到目标时调用，伤害按这一下命中时的连击段数取
         private void OnMeleeHit(NWeapon weapon, Node3D body)
         {
-            Log.Debug($"[MeleeHit] 打到了: {body.Name}");
+            Log.VeryDebug($"[MeleeHit] 打到了: {body.Name}");
             int damage = weapon.MeleeData.GetDamage(weapon.CurrentComboIndex);
             var damageInfo = new DamageInfo(body, body.GlobalPosition, Vector3.Up, Data, damage);
             DamageSystem.Instance.ReportHit(damageInfo);

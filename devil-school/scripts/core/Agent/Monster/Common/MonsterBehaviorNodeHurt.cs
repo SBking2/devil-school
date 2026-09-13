@@ -19,7 +19,7 @@ namespace EGame
             if (_HurtTimer <= 0)
                 return BehaviorStatus.Failure;
 
-            if (RunningTime <= 0)
+            if (IsFirstTick)
                 agent.AnimTrigger(AnimationConfig.HurtTrigger);
 
             agent.Intent.WishDir = Vector3.Zero;

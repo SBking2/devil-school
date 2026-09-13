@@ -11,7 +11,7 @@ namespace EGame
         ///////                                        Create
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        public static NWeapon Create(NPlayer player, WeaponModel model)
+        public static NWeapon Create(NPlayer player, RangedWeaponModel model)
         {
             var instance = SceneHelper.LoadScene<NWeapon>(model.PrefabName);
             instance.RangedData = model;
@@ -20,7 +20,7 @@ namespace EGame
             return instance;
         }
 
-        public static NWeapon Create(NPlayer player, MeleeModel model)
+        public static NWeapon Create(NPlayer player, MeleeWeaponModel model)
         {
             var instance = SceneHelper.LoadScene<NWeapon>(model.PrefabName);
             instance.MeleeData = model;
@@ -37,8 +37,18 @@ namespace EGame
         private NPlayer _Owner;
 
         // 远程和近战是两套完全独立的 Model，一把武器只会用到其中一个，另一个是 null
-        public WeaponModel RangedData { get; private set; }
-        public MeleeModel MeleeData { get; private set; }
+        public RangedWeaponModel RangedData { get; private set; }
+        public MeleeWeaponModel MeleeData { get; private set; }
+        public WeaponModel Data
+        {
+            get
+            {
+                if(RangedData == null)
+                    return MeleeData as WeaponModel;
+
+                return RangedData as WeaponModel;
+            }
+        }
 
         public WeaponIntent Intent { get; set; } = new WeaponIntent();
 
@@ -49,11 +59,6 @@ namespace EGame
         public int CurrentComboIndex { get; set; }
 
         public Node3D ShootPos => _RealCamera;
-        public float SwitchTime => RangedData != null ? RangedData.SwitchTime : MeleeData.SwitchTime;
-        public string SwitchAnimTrigger => RangedData != null ? RangedData.SwitchAnimTrigger : MeleeData.SwitchAnimTrigger;
-
-        // 按下攻击键之后该进哪个状态：近战走连招状态，远程直接开火
-        public string AttackStateName => MeleeData != null ? WeaponConfig.MeleeAttack : WeaponConfig.Fire;
 
         public override void _Ready()
         {
@@ -136,26 +141,18 @@ namespace EGame
         // 远程：WeaponStateFire 进入时立刻打一发（近战不走这个状态，见 AttackStateName）
         public void FireInternal()
         {
-            TriggerAnim(RangedData.FireAnimTrigger);
+            TriggerAnim(WeaponConfig.GetAttackAnimTrigger(RangedData.Type, 0));
             FireRanged();
         }
 
         private void FireRanged()
         {
-            var space_state = GetWorld3D().DirectSpaceState;
             var from = ShootPos.GlobalPosition;
             var to = from + (-_RealCamera.GlobalTransform.Basis.Z) * 100f;
+            uint mask = (uint)(CollisionMask.GrandMask | CollisionMask.MonsterMask);
 
-            var query = PhysicsRayQueryParameters3D.Create(from, to);
-            query.CollisionMask = RangedData.HitMask;
-
-            var result = space_state.IntersectRay(query);
-            if (result.Count > 0)
+            if (CollisionDetection.FindRayTarget(GetWorld3D(), from, to, mask, out Node3D hitObject, out Vector3 hitPoint, out Vector3 hitNormal))
             {
-                Node3D hitObject = (Node3D)result["collider"];
-                Vector3 hitPoint = (Vector3)result["position"];
-                Vector3 hitNormal = (Vector3)result["normal"];
-
                 var damageInfo = new DamageInfo(hitObject, hitPoint, hitNormal, _Owner.Data, RangedData.Attack);
                 DamageSystem.Instance.ReportHit(damageInfo);
             }

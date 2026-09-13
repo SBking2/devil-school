@@ -1,38 +1,28 @@
 
-using System;
-using System.Collections.Generic;
-
 namespace EGame
 {
-    // 远程武器专用 Model：走射线检测，跟近战的 MeleeModel 是完全独立的两套
+    // 武器公共基类：远程(RangedWeaponModel)和近战(MeleeWeaponModel)在这里分叉，只放两边都要用的东西
     public abstract class WeaponModel : AbstractModel
     {
+        // 武器类型：动画 trigger 名字统一按这个从 WeaponConfig 里查，不用每把武器自己声明一遍
+        public enum WeaponType
+        {
+            Hand,
+            Pistol,
+            Sword,
+        }
+
+        public abstract string ParentName { get; }
+        public abstract WeaponType Type { get; }
         public virtual string PrefabName => "weapon/" + ID.Entry.ToLowerInvariant();
-        public virtual int Attack => 2;
         public virtual float SwitchTime => 0.3f;
-        public virtual float ReloadTime => 2f;
-        public virtual float FireTime => 1f;
-        public virtual UInt16 HitMask => (UInt16)(CollisionMask.GrandMask | CollisionMask.MonsterMask);
-        public virtual string SwitchAnimTrigger => "switch";
-        public virtual string ReloadAnimTrigger => "reload";
-        public virtual string FireAnimTrigger => "fire";
+        public string SwitchAnimTrigger => WeaponConfig.GetSwitchAnimTrigger(Type);
 
         public override void OnWeaponCreated(NWeapon weapon)
         {
             BuildStateMachine(weapon);
         }
 
-        protected virtual void BuildStateMachine(NWeapon weapon)
-        {
-            var idle = new WeaponStateIdle();
-            var fire = new WeaponStateFire();
-            var switch_state = new WeaponStateSwitch();
-            var switch_reloading = new WeaponStateReloading();
-
-            weapon.BuildStateMachine(new List<WeaponState>()
-            {
-                idle, fire, switch_state, switch_reloading
-            }, idle);
-        }
+        protected abstract void BuildStateMachine(NWeapon weapon);
     }
 }

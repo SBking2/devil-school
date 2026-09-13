@@ -16,7 +16,7 @@ namespace EGame
             if (!_IsDead)
                 return BehaviorStatus.Failure;
 
-            if (RunningTime <= 0)
+            if (IsFirstTick)
                 agent.AnimTrigger(AnimationConfig.DeadTrigger);
 
             agent.Intent.WishDir = Vector3.Zero;

@@ -11,8 +11,6 @@ namespace EGame
     {
         private static Dictionary<ModelID, AbstractModel> _ModelInstance = new Dictionary<ModelID, AbstractModel>();
 
-        private static Log.Logger _Logger = new Log.Logger(Log.LogType.Generic);
-
         public static void OnInit()
         {
             var all_subtypes = AbstractModelSubtypes.AllSubTypes;
@@ -21,7 +19,7 @@ namespace EGame
                 var instance = (AbstractModel)Activator.CreateInstance(type);
                 var id = ToModelID(type);
                 _ModelInstance.Add(id, instance);
-                _Logger.Debug($"Loaded Data : {id.ToString()}");
+                Log.Debug($"Loaded Data : {id.ToString()}", type: Log.LogType.Generic);
             }
         }
 
@@ -55,14 +53,14 @@ namespace EGame
             return Get<T>() as PlayerModel;
         }
 
-        public static WeaponModel Weapon<T>() where T : WeaponModel
+        public static RangedWeaponModel RangedWeapon<T>() where T : RangedWeaponModel
         {
-            return Get<T>() as WeaponModel;
+            return Get<T>() as RangedWeaponModel;
         }
 
-        public static MeleeModel Melee<T>() where T : MeleeModel
+        public static MeleeWeaponModel MeleeWeapon<T>() where T : MeleeWeaponModel
         {
-            return Get<T>() as MeleeModel;
+            return Get<T>() as MeleeWeaponModel;
         }
 
         private static AbstractModel Get<T>() where T : AbstractModel

@@ -1,9 +1,9 @@
 
 namespace EGame
 {
-    public class HandModel : MeleeModel
+    public class HandModel : MeleeWeaponModel
     {
-        public override string SwitchAnimTrigger => "hand_switch";
-        public override string GetAnimTrigger(int comboIndex) => "hand_fire";
+        public override string ParentName => "hand_r";
+        public override WeaponType Type => WeaponType.Hand;
     }
 }

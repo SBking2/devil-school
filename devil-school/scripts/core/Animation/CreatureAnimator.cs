@@ -15,7 +15,6 @@ namespace EGame
         private AnimState _CurrentState;
 
         private readonly AnimState _AnyState;   //CallTrigger的时候优先查这个状态
-        private Log.Logger _Logger = new Log.Logger(Log.LogType.World);
 
         public CreatureAnimator(AnimState init_state)
         {
@@ -59,6 +58,7 @@ namespace EGame
 
             _CurrentState = state;
             _AnimPlayer.Play(_CurrentState.ID, _CurrentState.MixDuration);
+            _AnimPlayer.Seek(0, true);
             anim.LoopMode = _CurrentState.IsLoop ? Animation.LoopModeEnum.Linear : Animation.LoopModeEnum.None;
 
             //递归添加下一状态
@@ -91,14 +91,14 @@ namespace EGame
             
             if(_AnimPlayer.HasAnimation(state.ID) == false)
             {
-                _Logger.Warn($"AnimationPlayer missing animation: {state.ID}");
+                Warn($"AnimationPlayer missing animation: {state.ID}", type: LogType.World);
                 return false;
             }
 
             anim = _AnimPlayer.GetAnimation(state.ID);
             if(anim == null)
             {
-                _Logger.Warn($"AnimationPlayer animation is null: {state.ID}");
+                Warn($"AnimationPlayer animation is null: {state.ID}", type: LogType.World);
                 return false;
             }
 

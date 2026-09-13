@@ -8,7 +8,6 @@ namespace EGame
     {
         public static UIManager Instance { get; } = new UIManager();
 
-        private Log.Logger _Logger = new Log.Logger(Log.LogType.Generic);
         private Node _Root;
         private Dictionary<UIPanelType, NAbstractPanel> _Panels = new Dictionary<UIPanelType, NAbstractPanel>();
 
@@ -60,7 +59,7 @@ namespace EGame
 
             if (_Root == null)
             {
-                _Logger.Error($"UIManager未Init就尝试打开面板 {type}");
+                Log.Error($"UIManager未Init就尝试打开面板 {type}", type: Log.LogType.Generic);
                 return null;
             }
 

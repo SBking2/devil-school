@@ -23,7 +23,7 @@ namespace EGame
 
         protected virtual float GetSwitchTime(NWeapon weapon)
         {
-            return weapon.SwitchTime;
+            return weapon.Data.SwitchTime;
         }
     }
 }

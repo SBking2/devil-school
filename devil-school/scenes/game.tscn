@@ -10,11 +10,11 @@
 [ext_resource type="Texture2D" uid="uid://45qnisd623xy" path="res://images/world/init_world/interior_tiles_arm_1k.jpg" id="6_vtaks"]
 [ext_resource type="Texture2D" uid="uid://cstharqsr6klo" path="res://images/world/init_world/interior_tiles_disp_1k.png" id="7_kvpfn"]
 
-[sub_resource type="PlaneMesh" id="PlaneMesh_rmeui"]
-
 [sub_resource type="Environment" id="Environment_rmeui"]
 ambient_light_source = 2
 ambient_light_color = Color(0.84709084, 0.87673146, 0.99999875, 1)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_rmeui"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_a8vgt"]
 size = Vector3(200, 0.01, 200)
@@ -36,6 +36,13 @@ heightmap_enabled = true
 [sub_resource type="BoxMesh" id="BoxMesh_p57ef"]
 material = SubResource("StandardMaterial3D_dinhu")
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_0tnpc"]
+size = Vector3(0.5, 3, 5)
+
+[sub_resource type="BoxMesh" id="BoxMesh_0tnpc"]
+material = SubResource("StandardMaterial3D_dinhu")
+size = Vector3(0.5, 3, 5)
+
 [node name="NGame" type="Node" unique_id=943147096]
 script = ExtResource("1_uwrxv")
 
@@ -43,11 +50,6 @@ script = ExtResource("1_uwrxv")
 unique_name_in_owner = true
 
 [node name="InitWorld" type="Node3D" parent="RootSceneContainer" unique_id=1678437961]
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld" unique_id=1781123623]
-transform = Transform3D(100, 0, 0, 0, 100, 0, 0, 0, 100, 0.003, 0, -0.002)
-material_override = ExtResource("4_0tnpc")
-mesh = SubResource("PlaneMesh_rmeui")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="RootSceneContainer/InitWorld" unique_id=1990076639]
 environment = SubResource("Environment_rmeui")
@@ -61,75 +63,115 @@ shadow_bias = 0.0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.767331, 0, 3.3834777)
 mesh = ExtResource("5_vtaks")
 
-[node name="Ground" type="StaticBody3D" parent="RootSceneContainer/InitWorld" unique_id=1668030683]
-collision_layer = 4
-collision_mask = 2
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Ground" unique_id=810556509]
-shape = SubResource("BoxShape3D_a8vgt")
-
 [node name="CreatureParent" type="Node3D" parent="RootSceneContainer/InitWorld" unique_id=269897668]
 unique_name_in_owner = true
 
 [node name="MonsterSpawnPoints" type="Node3D" parent="RootSceneContainer/InitWorld/CreatureParent" unique_id=1078451910]
 
 [node name="Node3D" type="Node3D" parent="RootSceneContainer/InitWorld/CreatureParent/MonsterSpawnPoints" unique_id=1696866567]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2176132, 7.6293945e-06, 19.36975)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0044277906, 5.2550673, 6.232087)
 script = ExtResource("5_u5sy4")
 MonsterName = "Zombie"
 
 [node name="Node3D2" type="Node3D" parent="RootSceneContainer/InitWorld/CreatureParent/MonsterSpawnPoints" unique_id=1444319004]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26.133701, 7.6293945e-06, 14.208246)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.025417328, 4.55069, 11.582422)
 script = ExtResource("5_u5sy4")
 MonsterName = "Zombie"
 
 [node name="Node3D3" type="Node3D" parent="RootSceneContainer/InitWorld/CreatureParent/MonsterSpawnPoints" unique_id=316316452]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17.763943, 5.722046e-06, 10.934172)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5095692, 5.722046e-06, 2.307088)
 script = ExtResource("5_u5sy4")
 MonsterName = "Zombie"
 
 [node name="Node3D4" type="Node3D" parent="RootSceneContainer/InitWorld/CreatureParent/MonsterSpawnPoints" unique_id=555041673]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.579596, -1.9073486e-06, -16.995554)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.1659336, 4.2010317, 7.598826)
 script = ExtResource("5_u5sy4")
 MonsterName = "Zombie"
 
 [node name="Node3D5" type="Node3D" parent="RootSceneContainer/InitWorld/CreatureParent/MonsterSpawnPoints" unique_id=1919646709]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18.730509, -7.6293945e-06, -10.6411)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.8857937, -7.6293945e-06, 1.8826132)
 script = ExtResource("5_u5sy4")
 MonsterName = "Zombie"
 
-[node name="Box" type="StaticBody3D" parent="RootSceneContainer/InitWorld" unique_id=1406649030]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+[node name="Enviroment" type="Node3D" parent="RootSceneContainer/InitWorld" unique_id=747882948]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=1781123623]
+transform = Transform3D(100, 0, 0, 0, 100, 0, 0, 0, 100, 0.003, 0, -0.002)
+material_override = ExtResource("4_0tnpc")
+mesh = SubResource("PlaneMesh_rmeui")
+
+[node name="Ground" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=1668030683]
 collision_layer = 4
-collision_mask = 14
+collision_mask = 2
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Box" unique_id=471000497]
-shape = SubResource("BoxShape3D_p57ef")
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/Ground" unique_id=810556509]
+shape = SubResource("BoxShape3D_a8vgt")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Box" unique_id=847940814]
-mesh = SubResource("BoxMesh_p57ef")
-
-[node name="Box2" type="StaticBody3D" parent="RootSceneContainer/InitWorld" unique_id=226901097]
+[node name="Box2" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=226901097]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1612031, 0.5, -0.99750876)
 collision_layer = 4
 collision_mask = 14
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Box2" unique_id=2085984562]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/Box2" unique_id=2085984562]
 shape = SubResource("BoxShape3D_p57ef")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Box2" unique_id=1080302572]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/Box2" unique_id=1080302572]
 mesh = SubResource("BoxMesh_p57ef")
 
-[node name="Box3" type="StaticBody3D" parent="RootSceneContainer/InitWorld" unique_id=216748258]
+[node name="Box3" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=216748258]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.4931784, 1.7704881, -2.3775191)
 collision_layer = 4
 collision_mask = 14
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Box3" unique_id=471782342]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/Box3" unique_id=471782342]
 shape = SubResource("BoxShape3D_p57ef")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Box3" unique_id=1347634968]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/Box3" unique_id=1347634968]
 mesh = SubResource("BoxMesh_p57ef")
+
+[node name="LengthBox" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=1406649030]
+transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0, 4.6846213, 6.1573215)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox" unique_id=471000497]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox" unique_id=847940814]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="LengthBox2" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=1281577900]
+transform = Transform3D(-2.0446067e-09, -0.04677515, -0.9989054, 1, -4.371139e-08, 0, -4.3663544e-08, -0.9989054, 0.04677515, -2.5149179, 2.464816, 1.7995712)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox2" unique_id=386343187]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox2" unique_id=105723483]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="LengthBox3" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=965626413]
+transform = Transform3D(-2.0446067e-09, -0.04677515, -0.9989054, 1, -4.371139e-08, 0, -4.3663544e-08, -0.9989054, 0.04677515, -0.9049411, 3.7848167, 11.244342)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox3" unique_id=675922369]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox3" unique_id=1663049239]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="LengthBox4" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=1588761172]
+transform = Transform3D(-2.0446067e-09, -0.04677515, -0.9989054, 1, -4.371139e-08, 0, -4.3663544e-08, -0.9989054, 0.04677515, -3.936282, 3.049134, 6.2203975)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox4" unique_id=868911963]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox4" unique_id=646480602]
+mesh = SubResource("BoxMesh_0tnpc")
 
 [node name="InputManager" type="Node" parent="." unique_id=2078358983]
 script = ExtResource("3_lbhrr")

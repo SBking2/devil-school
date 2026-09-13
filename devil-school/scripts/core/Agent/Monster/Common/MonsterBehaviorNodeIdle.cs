@@ -9,7 +9,7 @@ namespace EGame
 
         protected override BehaviorStatus OnTick(NAgent agent, double dt)
         {
-            if (RunningTime <= 0)
+            if (IsFirstTick)
                 agent.AnimTrigger(AnimationConfig.IdleTrigger);
 
             agent.Intent.WishDir = Vector3.Zero;

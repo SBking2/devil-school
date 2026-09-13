@@ -14,6 +14,7 @@ namespace EGame
 			typeof(ZombieModel),
 			typeof(HandModel),
 			typeof(PistolModel),
+			typeof(SwordModel),
 		};
 	}
 }

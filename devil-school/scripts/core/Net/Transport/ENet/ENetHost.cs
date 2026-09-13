@@ -33,7 +33,6 @@ namespace EGame
 
         private List<ClientConnection> _ClientConnections = new List<ClientConnection>();
         private ENetConnection _Connection;
-        private Log.Logger _Logger = new Log.Logger(Log.LogType.NetWork);
         private List<HandShakeRequestWait> _WaitHandShakeRequests = new List<HandShakeRequestWait>();
 
         public ENetHost(INetHostHandler handler) : base(handler)
@@ -47,7 +46,7 @@ namespace EGame
 
             if (result != Error.Ok)
             {
-                _Logger.Warn($"ENetHost failed to create host! Info : {result}");
+                Log.Warn($"ENetHost failed to create host! Info : {result}", type: Log.LogType.NetWork);
                 _Connection.Destroy();
                 _Connection = null;
                 return result;
@@ -77,7 +76,7 @@ namespace EGame
                     totalDelay += PollRateMsec;
                     if (totalDelay > HandShakeTimeoutMsec)
                     {
-                        _Logger.Error("failed receive client handshake!");
+                        Log.Error("failed receive client handshake!", type: Log.LogType.NetWork);
                         RemoveWaitingHandshake(peer);
                         peer.Reset();
                         return;
@@ -154,7 +153,7 @@ namespace EGame
         {
             if(data == null)
             {
-                _Logger.Warn("host tried to send null message");
+                Log.Warn("host tried to send null message", type: Log.LogType.NetWork);
                 return;
             }
 
@@ -171,14 +170,14 @@ namespace EGame
                 return;
             }
 
-            _Logger.Warn($"host tried to send message to unknown client: {client_id}");
+            Log.Warn($"host tried to send message to unknown client: {client_id}", type: Log.LogType.NetWork);
         }
 
         public override void SendMessageAll(byte[] data)
         {
             if(data == null)
             {
-                _Logger.Warn("host tried to broadcast null message");
+                Log.Warn("host tried to broadcast null message", type: Log.LogType.NetWork);
                 return;
             }
 
@@ -223,7 +222,7 @@ namespace EGame
                         HandleReceiveMessage(data.Value);
                         continue;
                     default:
-                        _Logger.Error($"unexpected ENet event on host update: {data.Value.Event}");
+                        Log.Error($"unexpected ENet event on host update: {data.Value.Event}", type: Log.LogType.NetWork);
                         continue;
                 }
             }
@@ -248,7 +247,7 @@ namespace EGame
                 if (connection != null)
                     _NetHandler.OnPacketReceived(connection.Value.ClientID, packet.Message);
                 else
-                    _Logger.Warn("received app message from peer before handshake completed");
+                    Log.Warn("received app message from peer before handshake completed", type: Log.LogType.NetWork);
             }
             else if (packet.PacketType == ENetPacketType.Disconnect)
             {

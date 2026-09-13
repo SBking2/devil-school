@@ -14,7 +14,6 @@ namespace EGame
         public override ulong ClientID => _NetID;
 
         private ulong _NetID;
-        private Log.Logger _Logger = new Log.Logger(Log.LogType.NetWork);
         private ENetConnection _Connection;
         private ENetPacketPeer _Peer;
 
@@ -31,7 +30,7 @@ namespace EGame
             Error createResult = _Connection.CreateHost();
             if(createResult != Error.Ok)
             {
-                _Logger.Error($"failed to create client host! {createResult}");
+                Log.Error($"failed to create client host! {createResult}", type: Log.LogType.NetWork);
                 CleanupConnection();
                 return ENetConnectResult.ConnectionFailed;
             }
@@ -70,11 +69,11 @@ namespace EGame
 
                     if(data.Value.Event == ENetConnection.EventType.Disconnect)
                     {
-                        _Logger.Error("disconnected while connecting to host!");
+                        Log.Error("disconnected while connecting to host!", type: Log.LogType.NetWork);
                         return ENetConnectResult.ConnectionFailed;
                     }
 
-                    _Logger.Error($"unexpected ENet event while connecting: {data.Value.Event}");
+                    Log.Error($"unexpected ENet event while connecting: {data.Value.Event}", type: Log.LogType.NetWork);
                     return ENetConnectResult.ConnectionFailed;
                 }
 
@@ -82,7 +81,7 @@ namespace EGame
                 totalDelay += PollRateMsec;
             }
 
-            _Logger.Error("failed to connect host!");
+            Log.Error("failed to connect host!", type: Log.LogType.NetWork);
             return ENetConnectResult.Timeout;
         }
 
@@ -116,7 +115,7 @@ namespace EGame
                                 return ENetConnectResult.Success;
                             }
 
-                            _Logger.Error("client ID collision!");
+                            Log.Error("client ID collision!", type: Log.LogType.NetWork);
                             _Peer.PeerDisconnectLater();
                             _Connection.Flush();
                             return ENetConnectResult.IdCollision;
@@ -129,17 +128,17 @@ namespace EGame
                             continue;
                         }
 
-                        _Logger.Error($"unexpected packet while waiting for handshake ack: {packetType}");
+                        Log.Error($"unexpected packet while waiting for handshake ack: {packetType}", type: Log.LogType.NetWork);
                         return ENetConnectResult.HandshakeFailed;
                     }
 
                     if(data.Value.Event == ENetConnection.EventType.Disconnect)
                     {
-                        _Logger.Error("disconnected while waiting for host handshake ack!");
+                        Log.Error("disconnected while waiting for host handshake ack!", type: Log.LogType.NetWork);
                         return ENetConnectResult.ConnectionFailed;
                     }
 
-                    _Logger.Error($"unexpected ENet event while waiting for handshake ack: {data.Value.Event}");
+                    Log.Error($"unexpected ENet event while waiting for handshake ack: {data.Value.Event}", type: Log.LogType.NetWork);
                     return ENetConnectResult.HandshakeFailed;
                 }
 
@@ -147,7 +146,7 @@ namespace EGame
                 totalDelay += PollRateMsec;
             }
 
-            _Logger.Error("failed receive host handshake ack!");
+            Log.Error("failed receive host handshake ack!", type: Log.LogType.NetWork);
             return ENetConnectResult.Timeout;
         }
 
@@ -183,13 +182,13 @@ namespace EGame
         {
             if(!_IsConnected || _Peer == null)
             {
-                _Logger.Warn("client tried to send message before connected");
+                Log.Warn("client tried to send message before connected", type: Log.LogType.NetWork);
                 return;
             }
 
             if(data == null)
             {
-                _Logger.Warn("client tried to send null message");
+                Log.Warn("client tried to send null message", type: Log.LogType.NetWork);
                 return;
             }
 
@@ -220,7 +219,7 @@ namespace EGame
                 }
                 else
                 {
-                    _Logger.Error($"unexpected ENet event on client update: {data.Value.Event}");
+                    Log.Error($"unexpected ENet event on client update: {data.Value.Event}", type: Log.LogType.NetWork);
                     NotifyDisconnected();
                 }
             }

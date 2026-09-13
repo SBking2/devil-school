@@ -1,0 +1,30 @@
+[gd_scene format=3 uid="uid://cscjxlbk1p6gk"]
+
+[ext_resource type="Script" uid="uid://cs6iryxdoic8n" path="res://scripts/Core/Nodes/Weapon/NWeapon.cs" id="1_f73me"]
+[ext_resource type="PackedScene" uid="uid://d4f040sto662c" path="res://models/characters/fps/Sword.fbx" id="2_sjx0v"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_f73me"]
+radius = 0.099609375
+height = 1.0974121
+
+[node name="Sword" type="Node3D" unique_id=526183678]
+script = ExtResource("1_f73me")
+
+[node name="TransformOffset" type="Node3D" parent="." unique_id=877217585]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0)
+
+[node name="Sword" parent="TransformOffset" unique_id=1519888832 instance=ExtResource("2_sjx0v")]
+
+[node name="Body" parent="TransformOffset/Sword" index="0" unique_id=1579844348]
+cast_shadow = 0
+
+[node name="AttackCollision" type="Area3D" parent="TransformOffset" unique_id=625744456]
+unique_name_in_owner = true
+collision_layer = 16
+collision_mask = 8
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TransformOffset/AttackCollision" unique_id=1785237999]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45056152, 0)
+shape = SubResource("CapsuleShape3D_f73me")
+
+[editable path="TransformOffset/Sword"]

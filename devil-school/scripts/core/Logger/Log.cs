@@ -25,66 +25,36 @@ namespace EGame
             GameSync = 5
         }
 
-        public class Logger
+        public static void VeryDebug(string message, bool is_show_stack_trace = false, int skip_frame = 2, LogType type = LogType.None)
         {
-            public Logger(LogType type)
-            {
-                _Type = type;
-            }
-
-            private LogType _Type;
-
-            public void VeryDebug(string message, bool is_show_stack_trace = false, int skip_frame = 2)
-            {
-                if(Settins.LogType == _Type || Settins.LogType == LogType.None || _Type == LogType.None)
-                    Log.VeryDebug(message, is_show_stack_trace, skip_frame);
-            }
-
-            public void Debug(string message, bool is_show_stack_trace = false, int skip_frame = 2)
-            {
-                if (Settins.LogType == _Type || Settins.LogType == LogType.None || _Type == LogType.None)
-                    Log.Debug(message, is_show_stack_trace, skip_frame);
-            }
-
-            public void Warn(string message, bool is_show_stack_trace = false, int skip_frame = 2)
-            {
-                if (Settins.LogType == _Type || Settins.LogType == LogType.None || _Type == LogType.None)
-                    Log.Warn(message, is_show_stack_trace, skip_frame);
-            }
-
-            public void Error(string message, bool is_show_stack_trace = true, int skip_frame = 2)
-            {
-                if (Settins.LogType == _Type || Settins.LogType == LogType.None || _Type == LogType.None)
-                    Log.Error(message, is_show_stack_trace, skip_frame);
-            }
+            LogMessage(LogLevel.VeryDebug, message, is_show_stack_trace, skip_frame, type);
         }
 
-        public static void VeryDebug(string message, bool is_show_stack_trace = false, int skip_frame = 2)
+        public static void Debug(string message, bool is_show_stack_trace = false, int skip_frame = 2, LogType type = LogType.None)
         {
-            LogMessage(LogLevel.VeryDebug, message, is_show_stack_trace, skip_frame);
+            LogMessage(LogLevel.Debug, message, is_show_stack_trace, skip_frame, type);
         }
 
-        public static void Debug(string message, bool is_show_stack_trace = false, int skip_frame = 2)
+        public static void Warn(string message, bool is_show_stack_trace = false, int skip_frame = 2, LogType type = LogType.None)
         {
-            LogMessage(LogLevel.Debug, message, is_show_stack_trace, skip_frame);
+            LogMessage(LogLevel.Warn, message, is_show_stack_trace, skip_frame, type);
         }
 
-        public static void Warn(string message, bool is_show_stack_trace = false, int skip_frame = 2)
+        public static void Error(string message, bool is_show_stack_trace = true, int skip_frame = 2, LogType type = LogType.None)
         {
-            LogMessage(LogLevel.Warn, message, is_show_stack_trace, skip_frame);
-        }
-
-        public static void Error(string message, bool is_show_stack_trace = true, int skip_frame = 2)
-        {
-            LogMessage(LogLevel.Error, message, is_show_stack_trace, skip_frame);
+            LogMessage(LogLevel.Error, message, is_show_stack_trace, skip_frame, type);
         }
 
         /// <summary>
         /// skip_frame为略过调用栈的顶部
         /// </summary>
-        private static void LogMessage(LogLevel level, string message, bool is_show_stack_trace, int skip_frame, bool is_color = true)
+        private static void LogMessage(LogLevel level, string message, bool is_show_stack_trace, int skip_frame, LogType type, bool is_color = true)
         {
             if (level < Settins.LogLevel)
+                return;
+
+            // 分类过滤：Settins.LogType 或者本条日志的 type 有一个是 None（不限分类），或者两者相同，才输出
+            if (Settins.LogType != LogType.None && type != LogType.None && Settins.LogType != type)
                 return;
 
             var time_stamp = DateTime.Now.ToString("HH:mm:ss");

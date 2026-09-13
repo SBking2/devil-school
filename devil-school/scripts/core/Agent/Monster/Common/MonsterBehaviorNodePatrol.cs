@@ -12,7 +12,7 @@ namespace EGame
 
         protected override BehaviorStatus OnTick(NAgent agent, double dt)
         {
-            if (RunningTime <= 0)
+            if (IsFirstTick)
                 agent.AnimTrigger(AnimationConfig.WalkTrigger);
 
             _Target ??= agent.GlobalPosition + new Vector3(
