@@ -173,6 +173,336 @@ shape = SubResource("BoxShape3D_0tnpc")
 [node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox4" unique_id=646480602]
 mesh = SubResource("BoxMesh_0tnpc")
 
+[node name="Box4" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=1423053965]
+transform = Transform3D(0.61057377, 0, -0.7919594, 0, 1, 0, 0.7919594, 0, 0.61057377, 10.889315, 2.3835135, 11.165485)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/Box4" unique_id=1542596757]
+shape = SubResource("BoxShape3D_p57ef")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/Box4" unique_id=1982641092]
+mesh = SubResource("BoxMesh_p57ef")
+
+[node name="Box5" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=2103583942]
+transform = Transform3D(0.61057377, 0, -0.7919594, 0, 1, 0, 0.7919594, 0, 0.61057377, 10.361532, 3.6540017, 8.220724)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/Box5" unique_id=1614161866]
+shape = SubResource("BoxShape3D_p57ef")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/Box5" unique_id=1580938647]
+mesh = SubResource("BoxMesh_p57ef")
+
+[node name="LengthBox5" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=560933054]
+transform = Transform3D(-2.6689028e-08, -0.61057377, -0.7919594, 1, -4.371139e-08, 0, -3.4617646e-08, -0.7919594, 0.61057377, 4.51398, 6.5681353, 14.614411)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox5" unique_id=1297017859]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox5" unique_id=1535983973]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="LengthBox6" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=1296566045]
+transform = Transform3D(3.3331375e-08, 0.76253295, -0.6469495, 1, -4.371139e-08, 0, -2.8279063e-08, -0.6469495, -0.76253295, 6.4295983, 4.3483295, 9.96197)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox6" unique_id=1649996838]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox6" unique_id=1174038170]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="LengthBox7" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=1917276857]
+transform = Transform3D(3.3331375e-08, 0.76253295, -0.6469495, 1, -4.371139e-08, 0, -2.8279063e-08, -0.6469495, -0.76253295, -0.06726742, 5.66833, 17.003735)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox7" unique_id=607081215]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox7" unique_id=1253765467]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="LengthBox8" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=655767818]
+transform = Transform3D(3.3331375e-08, 0.76253295, -0.6469495, 1, -4.371139e-08, 0, -2.8279063e-08, -0.6469495, -0.76253295, 2.0606356, 4.9326477, 11.535548)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox8" unique_id=267889825]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox8" unique_id=739416009]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="Box6" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=1672876880]
+transform = Transform3D(0.47614, -0.0762592, 0.87605655, -0.08393586, 0.9877429, 0.13160077, -0.8753544, -0.13619293, 0.463903, -20.714489, 1.5221858, 6.207908)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/Box6" unique_id=266085780]
+shape = SubResource("BoxShape3D_p57ef")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/Box6" unique_id=1640154723]
+mesh = SubResource("BoxMesh_p57ef")
+
+[node name="Box7" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=1785629376]
+transform = Transform3D(0.47614, -0.0762592, 0.87605655, -0.08393586, 0.9877429, 0.13160077, -0.8753544, -0.13619293, 0.463903, -23.2842, 2.818289, 7.7182117)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/Box7" unique_id=1742319705]
+shape = SubResource("BoxShape3D_p57ef")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/Box7" unique_id=1655399135]
+mesh = SubResource("BoxMesh_p57ef")
+
+[node name="LengthBox9" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=2020172493]
+transform = Transform3D(-0.076259226, -0.47614002, 0.8760566, 0.9877429, 0.0839358, 0.13160075, -0.1361929, 0.87535447, 0.46390307, -15.318464, 6.6945634, 9.973604)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox9" unique_id=818477507]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox9" unique_id=438395808]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="LengthBox10" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=1275864706]
+transform = Transform3D(-0.07625924, -0.89736927, -0.43464127, 0.987743, -0.12753068, 0.08999961, -0.13619293, -0.42245048, 0.8960955, -20.164272, 4.139575, 10.455797)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox10" unique_id=398242162]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox10" unique_id=754230065]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="LengthBox11" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=205963058]
+transform = Transform3D(-0.07625924, -0.89736927, -0.43464127, 0.987743, -0.12753068, 0.08999961, -0.13619293, -0.42245048, 0.8960955, -11.224208, 6.551201, 13.2481785)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox11" unique_id=552399876]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox11" unique_id=1520302427]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="LengthBox12" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=1025057078]
+transform = Transform3D(-0.07625924, -0.89736927, -0.43464127, 0.987743, -0.12753068, 0.08999961, -0.13619293, -0.42245048, 0.8960955, -17.012707, 5.4178185, 13.671249)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox12" unique_id=1085616432]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox12" unique_id=1277775193]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="Box8" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=2133381820]
+transform = Transform3D(0.98451984, -0.076259226, 0.15781355, 0.052973438, 0.98774296, 0.14682576, -0.16707602, -0.13619296, 0.9764923, -5.57071, 4.1667347, 3.0782914)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/Box8" unique_id=804060808]
+shape = SubResource("BoxShape3D_p57ef")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/Box8" unique_id=903914636]
+mesh = SubResource("BoxMesh_p57ef")
+
+[node name="Box9" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=1448102258]
+transform = Transform3D(0.98451984, -0.076259226, 0.15781355, 0.052973438, 0.98774296, 0.14682576, -0.16707602, -0.13619296, 0.9764923, -8.4986725, 5.078418, 2.0011725)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/Box9" unique_id=122864370]
+shape = SubResource("BoxShape3D_p57ef")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/Box9" unique_id=503119736]
+mesh = SubResource("BoxMesh_p57ef")
+
+[node name="LengthBox13" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=1480921569]
+transform = Transform3D(-0.07625927, -0.98451984, 0.15781355, 0.98774296, -0.05297349, 0.14682576, -0.13619295, 0.16707602, 0.9764923, -5.903925, 9.289066, 9.68902)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox13" unique_id=1500962950]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox13" unique_id=482818645]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="LengthBox14" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=861588715]
+transform = Transform3D(-0.076259196, -0.2036919, -0.9760604, 0.987743, -0.14914294, -0.04604766, -0.13619299, -0.96760845, 0.21256882, -8.898342, 6.323415, 6.1562157)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox14" unique_id=1019805803]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox14" unique_id=1558496711]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="LengthBox15" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=1847767797]
+transform = Transform3D(-0.076259196, -0.2036919, -0.9760604, 0.987743, -0.14914294, -0.04604766, -0.13619299, -0.96760845, 0.21256882, -5.9234376, 9.099257, 14.930199)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox15" unique_id=1470631900]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox15" unique_id=2015206397]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="LengthBox16" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=1822402078]
+transform = Transform3D(-0.076259196, -0.2036919, -0.9760604, 0.987743, -0.14914294, -0.04604766, -0.13619299, -0.96760845, 0.21256882, -9.644597, 7.474367, 10.631014)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox16" unique_id=1663134542]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox16" unique_id=1422578668]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="Box10" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=1602260349]
+transform = Transform3D(0.611527, 0, 0.7912235, 0, 1, 0, -0.7912235, 0, 0.611527, -17.532524, 0.6073203, 11.766399)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/Box10" unique_id=976711596]
+shape = SubResource("BoxShape3D_p57ef")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/Box10" unique_id=1968219147]
+mesh = SubResource("BoxMesh_p57ef")
+
+[node name="Box11" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=1267458041]
+transform = Transform3D(0.611527, 0, 0.7912235, 0, 1, 0, -0.7912235, 0, 0.611527, -20.247646, 1.8778085, 13.022695)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/Box11" unique_id=374136324]
+shape = SubResource("BoxShape3D_p57ef")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/Box11" unique_id=252926119]
+mesh = SubResource("BoxMesh_p57ef")
+
+[node name="LengthBox17" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=77285210]
+transform = Transform3D(-2.6730696e-08, -0.611527, 0.7912235, 1, -4.371139e-08, 0, 3.458548e-08, 0.7912235, 0.611527, -12.581561, 4.7919416, 17.060543)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox17" unique_id=602887005]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox17" unique_id=1637417877]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="LengthBox18" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=778680152]
+transform = Transform3D(-3.579796e-08, -0.81896186, -0.5738481, 1, -4.371139e-08, 0, -2.5083699e-08, -0.5738481, 0.81896186, -17.567455, 2.5721364, 16.38552)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox18" unique_id=1550317558]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox18" unique_id=486487135]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="LengthBox19" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=610219370]
+transform = Transform3D(-3.579796e-08, -0.81896186, -0.5738481, 1, -4.371139e-08, 0, -2.5083699e-08, -0.5738481, 0.81896186, -9.109987, 3.892137, 20.887403)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox19" unique_id=2038701831]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox19" unique_id=1155783685]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="LengthBox20" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=2012938630]
+transform = Transform3D(-3.579796e-08, -0.81896186, -0.5738481, 1, -4.371139e-08, 0, -2.5083699e-08, -0.5738481, 0.81896186, -14.938797, 3.1564543, 20.213594)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox20" unique_id=1766043684]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox20" unique_id=890114011]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="Box12" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=343062202]
+transform = Transform3D(0.9999993, 0, -0.0012042522, 0, 1, 0, 0.0012042522, 0, 0.9999993, -1.9598742, 2.4908338, 11.507288)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/Box12" unique_id=1540990974]
+shape = SubResource("BoxShape3D_p57ef")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/Box12" unique_id=484588395]
+mesh = SubResource("BoxMesh_p57ef")
+
+[node name="Box13" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=115633177]
+transform = Transform3D(0.9999993, 0, -0.0012042522, 0, 1, 0, 0.0012042522, 0, 0.9999993, -4.6125913, 3.761322, 10.124081)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/Box13" unique_id=2049686737]
+shape = SubResource("BoxShape3D_p57ef")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/Box13" unique_id=1677478935]
+mesh = SubResource("BoxMesh_p57ef")
+
+[node name="LengthBox21" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=1828182240]
+transform = Transform3D(-4.371136e-08, -0.9999993, -0.0012042522, 1, -4.371139e-08, 0, -5.2638782e-11, -0.0012042522, 0.9999993, -3.1296911, 6.6754556, 18.660713)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox21" unique_id=319355647]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox21" unique_id=1917563556]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="LengthBox22" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=1438220353]
+transform = Transform3D(-1.9920172e-09, -0.04557219, -0.99896103, 1, -4.3711385e-08, -9.438958e-16, -4.3665978e-08, -0.99896103, 0.04557219, -5.63936, 4.45565, 14.299938)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox22" unique_id=1732419804]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox22" unique_id=1964584745]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="LengthBox23" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=287865983]
+transform = Transform3D(-1.9920172e-09, -0.04557219, -0.99896103, 1, -4.3711385e-08, -9.438958e-16, -4.3665978e-08, -0.99896103, 0.04557219, -4.04076, 5.7756505, 23.74664)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox23" unique_id=714808271]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox23" unique_id=364563287]
+mesh = SubResource("BoxMesh_0tnpc")
+
+[node name="LengthBox24" type="StaticBody3D" parent="RootSceneContainer/InitWorld/Enviroment" unique_id=738058306]
+transform = Transform3D(-1.9920172e-09, -0.04557219, -0.99896103, 1, -4.3711385e-08, -9.438958e-16, -4.3665978e-08, -0.99896103, 0.04557219, -7.0660467, 5.039968, 18.71905)
+collision_layer = 4
+collision_mask = 14
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox24" unique_id=1313931459]
+shape = SubResource("BoxShape3D_0tnpc")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/Enviroment/LengthBox24" unique_id=1923466350]
+mesh = SubResource("BoxMesh_0tnpc")
+
 [node name="InputManager" type="Node" parent="." unique_id=2078358983]
 script = ExtResource("3_lbhrr")
 

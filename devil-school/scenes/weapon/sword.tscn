@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://cs6iryxdoic8n" path="res://scripts/Core/Nodes/Weapon/NWeapon.cs" id="1_f73me"]
 [ext_resource type="PackedScene" uid="uid://d4f040sto662c" path="res://models/characters/fps/Sword.fbx" id="2_sjx0v"]
+[ext_resource type="PackedScene" uid="uid://dmim6ebnfmrfm" path="res://models/weapon/pistol_shotgun/tripo_convert_2699076e-82f0-48dd-9241-bf40e2b04c3b.fbx" id="3_sjx0v"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_f73me"]
 radius = 0.099609375
@@ -26,5 +27,8 @@ collision_mask = 8
 [node name="CollisionShape3D" type="CollisionShape3D" parent="TransformOffset/AttackCollision" unique_id=1785237999]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45056152, 0)
 shape = SubResource("CapsuleShape3D_f73me")
+
+[node name="tripo_convert_2699076e-82f0-48dd-9241-bf40e2b04c3b" parent="TransformOffset" unique_id=2105141551 instance=ExtResource("3_sjx0v")]
+transform = Transform3D(0.465, 0, 0, 0, 0.465, 0, 0, 0, 0.465, 0, 0, 0)
 
 [editable path="TransformOffset/Sword"]

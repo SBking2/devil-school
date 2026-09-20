@@ -40,6 +40,7 @@ namespace EGame
         public void OnDead()
         {
             AnimTrigger(AnimationConfig.DeadTrigger);
+            UIManager.Instance.Show(UIPanelType.FailurePanel);
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
