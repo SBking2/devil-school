@@ -636,8 +636,13 @@ namespace EGame
             PickWeapon(hand_weapon); // AddChild 之后 NWeapon._Ready() 才跑完，AttackCollision 才有值
             hand_weapon.AttackCollision.BodyEntered += (body) => OnMeleeHit(hand_weapon, body);
 
-            /*var pistol = ModelDB.RangedWeapon<PistolModel>() as RangedWeaponModel;
-            PickWeapon(NWeapon.Create(this, pistol));*/
+            var pistol = ModelDB.RangedWeapon<ShotgunPistolModel>() as RangedWeaponModel;
+            PickWeapon(NWeapon.Create(this, pistol));
+
+            var greate_sword = ModelDB.MeleeWeapon<GreateSwordModel>() as MeleeWeaponModel;
+            var greate_sword_n = NWeapon.Create(this, greate_sword);
+            PickWeapon(greate_sword_n);
+            greate_sword_n.AttackCollision.BodyEntered += (body) => OnMeleeHit(greate_sword_n, body);
         }
 
         // 近战武器的 AttackCollision 扫到目标时调用，伤害按这一下命中时的连击段数取

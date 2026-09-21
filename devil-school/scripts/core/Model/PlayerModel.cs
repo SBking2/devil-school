@@ -14,9 +14,9 @@ namespace EGame
             hand_switch_state.NextState = hand_idle;
             hand_fire.NextState = hand_idle;
 
-            var pistol_switch = new AnimState("ArmsRig|finger_gun_fix", 0.0f, false);
-            var pistol_idle = new AnimState("ArmsRig|finger_gun_idle", 0.1f, true);
-            var pistol_fire = new AnimState("ArmsRig|finger_gun_fire", 0.0f, false);
+            var pistol_switch = new AnimState("ArmsRig|pistol_reload_bake", 0.0f, false);
+            var pistol_idle = new AnimState("ArmsRig|pistol_idle_bake", 0.1f, true);
+            var pistol_fire = new AnimState("ArmsRig|pistol_shot_bake", 0.0f, false);
             pistol_fire.NextState = pistol_idle;
             pistol_switch.NextState = pistol_idle;
 
