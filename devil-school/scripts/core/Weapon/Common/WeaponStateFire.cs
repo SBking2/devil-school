@@ -10,7 +10,11 @@ namespace EGame
         public override void OnEnter(NWeapon weapon)
         {
             base.OnEnter(weapon);
-            weapon.FireInternal();
+
+            if (weapon.RangedData.Type == WeaponModel.WeaponType.Shotgun)
+                weapon.FireShotgunInternal();
+            else
+                weapon.FireInternal();
         }
 
         public override void OnProcess(NWeapon weapon, double dt)

@@ -148,12 +148,38 @@ namespace EGame
         private void FireRanged()
         {
             var from = ShootPos.GlobalPosition;
-            var to = from + (-_RealCamera.GlobalTransform.Basis.Z) * 100f;
+            var to = from + (-_RealCamera.GlobalTransform.Basis.Z) * RangedData.Range;
             uint mask = (uint)(CollisionMask.GrandMask | CollisionMask.MonsterMask);
 
             if (CollisionDetection.FindRayTarget(GetWorld3D(), from, to, mask, out Node3D hitObject, out Vector3 hitPoint, out Vector3 hitNormal))
             {
                 var damageInfo = new DamageInfo(hitObject, hitPoint, hitNormal, _Owner.Data, RangedData.Attack);
+                DamageSystem.Instance.ReportHit(damageInfo);
+            }
+        }
+
+        // 霰弹枪：一次开火打 _ShotgunPelletCount 颗弹丸，每颗各自算一份伤害
+        private const int _ShotgunPelletCount = 8;
+        private const float _ShotgunSpreadDegrees = 4f;
+
+        public void FireShotgunInternal()
+        {
+            TriggerAnim(WeaponConfig.GetAttackAnimTrigger(RangedData.Type, 0));
+            FireShotgun();
+        }
+
+        private void FireShotgun()
+        {
+            Vector3 origin = ShootPos.GlobalPosition;
+            Vector3 forward = -_RealCamera.GlobalTransform.Basis.Z;
+            Vector3 right = _RealCamera.GlobalTransform.Basis.X;
+            Vector3 up = _RealCamera.GlobalTransform.Basis.Y;
+            uint mask = (uint)(CollisionMask.GrandMask | CollisionMask.MonsterMask);
+
+            var hits = CollisionDetection.FindShotgunTargets(GetWorld3D(), origin, forward, right, up, RangedData.Range, mask, _ShotgunPelletCount, _ShotgunSpreadDegrees);
+            foreach (var hit in hits)
+            {
+                var damageInfo = new DamageInfo(hit.HitObject, hit.HitPoint, hit.HitNormal, _Owner.Data, RangedData.Attack);
                 DamageSystem.Instance.ReportHit(damageInfo);
             }
         }

@@ -9,6 +9,7 @@ namespace EGame
         {
             Hand,
             Pistol,
+            Shotgun,
             Sword,
         }
 

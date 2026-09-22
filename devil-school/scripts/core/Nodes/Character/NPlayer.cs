@@ -631,10 +631,10 @@ namespace EGame
 
             RegisterWeaponBoneAttachment();
 
-            var hand = ModelDB.MeleeWeapon<SwordModel>() as MeleeWeaponModel;
+            /*var hand = ModelDB.MeleeWeapon<SwordModel>() as MeleeWeaponModel;
             var hand_weapon = NWeapon.Create(this, hand);
             PickWeapon(hand_weapon); // AddChild 之后 NWeapon._Ready() 才跑完，AttackCollision 才有值
-            hand_weapon.AttackCollision.BodyEntered += (body) => OnMeleeHit(hand_weapon, body);
+            hand_weapon.AttackCollision.BodyEntered += (body) => OnMeleeHit(hand_weapon, body);*/
 
             var pistol = ModelDB.RangedWeapon<ShotgunPistolModel>() as RangedWeaponModel;
             PickWeapon(NWeapon.Create(this, pistol));

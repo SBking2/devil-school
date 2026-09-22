@@ -44,11 +44,14 @@ unique_name_in_owner = true
 [node name="Recoil" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/RealCamera/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding" unique_id=1017113471]
 unique_name_in_owner = true
 
-[node name="Model" parent="CameraLand/Pitch/CameraLean/CameraBob/RealCamera/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil" unique_id=497252349 instance=ExtResource("3_gmlin")]
+[node name="Model" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/RealCamera/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil" unique_id=1418540739]
 unique_name_in_owner = true
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, -1.661, -0.055)
+transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, -1.689, -0.102)
 
-[node name="hand_r" type="BoneAttachment3D" parent="CameraLand/Pitch/CameraLean/CameraBob/RealCamera/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil/Model/ArmsRig/Skeleton3D" parent_id_path=PackedInt32Array(497252349, 1419845157) index="1" unique_id=1148893884]
+[node name="fps_test" parent="CameraLand/Pitch/CameraLean/CameraBob/RealCamera/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil/Model" unique_id=497252349 instance=ExtResource("3_gmlin")]
+transform = Transform3D(1, 0, 1.7484555e-07, 0, 1, 0, -1.7484555e-07, 0, 1, 8.931005e-09, 7.3075294e-05, 7.939339e-05)
+
+[node name="hand_r" type="BoneAttachment3D" parent="CameraLand/Pitch/CameraLean/CameraBob/RealCamera/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil/Model/fps_test/ArmsRig/Skeleton3D" parent_id_path=PackedInt32Array(497252349, 1419845157) index="1" unique_id=1148893884]
 transform = Transform3D(0.00089889765, -0.9996859, 0.025051761, 0.9999616, 0.0011169316, 0.008691287, -0.008716539, 0.02504299, 0.9996484, -0.002797642, -0.00652705, 0.01382618)
 bone_name = "handIK.R"
 bone_idx = 70
@@ -58,4 +61,4 @@ unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 shape = SubResource("CapsuleShape3D_dcsok")
 
-[editable path="CameraLand/Pitch/CameraLean/CameraBob/RealCamera/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil/Model"]
+[editable path="CameraLand/Pitch/CameraLean/CameraBob/RealCamera/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil/Model/fps_test"]

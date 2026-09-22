@@ -5,6 +5,8 @@ namespace EGame
     {
         public override string ParentName => "hand_r";
 
-        public override WeaponType Type => WeaponType.Pistol;
+        public override WeaponType Type => WeaponType.Shotgun;
+
+        public override float Range => 3f;
     }
 }

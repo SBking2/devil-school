@@ -9,6 +9,7 @@ namespace EGame
         public virtual int Attack => 2;
         public virtual float ReloadTime => 2f;
         public virtual float FireTime => 1f;
+        public virtual float Range => 100f;
 
         protected override void BuildStateMachine(NWeapon weapon)
         {

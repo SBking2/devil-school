@@ -16,6 +16,7 @@ namespace EGame
         {
             { WeaponModel.WeaponType.Hand, "hand_switch" },
             { WeaponModel.WeaponType.Pistol, "pistol_switch" },
+            { WeaponModel.WeaponType.Shotgun, "pistol_switch" },   // 先跟手枪共用一份，之后有霰弹枪专属动画再换
             { WeaponModel.WeaponType.Sword, "sword_switch" },
         };
 
@@ -24,13 +25,15 @@ namespace EGame
         {
             { WeaponModel.WeaponType.Hand, new string[] { "hand_fire" } },
             { WeaponModel.WeaponType.Pistol, new string[] { "pistol_fire" } },
+            { WeaponModel.WeaponType.Shotgun, new string[] { "pistol_fire" } },   // 先跟手枪共用一份，之后有霰弹枪专属动画再换
             { WeaponModel.WeaponType.Sword, new string[] { "sword_attack1", "sword_attack2", "sword_attack3" } },
         };
 
-        // 只有远程武器用得到，目前就手枪一种
+        // 只有远程武器用得到
         private static readonly Dictionary<WeaponModel.WeaponType, string> _ReloadAnimTriggers = new Dictionary<WeaponModel.WeaponType, string>()
         {
             { WeaponModel.WeaponType.Pistol, "pistol_reload" },
+            { WeaponModel.WeaponType.Shotgun, "pistol_reload" },   // 先跟手枪共用一份，之后有霰弹枪专属动画再换
         };
 
         public static string GetSwitchAnimTrigger(WeaponModel.WeaponType type)
