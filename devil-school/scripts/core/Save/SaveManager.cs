@@ -6,6 +6,6 @@ namespace EGame
     /// </summary>
     public class SaveManager
     {
-
+        
     }
 }

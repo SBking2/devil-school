@@ -24,6 +24,7 @@ git 仓库根目录（`DevilSchool/`）只是一个外层容器；真正的 Godo
 - **`Abstract` 前缀 = 用于多态注册的抽象基类**：`AbstractModel`、`AbstractCharacterMovementState`、`AbstractWorldBehaviorNode`、`AbstractTurnMoveState`、`AbstractConsoleCmd`、`AbstractNetClient`/`AbstractNetHost` 都是这个模式。
 - **`Abstract*Subtypes` 反射注册表模式**：与某个 `Abstract` 基类配套，会有一个同名的 `Abstract*Subtypes` 静态类，里面手写一个 `Type[]` 数组列出所有具体子类，运行时通过 `Activator.CreateInstance` 批量实例化注册（例子：`AbstractModelSubtypes`、`AbstractConsoleCmdSubtypes`）。**新增一个 Model 或 DevConsole 命令时，必须手动把它的 `Type` 加进对应数组，否则不会被注册**，这一步不是自动发现的。
 - **单例**：静态单例基本用 `public static X Instance { get; } = new X();`（纯 C# 类，立即初始化）或者 `public static X Instance { get; private set; }`，在 `_EnterTree`/`_Ready` 里赋值一次（Godot 节点类）。
+- **不要存储能直接推导出来的引用/状态**：一个值如果能通过已有的字段/索引在需要的时候当场算出来（比如"当前武器"可以用 `_Weapons[_CurrentWeaponIndex]` 算，就不要另外再存一份 `_CurrentWeapon` 字段），就不要单独存一份快照。多余的副本容易和真实状态不同步，也是没必要的冗余代码。同理，运行时数据要挂在真正关心它的对象上：只有某个节点自己关心的瞬时状态（比如武器的开火冷却）应该存在对应的 `N` 类节点里、跟着节点的生命周期（`_Process`/`ProcessMode`）走，不要为了图方便塞进 `Model` 里——`Model` 是数据，不是"某个节点的运行时黑板"。
 - **目录按功能分组，且 `Core/` 与 `Core/Nodes/` 成对镜像**：`scripts/Core/<Feature>/` 放纯 C# 逻辑/数据类，`scripts/Core/Nodes/<Feature>/` 放对应的节点包装类，两边文件夹名一一对应（`Core/Combat/` ↔ `Core/Nodes/Combat/`，`Core/Enviroment/` ↔ `Core/Nodes/Enviroment/`）。`scenes/` 下的文件夹也镜像同一套功能划分（`scenes/combat/`、`scenes/enviroments/` 等）。新增功能时应该保持这个三方（逻辑类/节点类/场景）的目录对应关系。
 - **场景加载**：统一走 `Core/Utils/SceneHelper.LoadScene<T>(path)`，`path` 会被解析为相对于 `res://scenes/` 的路径。
 - **禁止目标类型 `new()`**：`new` 后面必须写明确类型，写 `new List<T>()`、`new AgentIntent()`，不要写 `new()`。

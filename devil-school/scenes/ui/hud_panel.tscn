@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://cemhuaa4coay4"]
 
 [ext_resource type="Script" uid="uid://d06w388nihs1s" path="res://scripts/Core/Nodes/UI/Panel/NHUDPanel.cs" id="1_3jruc"]
+[ext_resource type="Texture2D" uid="uid://dw4wt0nsfnncj" path="res://images/common/default_white.png" id="2_fugpu"]
 
 [node name="HUDPanel" type="Control" unique_id=986811221]
 layout_mode = 3
@@ -36,3 +37,61 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="DashTimer" type="Control" parent="." unique_id=206739601]
+anchors_preset = 0
+offset_left = 975.0
+offset_top = 548.0
+offset_right = 1040.0
+offset_bottom = 613.0
+
+[node name="DashTimerProgress" type="TextureProgressBar" parent="DashTimer" unique_id=1420868573]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+value = 100.0
+fill_mode = 4
+nine_patch_stretch = true
+texture_progress = ExtResource("2_fugpu")
+
+[node name="BulletCount" type="Control" parent="." unique_id=20771026]
+anchors_preset = 0
+offset_left = 859.0
+offset_top = 552.0
+offset_right = 966.0
+offset_bottom = 582.0
+
+[node name="BulletCountLabel" type="Label" parent="BulletCount" unique_id=459879180]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "3/10"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="TotalBulletCount" type="Control" parent="." unique_id=1580856683]
+anchors_preset = 0
+offset_left = 859.0
+offset_top = 576.0
+offset_right = 966.0
+offset_bottom = 606.0
+
+[node name="TotalBulletCountLabel" type="Label" parent="TotalBulletCount" unique_id=489018337]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "3/10"
+horizontal_alignment = 2
+vertical_alignment = 1

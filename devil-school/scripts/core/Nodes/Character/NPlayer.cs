@@ -27,6 +27,39 @@ namespace EGame
             }
         }
 
+        // 分层状态机：什么时候移动/开火/换枪都由状态决定，NPlayer 自己负责每帧驱动三个 layer，以及"怎么算"（移动公式、镜头效果）和存数据。
+        // ModeLayer 互斥，Normal 模式里才会让 MovementLayer 和 ActionLayer 有当前状态（并行跑）
+        public PlayerStateLayer ModeLayer { get; private set; }
+        public PlayerStateLayer MovementLayer { get; private set; }
+        public PlayerStateLayer ActionLayer { get; private set; }
+
+        private void BuildStateLayers()
+        {
+            ModeLayer = new PlayerStateLayer(this);
+            MovementLayer = new PlayerStateLayer(this);
+            ActionLayer = new PlayerStateLayer(this);
+
+            ModeLayer.Add(new PlayerModeStateNormal());
+            ModeLayer.Add(new PlayerModeStateDash());
+
+            MovementLayer.Add(new PlayerMoveStateIdle());
+            MovementLayer.Add(new PlayerMoveStateWalk());
+            MovementLayer.Add(new PlayerMoveStateRun());
+            MovementLayer.Add(new PlayerMoveStateCrouch());
+            MovementLayer.Add(new PlayerMoveStateAir());
+
+            ActionLayer.Add(new PlayerActionStateIdle());
+            ActionLayer.Add(new PlayerActionStateSwitch());
+            ActionLayer.Add(new PlayerActionStateFire());
+            ActionLayer.Add(new PlayerActionStateReload());
+            ActionLayer.Add(new PlayerActionStateMelee());
+
+            ModeLayer.ChangeState(PlayerConfig.ModeNormal);
+        }
+
+        // 开火输入意图，动作层状态从这里读
+        public WeaponIntent Intent { get; } = new WeaponIntent();
+
         public void TakeDamage(DamageInfo info)
         {
             if (Data.HP <= 0)
@@ -34,10 +67,15 @@ namespace EGame
 
             Data.HP -= info.Amount;
             if (Data.HP <= 0)
-                OnDead();
+                Die();
         }
 
-        public void OnDead()
+        public void Die()
+        {
+            OnDead();
+        }
+
+        private void OnDead()
         {
             AnimTrigger(AnimationConfig.DeadTrigger);
             UIManager.Instance.Show(UIPanelType.FailurePanel);
@@ -74,30 +112,77 @@ namespace EGame
         //////                                      人物移动
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        private float WalkSpeed => PlayerData.PlayerModel.MoveSpeed;
-        private float RunSpeed => PlayerData.PlayerModel.RunSpeed;
-        private float CrouchSpeed => PlayerData.PlayerModel.CrouchSpeed;
+        public float WalkSpeed => PlayerData.PlayerModel.MoveSpeed;
+        public float RunSpeed => PlayerData.PlayerModel.RunSpeed;
+        public float CrouchSpeed => PlayerData.PlayerModel.CrouchSpeed;
 
         private readonly float _MinStopSpeed = 2.54f;
         private readonly float _Friction = 6f;
+        private readonly float _AirFriction = 1f;    // 空中水平摩擦，比地面小很多，只给一点点空气阻力感
         private readonly float _AccelerationRate = 10f;
 
-        private bool RunInput
+        public bool RunInput
         {
             get
             {
+                return false;
                 return Input.IsActionPressed(EGInput.RUN) && IsCrouch == false;
             }
         }
 
-        private Vector3 GroundMove(Vector3 source, Vector3 wish_dir, double dt)
+        public bool JumpPressed => Input.IsActionJustPressed(EGInput.JUMP);
+        public bool DashPressed => Input.IsActionJustPressed(EGInput.DASH);
+        public bool ReloadPressed => Input.IsActionJustPressed(EGInput.RELOAD);
+
+        // 冲刺冷却：从开始冲刺那一刻算起，CanDash 为 true 才允许再冲
+        private readonly double _DashCooldown = 1.5f;
+        private double _DashCooldownRemaining;
+
+        public bool CanDash => _DashCooldownRemaining <= 0;
+
+        // 给 HUD 显示冷却用
+        public float DashCooldownTime => (float)_DashCooldown;
+        public float DashCooldownRemaining => (float)Math.Max(_DashCooldownRemaining, 0.0);
+
+        public void StartDashCooldown()
         {
-            return ApplyAcceleration(source, wish_dir, _AccelerationRate, IsCrouch ? CrouchSpeed : (RunInput ? RunSpeed : WalkSpeed), dt);
+            _DashCooldownRemaining = _DashCooldown;
         }
 
-        private Vector3 AirMove(Vector3 source, Vector3 wish_dir, double dt)
+        // 身体正前方（水平），跟 GetMoveDir 里"按前进键"的方向一致
+        public Vector3 ForwardDirection => _YawNode.Quaternion * Vector3.Back;
+
+        // 玩家想往哪走：输入方向按当前朝向转到世界空间
+        public Vector3 WishDirection => _YawNode.Quaternion * GetMoveDir();
+
+        // 下面三个是给状态机用的"怎么动"：状态决定什么时候用、用多大速度，具体的加速/摩擦公式留在这里
+        public void MoveOnGround(double dt, float speed)
         {
-            return ApplyAcceleration(source, wish_dir, _AccelerationRate * 0.1f, WalkSpeed, dt);
+            Velocity = ApplyFriction(Velocity, _Friction, dt);
+            Velocity = ApplyAcceleration(Velocity, WishDirection, _AccelerationRate, speed, dt);
+        }
+
+        public void MoveInAir(double dt)
+        {
+            Velocity = ApplyHorizontalFriction(Velocity, _AirFriction, dt);
+            Velocity = ApplyAcceleration(Velocity, WishDirection, _AccelerationRate * 0.1f, WalkSpeed, dt);
+        }
+
+        // 站在地面上时，按当前输入应该处在哪个地面状态（Idle/Walk/Run/Crouch）
+        public string ResolveGroundMoveState()
+        {
+            if (IsCrouch)
+                return PlayerConfig.MoveCrouch;
+
+            if (WishDirection.LengthSquared() < 0.0001f)
+                return PlayerConfig.MoveIdle;
+
+            return RunInput ? PlayerConfig.MoveRun : PlayerConfig.MoveWalk;
+        }
+
+        public void Jump()
+        {
+            Velocity = ApplyJump(Velocity);
         }
 
         private Vector3 ApplyAcceleration(Vector3 source, Vector3 wish_dir, float acceleration_rate, float move_speed, double dt)
@@ -111,6 +196,14 @@ namespace EGame
             float true_add_speed = Mathf.Min((float)(add_speed * dt * acceleration_rate), add_speed);  //钳制最大速度，防止速度超出最大速度
             
             return source += wish_dir * true_add_speed;
+        }
+
+        // 只对水平分量做摩擦，Y（下落/上升速度）原样保留——不然摩擦会把重力算出来的下落速度也一起吃掉
+        private Vector3 ApplyHorizontalFriction(Vector3 source, float friction, double dt)
+        {
+            Vector3 horizontal = new Vector3(source.X, 0f, source.Z);
+            Vector3 damped = ApplyFriction(horizontal, friction, dt);
+            return new Vector3(damped.X, source.Y, damped.Z);
         }
 
         private Vector3 ApplyFriction(Vector3 source, float friction, double dt)
@@ -130,6 +223,9 @@ namespace EGame
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //////                                      Y轴速度相关
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        // 状态控制的开关：冲刺这类需要平直移动的状态会关掉重力
+        public bool GravityEnabled { get; set; } = true;
 
         private readonly float _UpGravity = -9.8f;
         private readonly float _DownGravity = -15.0f;
@@ -168,7 +264,7 @@ namespace EGame
 
         private CollisionShape3D _MoveCollisionShape;
         
-        private bool IsCrouch
+        public bool IsCrouch
         {
             get
             {
@@ -245,10 +341,14 @@ namespace EGame
         
         private Node3D _CameraBobNode;
 
-        private readonly float _WalkBobRate = 0.8f;
-        private readonly float _RunBobRate = 1.2f;
-        private readonly float _CrouchBobRate = 0.6f;
+        public readonly float WalkBobRate = 0.8f;
+        public readonly float RunBobRate = 1.2f;
+        public readonly float CrouchBobRate = 0.6f;
         private readonly float _MinBobSpeed = 0.3f;      //低于这个速度直接清零，不产生 bob
+
+        // 移动层状态控制的开关：Bob 开不开、当前用多快的节奏
+        public bool ViewBobEnabled { get; set; } = true;
+        public float ViewBobRate { get; set; } = 0.8f;
         
         private readonly float _CameraBobRightScale = 0.009f;   //Bob水平幅度
         private readonly float _CameraBobUpScale = 0.0025f;      //Bob垂直幅度
@@ -264,7 +364,7 @@ namespace EGame
             var horizontal_vel = new Vector3(Velocity.X, 0f, Velocity.Z);
             _XySpeed = horizontal_vel.Length();
 
-            if (!IsOnFloor() || _XySpeed <= _MinBobSpeed)
+            if (!ViewBobEnabled || _XySpeed <= _MinBobSpeed)
             {
                 _BobCycle = 0f;
                 _ViewBobPosition = _ViewBobPosition.Lerp(Vector3.Zero, (float)dt * 10f);
@@ -272,10 +372,7 @@ namespace EGame
                 return;
             }
 
-            bool is_crouching = IsCrouch;
-
-            float bob_rate = is_crouching ? _CrouchBobRate : (RunInput ? _RunBobRate : _WalkBobRate);
-            _BobCycle += bob_rate * (float)dt * Mathf.Tau;
+            _BobCycle += ViewBobRate * (float)dt * Mathf.Tau;
 
             _ViewBobPosition = ComputeCameraBobOffset(_BobCycle, _XySpeed);
 
@@ -366,7 +463,7 @@ namespace EGame
 
         private Node3D _WeaponBobNode;
 
-        private readonly bool _WeaponBobEnabled = true;
+        public bool WeaponBobEnabled { get; set; } = true;
 
         private readonly float _WeaponBobRightScale = -0.002f;
         private readonly float _WeaponBobUpScale = 0.001f;
@@ -376,7 +473,7 @@ namespace EGame
             if (_WeaponBobNode == null)
                 return;
 
-            _WeaponBobNode.Position = _WeaponBobEnabled
+            _WeaponBobNode.Position = WeaponBobEnabled
                 ? ComputeWeaponBobOffset(_BobCycle, _XySpeed)
                 : Vector3.Zero;
         }
@@ -394,7 +491,7 @@ namespace EGame
 
         private Node3D _WeaponSwayNode;
 
-        private readonly bool _WeaponSwayEnabled = true;   // 转头滞后，跟脚步相位无关
+        public bool WeaponSwayEnabled { get; set; } = true;   // 转头滞后，跟脚步相位无关
 
         private readonly float _WeaponTurnSwayScale = 0.15f;
         private readonly float _WeaponTurnSwayMaxDegrees = 6.0f;
@@ -411,7 +508,7 @@ namespace EGame
             if (_WeaponSwayNode == null)
                 return;
 
-            if (!_WeaponSwayEnabled)
+            if (!WeaponSwayEnabled)
             {
                 _WeaponSwayNode.RotationDegrees = Vector3.Zero;
                 return;
@@ -530,6 +627,20 @@ namespace EGame
         private int _CurrentWeaponIndex = -1;
         private bool WeaponIndexValid => _CurrentWeaponIndex >= 0 && _CurrentWeaponIndex < _Weapons.Count;
 
+        // 当前手上的武器，没有武器时是 null；动作层状态都从这里拿武器
+        public NWeapon CurrentWeapon => WeaponIndexValid ? _Weapons[_CurrentWeaponIndex] : null;
+
+        // 当前武器换了（拿到新武器/切枪）时触发
+        public event Action<NWeapon> OnWeaponChanged;
+
+        // 当前武器的弹药变了（当前弹匣或者备弹任意一个）就转发这个事件，外部（HUD）只用订阅这一个
+        public event Action OnAmmoChanged;
+
+        private void RaiseAmmoChanged()
+        {
+            OnAmmoChanged?.Invoke();
+        }
+
         private void RegisterWeaponBoneAttachment()
         {
             var model = GetNodeOrNull<Node3D>("%Model");
@@ -571,33 +682,44 @@ namespace EGame
         private void SetWeapon(int index)
         {
             AssertWeaponIndex(index);
-            if (index != _CurrentWeaponIndex)
-            {
-                if (WeaponIndexValid)
-                {
-                    var cur_weapon = _Weapons[_CurrentWeaponIndex];
-                    cur_weapon.UnEquip();
-                }
+            if (index == _CurrentWeaponIndex)
+                return;
 
-                _CurrentWeaponIndex = index;
-                var weapon = _Weapons[_CurrentWeaponIndex];
-                weapon.Equip();
-                AnimTrigger(weapon.Data.SwitchAnimTrigger);
-            }
+            var old_weapon = CurrentWeapon;
+            old_weapon?.UnEquip();
+
+            _CurrentWeaponIndex = index;
+            CurrentWeapon.Equip();
+            Intent.Reset();
+            OnWeaponChanged?.Invoke(CurrentWeapon);
+
+            if (old_weapon?.RangedData != null)
+                old_weapon.RangedData.OnAmmoChanged -= RaiseAmmoChanged;
+
+            if (CurrentWeapon?.RangedData != null)
+                CurrentWeapon.RangedData.OnAmmoChanged += RaiseAmmoChanged;
+
+            // 切枪播放切枪动画+计时都在 Switch 状态里，这里只负责切过去（同时会让上一个动作状态正常退出，比如关掉近战碰撞体）
+            ActionLayer.ChangeState(PlayerConfig.ActionSwitch);
         }
 
-        private void HandleWeapon()
+        // 读取武器相关的输入：切枪直接执行，开火只是记下意图，什么时候真正开火由动作层状态决定
+        private void HandleWeaponInput()
         {
+            // 动作层只在 Normal 模式里运行，其他模式（以后的冲刺、硬直）下不接收武器输入
+            if (_Weapons.Count == 0 || ModeLayer.CurrentName != PlayerConfig.ModeNormal)
+            {
+                Intent.Reset();
+                return;
+            }
+
             if (Input.IsActionJustPressed(EGInput.SWITCHLEFT))
                 SetWeapon((_CurrentWeaponIndex - 1 + _Weapons.Count) % _Weapons.Count);
             else if (Input.IsActionJustPressed(EGInput.SWITCHRIGHT))
                 SetWeapon((_CurrentWeaponIndex + 1) % _Weapons.Count);
 
-            if(WeaponIndexValid)
-            {
-                _Weapons[_CurrentWeaponIndex].Intent.Pressing = Input.IsActionPressed(EGInput.FIRE);
-                _Weapons[_CurrentWeaponIndex].Intent.JustPressed = Input.IsActionJustPressed(EGInput.FIRE);
-            }
+            Intent.Pressing = Input.IsActionPressed(EGInput.FIRE);
+            Intent.JustPressed = Input.IsActionJustPressed(EGInput.FIRE);
         }
 
         private void AssertWeaponIndex(int index)
@@ -631,12 +753,15 @@ namespace EGame
 
             RegisterWeaponBoneAttachment();
 
+            // 状态机要先启动，再拿武器：拿武器时会让动作层切到 Switch，得有一个已经在跑的动作层
+            BuildStateLayers();
+
             /*var hand = ModelDB.MeleeWeapon<SwordModel>() as MeleeWeaponModel;
             var hand_weapon = NWeapon.Create(this, hand);
             PickWeapon(hand_weapon); // AddChild 之后 NWeapon._Ready() 才跑完，AttackCollision 才有值
             hand_weapon.AttackCollision.BodyEntered += (body) => OnMeleeHit(hand_weapon, body);*/
 
-            var pistol = ModelDB.RangedWeapon<ShotgunPistolModel>() as RangedWeaponModel;
+            var pistol = ModelDB.RangedWeapon<ShotgunPistolModel>().MutableClone() as RangedWeaponModel;
             PickWeapon(NWeapon.Create(this, pistol));
 
             var greate_sword = ModelDB.MeleeWeapon<GreateSwordModel>() as MeleeWeaponModel;
@@ -672,31 +797,24 @@ namespace EGame
                 Input.MouseMode = is_locked ? Input.MouseModeEnum.Visible : Input.MouseModeEnum.Captured;
             }
 
-            HandleWeapon();
+            HandleWeaponInput();
+            ModeLayer.Process(delta);
+            MovementLayer.Process(delta);
+            ActionLayer.Process(delta);
         }
-        
-        private bool _JustJumped;
 
         public override void _PhysicsProcess(double delta)
         {
-            _JustJumped = false;
+            if (_DashCooldownRemaining > 0)
+                _DashCooldownRemaining -= delta;
 
-            if (IsOnFloor() && Input.IsActionJustPressed(EGInput.JUMP))
-            {
-                Velocity = ApplyJump(Velocity);
-                _JustJumped = true;
-            }
+            // 状态机负责水平速度和起跳（移动层），重力、蹲伏碰撞体、MoveAndSlide 和镜头效果每帧都要算，留在这里
+            ModeLayer.PhysicalProcess(delta);
+            MovementLayer.PhysicalProcess(delta);
+            ActionLayer.PhysicalProcess(delta);
 
-            //如果已经起跳了就不要加摩擦力了，否则会吃掉兔子跳的速度
-            if (IsOnFloor() && !_JustJumped)
-            {
-                Velocity = ApplyFriction(Velocity, _Friction, delta);
-                Velocity = GroundMove(Velocity, _YawNode.Quaternion * GetMoveDir(), delta);
-            }
-            else
-                Velocity = AirMove(Velocity, _YawNode.Quaternion * GetMoveDir(), delta);
-
-            Velocity = ApplyGravity(Velocity, delta);
+            if (GravityEnabled)
+                Velocity = ApplyGravity(Velocity, delta);
             UpdateCrouch(delta);
             MoveAndSlide();
             UpdateCameraLean();

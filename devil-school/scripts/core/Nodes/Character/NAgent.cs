@@ -28,10 +28,15 @@ namespace EGame
             NotifyEvent("TookDamage");
 
             if (Data.HP <= 0)
-                OnDead();
+                Die();
         }
 
-        public void OnDead()
+        public void Die()
+        {
+            OnDead();
+        }
+
+        private void OnDead()
         {
             AnimTrigger(AnimationConfig.DeadTrigger);
             NotifyEvent("Dead");

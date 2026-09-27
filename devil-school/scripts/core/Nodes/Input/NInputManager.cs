@@ -15,6 +15,8 @@ namespace EGame
             { EGInput.CROUCH,                   Key.Ctrl  },
             { EGInput.RUN,                      Key.Shift },
             { EGInput.JUMP,                     Key.Space },
+            { EGInput.DASH,                     Key.Shift },
+            { EGInput.RELOAD,                   Key.R },
             { EGInput.EXIT,                     Key.Escape },
             { EGInput.SWITCHLEFT,               Key.Q },
             { EGInput.SWITCHRIGHT,              Key.E },

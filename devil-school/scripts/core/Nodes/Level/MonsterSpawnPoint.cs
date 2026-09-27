@@ -20,8 +20,8 @@ namespace EGame
             var monster = NAgent.Create(model.MutableClone() as MonsterModel);
             AddChild(monster);
 
-            monster.Position = this.Position;
-            monster.Quaternion = this.Quaternion;
+            monster.GlobalPosition = this.GlobalPosition;
+            monster.GlobalRotation = this.GlobalRotation;
         }
     }
 }

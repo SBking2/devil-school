@@ -31,17 +31,5 @@ namespace EGame
         public float GetHitboxOpenTime(int comboIndex) => ComboSteps[comboIndex].HitboxOpenTime;
         public float GetHitboxCloseTime(int comboIndex) => ComboSteps[comboIndex].HitboxCloseTime;
         public int GetDamage(int comboIndex) => ComboSteps[comboIndex].Damage;
-
-        protected override void BuildStateMachine(NWeapon weapon)
-        {
-            var idle = new WeaponStateIdle();
-            var melee_attack = new WeaponStateMeleeAttack();
-            var switch_state = new WeaponStateSwitch();
-
-            weapon.BuildStateMachine(new List<WeaponState>()
-            {
-                idle, melee_attack, switch_state
-            }, idle);
-        }
     }
 }

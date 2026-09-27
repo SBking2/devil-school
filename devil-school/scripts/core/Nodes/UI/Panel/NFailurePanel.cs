@@ -19,10 +19,7 @@ namespace EGame
 
         private void Restart()
         {
-            var player = NGame.Instance.PlayerNode;
-            player.Data.HP = player.Data.MaxHP;
-            player.GlobalPosition = Vector3.Zero;
-            
+            NGame.Instance.RebornPlayer();   
             UIManager.Instance.Hide(UIPanelType.FailurePanel);
         }
     }

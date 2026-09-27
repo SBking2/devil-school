@@ -76,9 +76,5 @@ namespace EGame
 
 		}
 
-		public virtual void OnWeaponCreated(NWeapon weapon)
-		{
-
-		}
 	}
 }

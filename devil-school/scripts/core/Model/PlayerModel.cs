@@ -35,6 +35,8 @@ namespace EGame
             ans.AddAnyBranch(WeaponConfig.GetSwitchAnimTrigger(WeaponModel.WeaponType.Pistol), pistol_switch);
             ans.AddAnyBranch(WeaponConfig.GetSwitchAnimTrigger(WeaponModel.WeaponType.Sword), sword_idle);
 
+            ans.AddAnyBranch(WeaponConfig.GetReloadAnimTrigger(WeaponModel.WeaponType.Pistol), pistol_switch);
+
             ans.AddAnyBranch(WeaponConfig.GetAttackAnimTrigger(WeaponModel.WeaponType.Hand, 0), hand_fire);
             ans.AddAnyBranch(WeaponConfig.GetAttackAnimTrigger(WeaponModel.WeaponType.Pistol, 0), pistol_fire);
             ans.AddAnyBranch(WeaponConfig.GetAttackAnimTrigger(WeaponModel.WeaponType.Sword, 0), sword_attack1);

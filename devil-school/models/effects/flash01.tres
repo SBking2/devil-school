@@ -1,0 +1,33 @@
+[gd_resource type="ArrayMesh" format=4 uid="uid://dlhohmuy8xh75"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dmgp1"]
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_iyb1k"]
+_surfaces = [{
+"aabb": AABB(-1, -0.99999994, 1.7072517e-15, 2, 2, 1),
+"format": 34359742465,
+"index_count": 12,
+"index_data": PackedByteArray("AAABAAIAAgABAAMABAABAAAAAwABAAQA"),
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 5,
+"vertex_data": PackedByteArray("AACAPy69uzMAAIA/AAAAAAbAJ7N4CvYmAAAAAP//f78AAIA/AACAv6KFCDMAAIA/Lr27swAAgD///38/")
+}]
+blend_shape_mode = 0
+
+[resource]
+resource_name = "Cone_001"
+_surfaces = [{
+"aabb": AABB(-1, -0.99999994, 1.7072517e-15, 2, 2, 1),
+"attribute_data": PackedByteArray("XKzROHP5fz////8+AAAAP3L5fz9y+X8/cPl/PwDA0ThcrNE4ACDSOA=="),
+"format": 34359742487,
+"index_count": 12,
+"index_data": PackedByteArray("AAABAAIAAgABAAMABAABAAAAAwABAAQA"),
+"material": SubResource("StandardMaterial3D_dmgp1"),
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 5,
+"vertex_data": PackedByteArray("AACAPy69uzMAAIA/AAAAAAbAJ7N4CvYmAAAAAP//f78AAIA/AACAv6KFCDMAAIA/Lr27swAAgD///38/////v6YvFZT//////z//n/+/AABYUOirAAD/v9JXK6j/v///LCjSlw==")
+}]
+blend_shape_mode = 0
+shadow_mesh = SubResource("ArrayMesh_iyb1k")

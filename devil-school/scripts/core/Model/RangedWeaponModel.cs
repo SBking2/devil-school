@@ -1,27 +1,50 @@
 
-using System.Collections.Generic;
+using System;
 
 namespace EGame
 {
     // 远程武器专用 Model：走射线检测
     public abstract class RangedWeaponModel : WeaponModel
     {
+        public RangedWeaponModel()
+        {
+            _CurrentAmmo = MagazineSize;
+            _TotalAmmo = MaxTotalAmmo;
+        }
+
         public virtual int Attack => 2;
+        public virtual int MagazineSize => 10;
+        public virtual int MaxTotalAmmo => 30;    // 备弹上限，不算弹匣里的
         public virtual float ReloadTime => 2f;
         public virtual float FireTime => 1f;
         public virtual float Range => 100f;
 
-        protected override void BuildStateMachine(NWeapon weapon)
-        {
-            var idle = new WeaponStateIdle();
-            var fire = new WeaponStateFire();
-            var switch_state = new WeaponStateSwitch();
-            var switch_reloading = new WeaponStateReloading();
+        // 弹药是运行时状态，只有 MutableClone 出来的副本才能改；current/total 任意一个变了都触发同一个事件，
+        // 外部（HUD）不关心具体是哪个变了、变成多少，收到通知后自己现取最新值就行
+        public event Action OnAmmoChanged;
 
-            weapon.BuildStateMachine(new List<WeaponState>()
+        private int _CurrentAmmo;
+        public int CurrentAmmo
+        {
+            get => _CurrentAmmo;
+            set
             {
-                idle, fire, switch_state, switch_reloading
-            }, idle);
+                AssertMutable();
+                _CurrentAmmo = value;
+                OnAmmoChanged?.Invoke();
+            }
+        }
+
+        private int _TotalAmmo;
+        public int TotalAmmo
+        {
+            get => _TotalAmmo;
+            set
+            {
+                AssertMutable();
+                _TotalAmmo = value;
+                OnAmmoChanged?.Invoke();
+            }
         }
     }
 }

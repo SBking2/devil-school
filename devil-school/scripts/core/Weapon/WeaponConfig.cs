@@ -5,12 +5,6 @@ namespace EGame
 {
     public static class WeaponConfig
     {
-        public static string Idle = "idle";
-        public static string Fire = "fire";
-        public static string Reload = "reload";
-        public static string Switch = "switch";
-        public static string MeleeAttack = "melee_attack";
-
         // 每种武器类型对应的动画 trigger 名字，集中定义在这里，武器 Model 自己不用再声明一遍
         private static readonly Dictionary<WeaponModel.WeaponType, string> _SwitchAnimTriggers = new Dictionary<WeaponModel.WeaponType, string>()
         {

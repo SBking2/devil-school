@@ -61,7 +61,7 @@ namespace EGame
 
         protected virtual float GetRange()
         {
-            return 2f;
+            return 5f;
         }
 
         protected virtual int GetDamage()
@@ -76,7 +76,7 @@ namespace EGame
 
         protected virtual float GetWindupTime()
         {
-            return 0.5f;
+            return 0.04f;
         }
     }
 }

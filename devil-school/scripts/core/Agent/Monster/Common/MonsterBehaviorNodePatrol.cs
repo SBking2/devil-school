@@ -5,7 +5,7 @@ namespace EGame
 {
     public class MonsterBehaviorNodePatrol : AbstractAgentBehaviorNode
     {
-        private const float PatrolRadius = 15f;
+        private const float PatrolRadius = 50f;
         private const float ArriveDistance = 0.5f;
 
         private Vector3? _Target;
@@ -14,7 +14,7 @@ namespace EGame
         {
             if (IsFirstTick)
                 agent.AnimTrigger(AnimationConfig.WalkTrigger);
-
+            
             _Target ??= agent.GlobalPosition + new Vector3(
                 (float)GD.RandRange(-PatrolRadius, PatrolRadius), 0,
                 (float)GD.RandRange(-PatrolRadius, PatrolRadius));

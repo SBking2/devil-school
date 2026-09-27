@@ -1,0 +1,10 @@
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://b58bmmn3mlrh4"]
+
+[ext_resource type="Texture2D" uid="uid://smtvojtov2ky" path="res://images/world/horo_texture_pack_128/Stone/Horror_Stone_07-128x128.png" id="1_20407"]
+
+[resource]
+albedo_texture = ExtResource("1_20407")
+uv1_scale = Vector3(0.22, 0.22, 0.22)
+uv1_triplanar = true
+uv1_world_triplanar = true
+texture_filter = 2

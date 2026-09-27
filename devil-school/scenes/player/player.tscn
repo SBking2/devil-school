@@ -9,7 +9,7 @@ radius = 0.32714844
 
 [node name="PlayerController" type="CharacterBody3D" unique_id=1502327299]
 collision_layer = 2
-collision_mask = 4
+collision_mask = 12
 script = ExtResource("1_0cfoe")
 
 [node name="CameraLand" type="Node3D" parent="." unique_id=56480376]
@@ -51,7 +51,10 @@ transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, -
 [node name="fps_test" parent="CameraLand/Pitch/CameraLean/CameraBob/RealCamera/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil/Model" unique_id=497252349 instance=ExtResource("3_gmlin")]
 transform = Transform3D(1, 0, 1.7484555e-07, 0, 1, 0, -1.7484555e-07, 0, 1, 8.931005e-09, 7.3075294e-05, 7.939339e-05)
 
-[node name="hand_r" type="BoneAttachment3D" parent="CameraLand/Pitch/CameraLean/CameraBob/RealCamera/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil/Model/fps_test/ArmsRig/Skeleton3D" parent_id_path=PackedInt32Array(497252349, 1419845157) index="1" unique_id=1148893884]
+[node name="ArmsMesh" parent="CameraLand/Pitch/CameraLean/CameraBob/RealCamera/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil/Model/fps_test/ArmsRig/Skeleton3D" parent_id_path=PackedInt32Array(497252349, 1528795126) index="0" unique_id=2082593179]
+cast_shadow = 0
+
+[node name="hand_r" type="BoneAttachment3D" parent="CameraLand/Pitch/CameraLean/CameraBob/RealCamera/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil/Model/fps_test/ArmsRig/Skeleton3D" parent_id_path=PackedInt32Array(497252349, 1528795126) index="1" unique_id=1148893884]
 transform = Transform3D(0.00089889765, -0.9996859, 0.025051761, 0.9999616, 0.0011169316, 0.008691287, -0.008716539, 0.02504299, 0.9996484, -0.002797642, -0.00652705, 0.01382618)
 bone_name = "handIK.R"
 bone_idx = 70

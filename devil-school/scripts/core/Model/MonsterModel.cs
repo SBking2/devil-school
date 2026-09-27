@@ -15,10 +15,10 @@ namespace EGame
             MonsterBehaviorNodeChase chase = new MonsterBehaviorNodeChase();
             MonsterBehaviorNodeCheckPlayer check_player_chase = new MonsterBehaviorNodeCheckPlayer(chase);
 
-            //idle-patrol队列
+            //idle-patrol队列：先把巡逻注释掉，只留 idle 站桩，测试视野锥用
             MonsterBehaviorNodeIdle idle = new MonsterBehaviorNodeIdle();
-            MonsterBehaviorNodePatrol patrol = new MonsterBehaviorNodePatrol();
-            AgentBehaviorSequence patrol_seq = new AgentBehaviorSequence(new List<AbstractAgentBehaviorNode>() { idle, patrol });
+            //MonsterBehaviorNodePatrol patrol = new MonsterBehaviorNodePatrol();
+            //AgentBehaviorSequence patrol_seq = new AgentBehaviorSequence(new List<AbstractAgentBehaviorNode>() { idle, patrol });
 
             //近战攻击：自己判距离，冷却没打完之前优先级压住 chase，不会打到一半又被交还出去
             MonsterBehaviorNodeAttack attack = new MonsterBehaviorNodeAttack();
@@ -29,8 +29,8 @@ namespace EGame
             //死了就永远待在这个分支，优先级比受伤还高
             MonsterBehaviorNodeDead dead = new MonsterBehaviorNodeDead();
 
-            //选择 死亡 或者 受伤 或者 近战攻击 或者 追逐 或者 (idle-patrol)
-            AgentBehaviorSelector root = new AgentBehaviorSelector(new List<AbstractAgentBehaviorNode>() { dead, hurt, attack, check_player_chase, patrol_seq });
+            //选择 死亡 或者 受伤 或者 近战攻击 或者 追逐 或者 idle
+            AgentBehaviorSelector root = new AgentBehaviorSelector(new List<AbstractAgentBehaviorNode>() { dead, hurt, attack, check_player_chase, idle });
 
             return root;
         }

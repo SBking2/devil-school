@@ -15,6 +15,10 @@ run/main_scene="uid://dge3avc7g1le2"
 config/features=PackedStringArray("4.6", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 
+[display]
+
+window/size/viewport_width=1080
+
 [dotnet]
 
 project/assembly_name="devil-school"
@@ -67,6 +71,14 @@ switch_left={
 "events": []
 }
 switch_right={
+"deadzone": 0.2,
+"events": []
+}
+dash={
+"deadzone": 0.2,
+"events": []
+}
+reload={
 "deadzone": 0.2,
 "events": []
 }

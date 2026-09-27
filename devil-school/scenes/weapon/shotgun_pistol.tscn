@@ -10,3 +10,8 @@ script = ExtResource("1_8k43l")
 transform = Transform3D(0.55, 0, 0, 0, -2.4041263e-08, -0.55, 0, 0.55, -2.4041263e-08, 0, 0, 0)
 
 [node name="tripo_convert_2699076e-82f0-48dd-9241-bf40e2b04c3b" parent="TransformOffset" unique_id=2105141551 instance=ExtResource("2_8k43l")]
+
+[node name="tripo_node_2699076e" parent="TransformOffset/tripo_convert_2699076e-82f0-48dd-9241-bf40e2b04c3b" index="0" unique_id=1409176032]
+cast_shadow = 0
+
+[editable path="TransformOffset/tripo_convert_2699076e-82f0-48dd-9241-bf40e2b04c3b"]

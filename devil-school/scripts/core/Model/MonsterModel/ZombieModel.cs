@@ -3,7 +3,8 @@ namespace EGame
 {
     public class ZombieModel : MonsterModel
     {
-        public override float MoveSpeed => 1.5f;
+        public override float MoveSpeed => 24f;
+        public override int MaxHP => 30;
 
         protected override CreatureAnimator BuildAnimator(INCharacter character)
         {

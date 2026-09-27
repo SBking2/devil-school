@@ -18,12 +18,5 @@ namespace EGame
         public virtual string PrefabName => "weapon/" + ID.Entry.ToLowerInvariant();
         public virtual float SwitchTime => 0.3f;
         public string SwitchAnimTrigger => WeaponConfig.GetSwitchAnimTrigger(Type);
-
-        public override void OnWeaponCreated(NWeapon weapon)
-        {
-            BuildStateMachine(weapon);
-        }
-
-        protected abstract void BuildStateMachine(NWeapon weapon);
     }
 }

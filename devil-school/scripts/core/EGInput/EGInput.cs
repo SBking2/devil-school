@@ -15,9 +15,11 @@ namespace EGame
         public const string CROUCH = "crouch";
         public const string RUN = "run";
         public const string JUMP = "jump";
+        public const string DASH = "dash";
 
         //攻击
         public const string FIRE = "fire";
+        public const string RELOAD = "reload";
         public const string EXIT = "exit";
         public const string SWITCHLEFT = "switch_left";
         public const string SWITCHRIGHT = "switch_right";
