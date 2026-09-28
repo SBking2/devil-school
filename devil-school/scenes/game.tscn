@@ -417,4 +417,3 @@ grow_vertical = 2
 
 [node name="DevConsole" parent="." unique_id=1579904544 instance=ExtResource("4_lbhrr")]
 layer = 2
-visible = false

@@ -7,6 +7,7 @@ namespace EGame
         // 顶层：模式（互斥，独占型状态放这一层，以后的冲刺/硬直/死亡都加在这里）
         public const string ModeNormal = "mode_normal";
         public const string ModeDash = "mode_dash";
+        public const string ModeFly = "mode_fly";    // 自由环游：console 命令随时切换，没有重力/碰撞
 
         // 移动层（只在 Normal 模式里运行）
         public const string MoveIdle = "move_idle";

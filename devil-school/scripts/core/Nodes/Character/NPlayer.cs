@@ -41,6 +41,7 @@ namespace EGame
 
             ModeLayer.Add(new PlayerModeStateNormal());
             ModeLayer.Add(new PlayerModeStateDash());
+            ModeLayer.Add(new PlayerModeStateFly());
 
             MovementLayer.Add(new PlayerMoveStateIdle());
             MovementLayer.Add(new PlayerMoveStateWalk());
@@ -155,6 +156,11 @@ namespace EGame
         // 玩家想往哪走：输入方向按当前朝向转到世界空间
         public Vector3 WishDirection => _YawNode.Quaternion * GetMoveDir();
 
+        // 自由环游模式用：按摄像机完整朝向（含俯仰）转输入方向，抬头按前进就是往上飞。
+        // 不能直接拿 _RealCamera.GlobalTransform.Basis 乘——Godot 真实摄像机是 -Z 朝前，
+        // 跟这个项目自己"局部 +Z 才是前方"的约定是反的，得复用 _YawNode.Quaternion 这套已经处理对的
+        public Vector3 FlyDirection => _YawNode.Quaternion * Quaternion.FromEuler(new Vector3(Mathf.DegToRad(_PitchAngle), 0f, 0f)) * GetMoveDir();
+
         // 下面三个是给状态机用的"怎么动"：状态决定什么时候用、用多大速度，具体的加速/摩擦公式留在这里
         public void MoveOnGround(double dt, float speed)
         {
@@ -226,6 +232,9 @@ namespace EGame
 
         // 状态控制的开关：冲刺这类需要平直移动的状态会关掉重力
         public bool GravityEnabled { get; set; } = true;
+
+        // 自由环游模式关掉碰撞：不调 MoveAndSlide，直接改 GlobalPosition，能穿墙穿地板
+        public bool CollisionEnabled { get; set; } = true;
 
         private readonly float _UpGravity = -9.8f;
         private readonly float _DownGravity = -15.0f;
@@ -815,8 +824,13 @@ namespace EGame
 
             if (GravityEnabled)
                 Velocity = ApplyGravity(Velocity, delta);
-            UpdateCrouch(delta);
-            MoveAndSlide();
+
+            if (CollisionEnabled)
+            {
+                UpdateCrouch(delta);
+                MoveAndSlide();
+            }
+
             UpdateCameraLean();
             UpdateViewBob(delta);
 
