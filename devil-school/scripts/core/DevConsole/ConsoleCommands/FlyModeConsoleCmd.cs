@@ -17,9 +17,18 @@ namespace EGame
                 return new CmdResult(false, "Must at least one argument!");
 
             bool is_flying = args[0] == "on";
-            player.ModeLayer.ChangeState(is_flying ? PlayerConfig.ModeFly : PlayerConfig.ModeNormal);
 
-            return new CmdResult(true, is_flying ? "Fly mode on" : "Fly mode off");
+            if(is_flying)
+            {
+                NGame.Instance.IsFlyCheatOn = true;
+            }
+            else
+            {
+                NGame.Instance.IsFlyCheatOn = false;
+                NGame.Instance.PlayerNode.ResetFly();
+            }
+
+            return new CmdResult(true, is_flying ? "Fly mode on! Press Alt to fly " : "Fly mode off");
         }
     }
 }

@@ -134,6 +134,7 @@ namespace EGame
         public bool JumpPressed => Input.IsActionJustPressed(EGInput.JUMP);
         public bool DashPressed => Input.IsActionJustPressed(EGInput.DASH);
         public bool ReloadPressed => Input.IsActionJustPressed(EGInput.RELOAD);
+        public bool WalkPressed => Input.IsActionJustPressed(EGInput.Walk);
 
         // 冲刺冷却：从开始冲刺那一刻算起，CanDash 为 true 才允许再冲
         private readonly double _DashCooldown = 1.5f;
@@ -788,6 +789,31 @@ namespace EGame
             DamageSystem.Instance.ReportHit(damageInfo);
         }
 
+        private bool _IsFly = false;
+
+        private void SetFly(bool active)
+        {
+            if (NGame.Instance.IsFlyCheatOn == false)
+            {
+                ResetFly();
+                return;
+            }
+
+            _IsFly = active;
+            if (active)
+                ModeLayer.ChangeState(PlayerConfig.ModeFly);
+            else
+                ModeLayer.ChangeState(PlayerConfig.ModeNormal);
+        }
+
+        public void ResetFly()
+        {
+            _IsFly = false;
+
+            if (ModeLayer.CurrentName == PlayerConfig.ModeFly)
+                ModeLayer.ChangeState(PlayerConfig.ModeNormal);
+        }
+
         public override void _Input(InputEvent @event)
         {
             base._Input(@event);
@@ -805,6 +831,9 @@ namespace EGame
                 var is_locked = Input.MouseMode == Input.MouseModeEnum.Captured;
                 Input.MouseMode = is_locked ? Input.MouseModeEnum.Visible : Input.MouseModeEnum.Captured;
             }
+
+            if(WalkPressed)
+                SetFly(!_IsFly);
 
             HandleWeaponInput();
             ModeLayer.Process(delta);

@@ -20,6 +20,7 @@ namespace EGame
             { EGInput.EXIT,                     Key.Escape },
             { EGInput.SWITCHLEFT,               Key.Q },
             { EGInput.SWITCHRIGHT,              Key.E },
+            { EGInput.Walk,                     Key.Alt },
         };
         
         private void ProcessKeyInput(InputEvent e)

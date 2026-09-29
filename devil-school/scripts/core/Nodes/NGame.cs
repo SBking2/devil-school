@@ -11,7 +11,9 @@ namespace EGame
 	{
 		public static NGame Instance { get; private set; }
 		public NPlayer PlayerNode { get; private set; }
-	
+
+		public bool IsFlyCheatOn = false;
+
 		public override void _EnterTree()
 		{
 			base._EnterTree();
