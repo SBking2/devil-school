@@ -21,7 +21,7 @@ git 仓库根目录（`DevilSchool/`）只是一个外层容器；真正的 Godo
 - **命名空间**：全项目统一用 `EGame`（`.csproj` 里的 `RootNamespace` 实际没被用到，可以忽略）。
 - **`N` 前缀 = Godot 节点包装类**：所有以 `N` 开头的类（`NGame`、`NRun`、`NCombatRoom`、`NFirstPersonCamera` 等）都位于 `scripts/Core/Nodes/` 下，并直接继承某个 Godot `Node` 派生类型（`Node`/`Node3D`/`Control`/`CharacterBody3D` 等）。反过来，`Nodes/` 目录之外没有任何类使用 `N` 前缀，`Nodes/` 目录内也没有不带 `N` 前缀的类——这是一条严格执行的约定，新写节点包装类时要遵守。
 - **`I` 前缀 = 接口**：标准接口前缀（`ISerializable`、`INetMessage` 等）。如果一个接口是给 `N` 类实现的，会写成 `IN...`（如 `INCamera`、`INSensor`），表示"这是给某个 N 类用的接口"。
-- **`Abstract` 前缀 = 用于多态注册的抽象基类**：`AbstractModel`、`AbstractCharacterMovementState`、`AbstractWorldBehaviorNode`、`AbstractTurnMoveState`、`AbstractConsoleCmd`、`AbstractNetClient`/`AbstractNetHost` 都是这个模式。
+- **`Abstract` 前缀 = 用于多态注册的抽象基类**：`AbstractModel`、`AbstractCharacterMovementState`、`AbstractWorldBehaviourNode`、`AbstractTurnMoveState`、`AbstractConsoleCmd`、`AbstractNetClient`/`AbstractNetHost` 都是这个模式。
 - **`Abstract*Subtypes` 反射注册表模式**：与某个 `Abstract` 基类配套，会有一个同名的 `Abstract*Subtypes` 静态类，里面手写一个 `Type[]` 数组列出所有具体子类，运行时通过 `Activator.CreateInstance` 批量实例化注册（例子：`AbstractModelSubtypes`、`AbstractConsoleCmdSubtypes`）。**新增一个 Model 或 DevConsole 命令时，必须手动把它的 `Type` 加进对应数组，否则不会被注册**，这一步不是自动发现的。
 - **单例**：静态单例基本用 `public static X Instance { get; } = new X();`（纯 C# 类，立即初始化）或者 `public static X Instance { get; private set; }`，在 `_EnterTree`/`_Ready` 里赋值一次（Godot 节点类）。
 - **不要存储能直接推导出来的引用/状态**：一个值如果能通过已有的字段/索引在需要的时候当场算出来（比如"当前武器"可以用 `_Weapons[_CurrentWeaponIndex]` 算，就不要另外再存一份 `_CurrentWeapon` 字段），就不要单独存一份快照。多余的副本容易和真实状态不同步，也是没必要的冗余代码。同理，运行时数据要挂在真正关心它的对象上：只有某个节点自己关心的瞬时状态（比如武器的开火冷却）应该存在对应的 `N` 类节点里、跟着节点的生命周期（`_Process`/`ProcessMode`）走，不要为了图方便塞进 `Model` 里——`Model` 是数据，不是"某个节点的运行时黑板"。
@@ -54,7 +54,7 @@ git 仓库根目录（`DevilSchool/`）只是一个外层容器；真正的 Godo
 
 ### AI —— 两套互相独立的系统，不要混淆
 
-- **`Core/AI/WorldAI/`**：实时行为树，用于开放世界/探索阶段的 AI，每帧从 `MonsterModel.OnWorldProcess` 驱动。组合/叶子/装饰节点的词汇表在 `AI/WorldAI/Node/`（`WorldNodeSelector`、`WorldNodeSequence`、`WorldNodeAction`、`WorldNodeCondition`、`WorldNodeDecorator`、`WorldNodeRepeat`）；每种怪物的具体行为树放在 `AI/WorldAI/MonsterAI/<怪物名>/`。`WorldBehaviorTree.NotifyEvent()` 会中断并重新 tick 整棵树，实现事件驱动的响应；另外内部维护一个有限长度的节点进入日志，方便调试。
+- **`Core/AI/WorldAI/`**：实时行为树，用于开放世界/探索阶段的 AI，每帧从 `MonsterModel.OnWorldProcess` 驱动。组合/叶子/装饰节点的词汇表在 `AI/WorldAI/Node/`（`WorldNodeSelector`、`WorldNodeSequence`、`WorldNodeAction`、`WorldNodeCondition`、`WorldNodeDecorator`、`WorldNodeRepeat`）；每种怪物的具体行为树放在 `AI/WorldAI/MonsterAI/<怪物名>/`。`WorldBehaviourTree.NotifyEvent()` 会中断并重新 tick 整棵树，实现事件驱动的响应；另外内部维护一个有限长度的节点进入日志，方便调试。
 - **`Core/AI/TurnBaseAI/`**：回合制的"选招"状态机，用于战斗中的决策，和 `WorldAI` 完全是两套东西。`TurnMoveStateMachine.RollMove()` 会沿着中间的分支节点（`TurnStateConditionalBranch`、`TurnStateRandomBranch`）走，直到落在一个 `TurnStateMove` 叶子节点上，这个叶子就是本回合实际执行的招式。
 
 ### 战斗
