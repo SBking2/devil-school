@@ -33,6 +33,12 @@ namespace EGame
             PlayAnimation(_CurrentState);
         }
 
+        public void SetSpeed(float speed)
+        {
+            if (_AnimPlayer != null)
+                _AnimPlayer.SpeedScale = speed;
+        }
+
         public void AddAnyBranch(string trigger, AnimState state, Func<bool> condition = null)
         {
             _AnyState.AddBranch(trigger, state, condition);

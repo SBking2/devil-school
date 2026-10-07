@@ -1,5 +1,6 @@
 
 using Godot;
+using System.Collections.Generic;
 
 namespace EGame
 {
@@ -12,6 +13,8 @@ namespace EGame
         private Label _BulletCountLabel;
         private Label _TotalBulletCountLabel;
 
+        private List<Control> _HurtTips;
+
         public override void _Ready()
         {
             base._Ready();
@@ -20,6 +23,10 @@ namespace EGame
             _DashTimerCDProgress = GetNode<TextureProgressBar>("%DashTimerProgress");
             _BulletCountLabel = GetNode<Label>("%BulletCountLabel");
             _TotalBulletCountLabel = GetNode<Label>("%TotalBulletCountLabel");
+
+            _HurtTips = new List<Control>(4);
+            for (int i = 0; i < 4; i++)
+                _HurtTips.Add(GetNode<Control>($"%HurtTip{i}"));
         }
 
         public override void OnInit()
@@ -100,6 +107,33 @@ namespace EGame
         {
             _BulletCountLabel.Text = $"{cur_bullet}/{max_bullet}";
             _TotalBulletCountLabel.Text = total_bullet.ToString();
+        }
+
+        public void HurtTip(Vector3 attacker, Vector3 player, Vector3 player_fwd)
+        {
+            Vector3 attack_dir = attacker - player;
+
+            attack_dir.Y = 0f;
+            player_fwd.Y = 0f;
+
+            float angle = player_fwd.SignedAngleTo(attack_dir, Vector3.Up);
+            var tip = GetHurtTip(angle);
+            fun.PlayAnimation(tip, "show", true);
+        }
+
+        private Control GetHurtTip(float angle)
+        {
+            float per_angle = (float)0.25 * Mathf.Pi;
+            if (angle >= -per_angle && angle <= per_angle)
+                return _HurtTips[0];
+
+            if (angle <= -per_angle && angle >= -3 * per_angle)
+                return _HurtTips[1];
+
+            if (angle >= per_angle && angle <= 3 * per_angle)
+                return _HurtTips[2];
+
+            return _HurtTips[3];
         }
     }
 }

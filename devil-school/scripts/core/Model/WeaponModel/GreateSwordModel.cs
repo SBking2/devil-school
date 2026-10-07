@@ -10,32 +10,32 @@ namespace EGame
         {
             new MeleeComboStep()
             {
-                LockEndTime = 0.233f,
-                ReleaseInputEndTime = 0.333f,
-                ComboEndTime = 0.5f,
-                Duration = 1.333f,
-                HitboxOpenTime = 0.166f,
-                HitboxCloseTime = 0.266f,
-                Damage = 2,
-            },
-            new MeleeComboStep()
-            {
-                LockEndTime = 0.166f,
-                ReleaseInputEndTime = 0.233f,
-                ComboEndTime = 0.4f,
-                Duration = 1.333f,
-                HitboxOpenTime = 0.133f,
-                HitboxCloseTime = 0.233f,
-                Damage = 2,
-            },
-            new MeleeComboStep()
-            {
-                LockEndTime = 0.666f,
-                ReleaseInputEndTime = 0.666f,
+                LockEndTime = 0.133f,
+                ReleaseInputEndTime = 0.433f,
                 ComboEndTime = 0.666f,
-                Duration = 1.333f,
-                HitboxOpenTime = 0.133f,
-                HitboxCloseTime = 0.2f,
+                Duration = 1.332f,
+                HitboxOpenTime = 0.099f,
+                HitboxCloseTime = 0.198f,
+                Damage = 2,
+            },
+            new MeleeComboStep()
+            {
+                LockEndTime = 0.149f,
+                ReleaseInputEndTime = 0.3f,
+                ComboEndTime = 0.599f,
+                Duration = 1.332f,
+                HitboxOpenTime = 0.033f,
+                HitboxCloseTime = 0.133f,
+                Damage = 2,
+            },
+            new MeleeComboStep()
+            {
+                LockEndTime = 0.699f,
+                ReleaseInputEndTime = 0.699f,
+                ComboEndTime = 0.699f,
+                Duration = 1.332f,
+                HitboxOpenTime = 0.266f,
+                HitboxCloseTime = 0.323f,
                 Damage = 2,
             },
         };

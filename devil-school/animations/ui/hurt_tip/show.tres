@@ -1,0 +1,17 @@
+[gd_resource type="Animation" format=3 uid="uid://pa7ol8oh37mc"]
+
+[resource]
+resource_name = "show"
+length = 1.0000017
+step = 0.016666668
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("TextureRect:modulate:a")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0, 0),
+"points": PackedFloat32Array(0, 0, 0, 0.016666668, 0.22790803, 0.99482274, 0, -0.29030108, 0, 0, 0.8778358, -0.06666666, 0.017331362, 0.03333333, -0.40728807, -0.006066086, -0.15000004, 0.008665692, 0, 0),
+"times": PackedFloat32Array(0, 0.033333335, 0.38333333, 0.6666667)
+}

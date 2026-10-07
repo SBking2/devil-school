@@ -61,14 +61,24 @@ namespace EGame
         // 开火输入意图，动作层状态从这里读
         public WeaponIntent Intent { get; } = new WeaponIntent();
 
-        public void TakeDamage(DamageInfo info)
+        public void OnDamage(DamageInfo info)
         {
             if (Data.HP <= 0)
                 return;    // 已经死了，不再触发受伤反馈
 
             Data.HP -= info.Amount;
+            AnimUtils.ShakeRotation(CameraEffectNode, 0.2f, Vector3.One * 3f, 15f, 5f).SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
+            var hud_panel = UIManager.Instance.Get(UIPanelType.HudPanel) as NHUDPanel;
+            hud_panel.HurtTip(info.Attacker.GlobalPosition, this.GlobalPosition, this.Basis.Z);
+            //AnimUtils.ShakeRotation(WeaponCameraEffectNode, 0.5f, Vector3.One * 1f, 8f, 2f);
+
             if (Data.HP <= 0)
                 Die();
+        }
+
+        public void OnAttack(DamageInfo info)
+        {
+            HitStop(0.1f);
         }
 
         public void Die()
@@ -107,6 +117,38 @@ namespace EGame
         public void AnimTrigger(string trigger)
         {
             _Animator?.CallTrigger(trigger);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    时间缩放
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        // 角色自己的本地时间倍率，行为树、移动的 dt 都乘它，动画速度也跟着它
+        private float _TimeScale = 1f;
+        private float TimeScale
+        {
+            get
+            {
+                return _TimeScale;
+            }
+
+            set
+            {
+                if (value < 0)
+                    throw new ArgumentException("Argument less than zero!");
+
+                _TimeScale = value;
+                _Animator?.SetSpeed(value);
+            }
+        }
+
+        private void HitStop(float duration)
+        {
+            TimeScale = 0.05f;
+            Timer.Instance.SetTimerTask(duration, () =>
+            {
+                TimeScale = 1f;
+            });
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -503,7 +545,7 @@ namespace EGame
 
         public bool WeaponSwayEnabled { get; set; } = true;   // 转头滞后，跟脚步相位无关
 
-        private readonly float _WeaponTurnSwayScale = 0.15f;
+        private readonly float _WeaponTurnSwayScale = 0.05f;
         private readonly float _WeaponTurnSwayMaxDegrees = 6.0f;
         private readonly int _WeaponTurnSwayAverageFrames = 10;
 
@@ -550,7 +592,10 @@ namespace EGame
             {
                 int idx = (_ViewAngleWriteIndex - 1 - j + _ViewAngleHistory.Length) % _ViewAngleHistory.Length;
                 Vector2 sample = _ViewAngleHistory[idx];
-                float yaw_delta = sample.Y - current_view_angle.Y;
+
+                //如果往右偏移视角，希望武器也往右偏移
+                float yaw_delta = current_view_angle.Y - sample.Y;
+
                 if (yaw_delta > 180f) yaw_delta -= 360f;
                 else if (yaw_delta < -180f) yaw_delta += 360f;
                 avg += new Vector2(sample.X - current_view_angle.X, yaw_delta) / n;
@@ -558,8 +603,8 @@ namespace EGame
 
             //移动的平均偏移越大，武器越偏
             Vector2 diff = (avg - current_view_angle) * _WeaponTurnSwayScale;
-            diff.X = Mathf.Clamp(diff.X, -_WeaponTurnSwayMaxDegrees, _WeaponTurnSwayMaxDegrees);
-            diff.Y = Mathf.Clamp(diff.Y, -_WeaponTurnSwayMaxDegrees, _WeaponTurnSwayMaxDegrees);
+            /*diff.X = Mathf.Clamp(diff.X, -_WeaponTurnSwayMaxDegrees, _WeaponTurnSwayMaxDegrees);
+            diff.Y = Mathf.Clamp(diff.Y, -_WeaponTurnSwayMaxDegrees, _WeaponTurnSwayMaxDegrees);*/
             return new Vector3(diff.X, diff.Y, 0);
         }
 
@@ -739,6 +784,8 @@ namespace EGame
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+        public Node3D CameraEffectNode { get; private set; }
+        public Node3D WeaponCameraEffectNode { get; private set; }
 
         public override void _Ready()
         {
@@ -757,6 +804,8 @@ namespace EGame
             _WeaponSwayNode = GetNodeOrNull<Node3D>("%WeaponSway");
             _WeaponSpeedPullNode = GetNodeOrNull<Node3D>("%WeaponSpeedPull");
             _WeaponLandingNode = GetNodeOrNull<Node3D>("%WeaponLanding");
+            CameraEffectNode = GetNodeOrNull<Node3D>("%CameraEffect");
+            WeaponCameraEffectNode = GetNodeOrNull<Node3D>("%WeaponCameraEffect");
 
             _EyesPos = _StandHeight - _EyeOffsetFromTop;
             _PitchNode.Position = new Vector3(0.0f, _EyesPos, 0.0f);
@@ -785,7 +834,7 @@ namespace EGame
         {
             Log.VeryDebug($"[MeleeHit] 打到了: {body.Name}");
             int damage = weapon.MeleeData.GetDamage(weapon.CurrentComboIndex);
-            var damageInfo = new DamageInfo(body, body.GlobalPosition, Vector3.Up, Data, damage);
+            var damageInfo = new DamageInfo(this, body, body.GlobalPosition, Vector3.Up, Data, damage);
             DamageSystem.Instance.ReportHit(damageInfo);
         }
 
@@ -835,29 +884,33 @@ namespace EGame
             if(WalkPressed)
                 SetFly(!_IsFly);
 
+            double dt = delta * TimeScale;
+
             HandleWeaponInput();
-            ModeLayer.Process(delta);
-            MovementLayer.Process(delta);
-            ActionLayer.Process(delta);
+            ModeLayer.Process(dt);
+            MovementLayer.Process(dt);
+            ActionLayer.Process(dt);
         }
 
         public override void _PhysicsProcess(double delta)
         {
+            double dt = delta * TimeScale;
+
             if (_DashCooldownRemaining > 0)
-                _DashCooldownRemaining -= delta;
+                _DashCooldownRemaining -= dt;
 
             // 状态机负责水平速度和起跳（移动层），重力、蹲伏碰撞体、MoveAndSlide 和镜头效果每帧都要算，留在这里
-            ModeLayer.PhysicalProcess(delta);
-            MovementLayer.PhysicalProcess(delta);
-            ActionLayer.PhysicalProcess(delta);
+            ModeLayer.PhysicalProcess(dt);
+            MovementLayer.PhysicalProcess(dt);
+            ActionLayer.PhysicalProcess(dt);
 
             if (GravityEnabled)
-                Velocity = ApplyGravity(Velocity, delta);
+                Velocity = ApplyGravity(Velocity, dt);
 
             if (CollisionEnabled)
             {
-                UpdateCrouch(delta);
-                MoveAndSlide();
+                UpdateCrouch(dt);
+                this.MoveAndSlideScaled(TimeScale);
             }
 
             UpdateCameraLean();

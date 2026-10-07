@@ -9,28 +9,28 @@ namespace EGame
 	{
         public override string PrefabPath => "monster/" + ID.Entry.Slugify().ToLowerInvariant();
         
-        protected override AbstractAgentBehaviorNode BuildBehaviorTree()
+        protected override AbstractAgentBehaviourNode BuildBehaviourTree(BehaviourNodeFactory factory)
         {
             //玩家接近之后进入追逐状态
-            MonsterBehaviorNodeChase chase = new MonsterBehaviorNodeChase();
-            MonsterBehaviorNodeCheckPlayer check_player_chase = new MonsterBehaviorNodeCheckPlayer(chase);
+            MonsterBehaviourNodeChase chase = factory.Create<MonsterBehaviourNodeChase>();
+            MonsterBehaviourNodeCheckPlayer check_player_chase = factory.Create<MonsterBehaviourNodeCheckPlayer>(chase);
 
             //idle-patrol队列：先把巡逻注释掉，只留 idle 站桩，测试视野锥用
-            MonsterBehaviorNodeIdle idle = new MonsterBehaviorNodeIdle();
-            //MonsterBehaviorNodePatrol patrol = new MonsterBehaviorNodePatrol();
-            //AgentBehaviorSequence patrol_seq = new AgentBehaviorSequence(new List<AbstractAgentBehaviorNode>() { idle, patrol });
+            MonsterBehaviourNodeIdle idle = factory.Create<MonsterBehaviourNodeIdle>();
+            //MonsterBehaviourNodePatrol patrol = factory.Create<MonsterBehaviourNodePatrol>();
+            //AgentBehaviourSequence patrol_seq = new AgentBehaviourSequence(new List<AbstractAgentBehaviourNode>() { idle, patrol });
 
             //近战攻击：自己判距离，冷却没打完之前优先级压住 chase，不会打到一半又被交还出去
-            MonsterBehaviorNodeAttack attack = new MonsterBehaviorNodeAttack();
+            MonsterBehaviourNodeAttack attack = factory.Create<MonsterBehaviourNodeAttack>();
 
             //挨打了优先播受伤、不能动
-            MonsterBehaviorNodeHurt hurt = new MonsterBehaviorNodeHurt();
+            MonsterBehaviourNodeHurt hurt = factory.Create<MonsterBehaviourNodeHurt>();
 
             //死了就永远待在这个分支，优先级比受伤还高
-            MonsterBehaviorNodeDead dead = new MonsterBehaviorNodeDead();
+            MonsterBehaviourNodeDead dead = factory.Create<MonsterBehaviourNodeDead>();
 
             //选择 死亡 或者 受伤 或者 近战攻击 或者 追逐 或者 idle
-            AgentBehaviorSelector root = new AgentBehaviorSelector(new List<AbstractAgentBehaviorNode>() { dead, hurt, attack, check_player_chase, idle });
+            AgentBehaviourSelector root = new AgentBehaviourSelector(new List<AbstractAgentBehaviourNode>() { dead, hurt, attack, check_player_chase, idle });
 
             return root;
         }

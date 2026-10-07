@@ -37,19 +37,20 @@ namespace EGame
             var results = space_state.IntersectShape(query);
             
             Node3D target = null;
-            float closestDistance = range;
+            float closestDistance = float.MaxValue;
 
             foreach (var result in results)
             {
                 Node3D node3D = (Node3D)result["collider"];
                 float distance = origin.DistanceTo(node3D.GlobalPosition);
-                if (distance <= closestDistance)
+                if (distance < closestDistance)
                 {
                     closestDistance = distance;
                     target = node3D;
                 }
             }
 
+            CollisionDebugDraw.Sphere(center, shape.Radius);
             return target;
         }
 
@@ -63,6 +64,7 @@ namespace EGame
             var result = space_state.IntersectRay(query);
             if (result.Count == 0)
             {
+                CollisionDebugDraw.Ray(from, to, false, to);
                 hitObject = null;
                 hitPoint = Vector3.Zero;
                 hitNormal = Vector3.Zero;
@@ -72,6 +74,7 @@ namespace EGame
             hitObject = (Node3D)result["collider"];
             hitPoint = (Vector3)result["position"];
             hitNormal = (Vector3)result["normal"];
+            CollisionDebugDraw.Ray(from, to, true, hitPoint);
             return true;
         }
 

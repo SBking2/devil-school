@@ -105,7 +105,7 @@ namespace EGame
 
             if (CollisionDetection.FindRayTarget(GetWorld3D(), from, to, mask, out Node3D hitObject, out Vector3 hitPoint, out Vector3 hitNormal))
             {
-                var damageInfo = new DamageInfo(hitObject, hitPoint, hitNormal, _Owner.Data, RangedData.Attack);
+                var damageInfo = new DamageInfo(_Owner, hitObject, hitPoint, hitNormal, _Owner.Data, RangedData.Attack);
                 DamageSystem.Instance.ReportHit(damageInfo);
             }
         }
@@ -132,7 +132,7 @@ namespace EGame
             var hits = CollisionDetection.FindShotgunTargets(GetWorld3D(), origin, forward, right, up, RangedData.Range, mask, _ShotgunPelletCount, _ShotgunSpreadDegrees);
             foreach (var hit in hits)
             {
-                var damageInfo = new DamageInfo(hit.HitObject, hit.HitPoint, hit.HitNormal, _Owner.Data, RangedData.Attack);
+                var damageInfo = new DamageInfo(_Owner, hit.HitObject, hit.HitPoint, hit.HitNormal, _Owner.Data, RangedData.Attack);
                 DamageSystem.Instance.ReportHit(damageInfo);
             }
         }

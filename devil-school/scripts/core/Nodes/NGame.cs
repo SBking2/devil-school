@@ -20,17 +20,34 @@ namespace EGame
 			Instance = this;
 			
 			ModelDB.OnInit();
-			Settins.LogLevel = Log.LogLevel.Debug;
+			Settings.LogLevel = Log.LogLevel.Debug;
 		}
 
         public override void _Ready()
         {
             base._Ready();
 
+			// TODO 临时：排查拉伸，用完删掉
+			LogStretch();
+			GetTree().Root.SizeChanged += LogStretch;
+
 			InitCfg();
 			InitManager();
             CreatePlayer();
         }
+
+        public override void _Process(double delta)
+        {
+            base._Process(delta);
+            Timer.Instance.Process(delta);
+        }
+
+		private void LogStretch()
+		{
+			var root = GetTree().Root;
+			var ui_parent = GetNode<Control>("%UIParent");
+			Log.Debug($"stretch mode={root.ContentScaleMode} aspect={root.ContentScaleAspect} factor={root.ContentScaleFactor} size={root.Size} scale_size={root.ContentScaleSize} ui={ui_parent.Size}");
+		}
 
 		private void InitManager()
 		{
@@ -51,9 +68,8 @@ namespace EGame
 
 		private void CreatePlayer()
 		{
-			var creautre_parent = GetNode<Node3D>("%CreatureParent");
 			PlayerNode = NPlayer.Create(new Player());
-			creautre_parent.AddChild(PlayerNode);
+			AddChild(PlayerNode);
 
 			var spawn_point = GetNodeOrNull<Node3D>("%PlayerSpawnPoint");
 			if (spawn_point != null)

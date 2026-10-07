@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://d06w388nihs1s" path="res://scripts/Core/Nodes/UI/Panel/NHUDPanel.cs" id="1_3jruc"]
 [ext_resource type="Texture2D" uid="uid://dw4wt0nsfnncj" path="res://images/common/default_white.png" id="2_fugpu"]
+[ext_resource type="PackedScene" uid="uid://hxr1vr6lsj72" path="res://prefabs/ui/hud_panel/hurt_tip.tscn" id="3_hvpjf"]
 
 [node name="HUDPanel" type="Control" unique_id=986811221]
 layout_mode = 3
@@ -14,10 +15,10 @@ script = ExtResource("1_3jruc")
 
 [node name="HPRect" type="Control" parent="." unique_id=2137367776]
 anchors_preset = 0
-offset_left = 41.0
-offset_top = 27.0
-offset_right = 447.0
-offset_bottom = 47.0
+offset_left = 60.0
+offset_top = 45.0
+offset_right = 466.0
+offset_bottom = 65.0
 
 [node name="BGBar" type="ColorRect" parent="HPRect" unique_id=1354775031]
 unique_name_in_owner = true
@@ -40,10 +41,10 @@ grow_vertical = 2
 
 [node name="DashTimer" type="Control" parent="." unique_id=206739601]
 anchors_preset = 0
-offset_left = 975.0
-offset_top = 548.0
-offset_right = 1040.0
-offset_bottom = 613.0
+offset_left = 1708.0
+offset_top = 887.0
+offset_right = 1828.0
+offset_bottom = 1007.0
 
 [node name="DashTimerProgress" type="TextureProgressBar" parent="DashTimer" unique_id=1420868573]
 unique_name_in_owner = true
@@ -60,10 +61,10 @@ texture_progress = ExtResource("2_fugpu")
 
 [node name="BulletCount" type="Control" parent="." unique_id=20771026]
 anchors_preset = 0
-offset_left = 859.0
-offset_top = 552.0
-offset_right = 966.0
-offset_bottom = 582.0
+offset_left = 1586.0
+offset_top = 890.0
+offset_right = 1693.0
+offset_bottom = 920.0
 
 [node name="BulletCountLabel" type="Label" parent="BulletCount" unique_id=459879180]
 unique_name_in_owner = true
@@ -73,16 +74,17 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_font_sizes/font_size = 30
 text = "3/10"
 horizontal_alignment = 2
 vertical_alignment = 1
 
 [node name="TotalBulletCount" type="Control" parent="." unique_id=1580856683]
 anchors_preset = 0
-offset_left = 859.0
-offset_top = 576.0
-offset_right = 966.0
-offset_bottom = 606.0
+offset_left = 1585.0
+offset_top = 934.0
+offset_right = 1692.0
+offset_bottom = 964.0
 
 [node name="TotalBulletCountLabel" type="Label" parent="TotalBulletCount" unique_id=489018337]
 unique_name_in_owner = true
@@ -92,6 +94,53 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_font_sizes/font_size = 30
 text = "3/10"
 horizontal_alignment = 2
 vertical_alignment = 1
+
+[node name="HurtTips" type="Control" parent="." unique_id=1202188246]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset_ratio = Vector2(0.5, 0.5)
+
+[node name="HurtTip0" parent="HurtTips" unique_id=496213724 instance=ExtResource("3_hvpjf")]
+unique_name_in_owner = true
+layout_mode = 1
+offset_top = -368.0
+offset_bottom = -368.0
+
+[node name="HurtTip1" parent="HurtTips" unique_id=1330113314 instance=ExtResource("3_hvpjf")]
+unique_name_in_owner = true
+layout_mode = 1
+offset_left = 298.0
+offset_top = -90.0
+offset_right = 298.0
+offset_bottom = -90.0
+rotation = 1.5707964
+
+[node name="HurtTip2" parent="HurtTips" unique_id=1085846797 instance=ExtResource("3_hvpjf")]
+unique_name_in_owner = true
+layout_mode = 1
+offset_left = -291.0
+offset_top = -90.0
+offset_right = -291.0
+offset_bottom = -90.0
+rotation = -1.5707964
+
+[node name="HurtTip3" parent="HurtTips" unique_id=1522033124 instance=ExtResource("3_hvpjf")]
+unique_name_in_owner = true
+layout_mode = 1
+offset_top = 193.0
+offset_bottom = 193.0
+rotation = 3.1415927

@@ -24,7 +24,6 @@ namespace EGame
             
         }
 
-
         //快速的消耗掉随机数，以达到存档当前的位置
         private void FastConsumer(int target_counter)
         {
@@ -101,6 +100,18 @@ namespace EGame
         {
             _Counter++;
             return RangeInt(2) == 0;
+        }
+
+        public int RandomInt()
+        {
+            _Counter++;
+            return _Random.Next();
+        }
+
+        public long RandomInt64()
+        {
+            _Counter++;
+            return _Random.NextInt64();
         }
     }
 }

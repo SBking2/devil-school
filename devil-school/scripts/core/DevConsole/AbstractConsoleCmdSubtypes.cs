@@ -11,6 +11,7 @@ namespace EGame
         {
             typeof(LogConsoleCmd),
             typeof(FlyModeConsoleCmd),
+            typeof(CollisionVisConsoleCmd),
         };
     }
 }

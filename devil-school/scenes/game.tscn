@@ -1,32 +1,22 @@
 [gd_scene format=3 uid="uid://dge3avc7g1le2"]
 
 [ext_resource type="Script" uid="uid://bgg7dp3nm278q" path="res://scripts/Core/Nodes/NGame.cs" id="1_uwrxv"]
+[ext_resource type="Material" uid="uid://b8uhsskd1f7op" path="res://materials/world/init_world/godot_ground.tres" id="2_u5sy4"]
+[ext_resource type="Script" uid="uid://cewmuls0i8ism" path="res://scripts/Core/Nodes/Level/MonsterSpawnPoint.cs" id="3_gee14"]
 [ext_resource type="Script" uid="uid://dsy8h32r4tgwf" path="res://scripts/Core/Nodes/Input/NInputManager.cs" id="3_lbhrr"]
 [ext_resource type="PackedScene" uid="uid://drjgdl7h8yx3o" path="res://scenes/dev_console/dev_console.tscn" id="4_lbhrr"]
-[ext_resource type="Material" uid="uid://b58bmmn3mlrh4" path="res://materials/world/init_world/wall_debug.tres" id="5_kvpfn"]
-[ext_resource type="Script" uid="uid://cewmuls0i8ism" path="res://scripts/Core/Nodes/Level/MonsterSpawnPoint.cs" id="5_u5sy4"]
-[ext_resource type="Texture2D" uid="uid://c7vwxv56mg0v3" path="res://images/world/horo_texture_pack_128/Wall/Horror_Wall_13-128x128.png" id="6_kvpfn"]
 [ext_resource type="Script" uid="uid://deesrpgwse4xm" path="res://scripts/Core/Nodes/Level/DeathArea.cs" id="6_vtaks"]
-[ext_resource type="Material" uid="uid://dpnaftk78xl72" path="res://materials/world/init_world/floor_debug.tres" id="8_dinhu"]
 [ext_resource type="Texture2D" uid="uid://c6ulnut3217a6" path="res://images/effects/flash.png" id="8_kvpfn"]
 [ext_resource type="ArrayMesh" uid="uid://dlhohmuy8xh75" path="res://models/effects/flash01.tres" id="8_vtaks"]
 
 [sub_resource type="Environment" id="Environment_rmeui"]
 ambient_light_source = 2
 ambient_light_color = Color(0.84709084, 0.87673146, 0.99999875, 1)
-ambient_light_energy = 0.01
 
-[sub_resource type="PlaneMesh" id="PlaneMesh_kvpfn"]
+[sub_resource type="BoxShape3D" id="BoxShape3D_p57ef"]
+size = Vector3(2, 0.01, 2)
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_kvpfn"]
-size = Vector3(2, 0.014, 2)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dinhu"]
-albedo_texture = ExtResource("6_kvpfn")
-uv1_scale = Vector3(0.22, 0.22, 0.22)
-uv1_triplanar = true
-uv1_world_triplanar = true
-texture_filter = 2
+[sub_resource type="PlaneMesh" id="PlaneMesh_p57ef"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_0tnpc"]
 
@@ -58,323 +48,55 @@ unique_name_in_owner = true
 [node name="WorldEnvironment" type="WorldEnvironment" parent="RootSceneContainer/InitWorld" unique_id=1990076639]
 environment = SubResource("Environment_rmeui")
 
-[node name="CreatureParent" type="Node3D" parent="RootSceneContainer/InitWorld" unique_id=269897668]
+[node name="DebugScene" type="Node3D" parent="RootSceneContainer/InitWorld" unique_id=1462049930]
+
+[node name="PlayerSpawnPoint" type="Node3D" parent="RootSceneContainer/InitWorld/DebugScene" unique_id=368769083]
 unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5317869, 0)
 
-[node name="MonsterSpawnPoints" type="Node3D" parent="RootSceneContainer/InitWorld/CreatureParent" unique_id=1078451910]
+[node name="Plane" type="Node3D" parent="RootSceneContainer/InitWorld/DebugScene" unique_id=1707220462]
+transform = Transform3D(20, 0, 0, 0, 1, 0, 0, 0, 20, 0, 0, 0)
 
-[node name="Node3D" type="Node3D" parent="RootSceneContainer/InitWorld/CreatureParent/MonsterSpawnPoints" unique_id=1696866567]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0044277906, 5.2550673, 6.232087)
-script = ExtResource("5_u5sy4")
-MonsterName = "Zombie"
-
-[node name="Node3D2" type="Node3D" parent="RootSceneContainer/InitWorld/CreatureParent/MonsterSpawnPoints" unique_id=1444319004]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.025417328, 4.55069, 11.582422)
-script = ExtResource("5_u5sy4")
-MonsterName = "Zombie"
-
-[node name="Node3D3" type="Node3D" parent="RootSceneContainer/InitWorld/CreatureParent/MonsterSpawnPoints" unique_id=316316452]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5095692, 5.722046e-06, 2.307088)
-script = ExtResource("5_u5sy4")
-MonsterName = "Zombie"
-
-[node name="Node3D4" type="Node3D" parent="RootSceneContainer/InitWorld/CreatureParent/MonsterSpawnPoints" unique_id=555041673]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.1659336, 4.2010317, 7.598826)
-script = ExtResource("5_u5sy4")
-MonsterName = "Zombie"
-
-[node name="Node3D5" type="Node3D" parent="RootSceneContainer/InitWorld/CreatureParent/MonsterSpawnPoints" unique_id=1919646709]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.8857937, -7.6293945e-06, 1.8826132)
-script = ExtResource("5_u5sy4")
-MonsterName = "Zombie"
-
-[node name="Enviroment" type="Node3D" parent="RootSceneContainer/InitWorld" unique_id=747882948]
-
-[node name="InitLevel" type="Node3D" parent="RootSceneContainer/InitWorld" unique_id=1671601220]
-
-[node name="PlayerSpawnPoint" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=1261487663]
-unique_name_in_owner = true
-transform = Transform3D(-0.054793447, 0, 0.9984977, 0, 1, 0, -0.9984977, 0, -0.054793447, -2.9451303, 2.663053, 0)
-
-[node name="MonsterSpawnPoints" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=2013475161]
-
-[node name="ZombiePoint" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel/MonsterSpawnPoints" unique_id=1888274452]
-transform = Transform3D(-0.05386971, 0, -0.99854785, 0, 1, 0, 0.99854785, 0, -0.05386971, 26.613611, 1.4977967, 0.2768064)
-script = ExtResource("5_u5sy4")
-MonsterName = "Zombie"
-
-[node name="ZombiePoint2" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel/MonsterSpawnPoints" unique_id=795650666]
-transform = Transform3D(0.27749908, 0, -0.96072584, 0, 1, 0, 0.96072584, 0, 0.27749908, 35.782764, 1.7612312, -4.5805464)
-script = ExtResource("5_u5sy4")
-MonsterName = "Zombie"
-
-[node name="ZombiePoint3" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel/MonsterSpawnPoints" unique_id=1310976133]
-transform = Transform3D(0.8773221, 0, 0.4799018, 0, 1, 0, -0.4799018, 0, 0.8773221, 45.80648, 0.46473956, -5.39116)
-script = ExtResource("5_u5sy4")
-MonsterName = "Zombie"
-
-[node name="floor_panel" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=2022666098]
-transform = Transform3D(20.741173, 0, 0, 0, 1, 0, 0, 0, 1.96, 14.824856, 0.98959327, 0)
-
-[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel" unique_id=2063228088]
+[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/DebugScene/Plane" unique_id=1187126633]
 collision_layer = 4
 collision_mask = 0
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel/StaticBody3D" unique_id=1685453229]
-material_override = ExtResource("8_dinhu")
-mesh = SubResource("PlaneMesh_kvpfn")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel/StaticBody3D" unique_id=1290538443]
-shape = SubResource("BoxShape3D_kvpfn")
-
-[node name="floor_panel2" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=658962644]
-transform = Transform3D(19.554, 0, 0, 0, -4.371139e-08, 1.91, 0, -1, -8.348875e-08, 14.825, 2.8302646, 1.7405169)
-
-[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel2" unique_id=247106440]
-collision_layer = 4
-collision_mask = 0
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel2/StaticBody3D" unique_id=24935254]
-transform = Transform3D(1.0689534, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
-material_override = ExtResource("5_kvpfn")
-mesh = SubResource("PlaneMesh_kvpfn")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel2/StaticBody3D" unique_id=1428336176]
-shape = SubResource("BoxShape3D_kvpfn")
-
-[node name="floor_panel3" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=483934018]
-transform = Transform3D(-19.554, 8.742278e-08, 7.2988185e-15, 0, -4.371139e-08, 1.91, 1.7094651e-06, 1, 8.348875e-08, 14.825, 2.8302648, -1.8373632)
-
-[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel3" unique_id=1793636810]
-collision_layer = 4
-collision_mask = 0
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel3/StaticBody3D" unique_id=919885036]
-material_override = ExtResource("5_kvpfn")
-mesh = SubResource("PlaneMesh_kvpfn")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel3/StaticBody3D" unique_id=422404618]
-shape = SubResource("BoxShape3D_kvpfn")
-
-[node name="floor_panel4" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=707913296]
-transform = Transform3D(-9.153165e-08, 1, 8.348875e-08, 0, -4.371139e-08, 1.91, 2.094, 4.371139e-08, 3.6494093e-15, -4.654542, 2.8302658, -0.019908544)
-
-[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel4" unique_id=1977813445]
-collision_layer = 4
-collision_mask = 0
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel4/StaticBody3D" unique_id=580651885]
-material_override = ExtResource("5_kvpfn")
-mesh = SubResource("PlaneMesh_kvpfn")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel4/StaticBody3D" unique_id=1822071474]
-shape = SubResource("BoxShape3D_kvpfn")
-
-[node name="floor_panel5" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=1136739112]
-transform = Transform3D(-41.35229, 7.642741e-15, -2.244839e-06, 0, -0.99999994, -2.244839e-06, -3.6151328e-06, -8.742277e-08, 25.677963, 14.825, 4.6314855, -0.01359351)
-
-[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel5" unique_id=1905065060]
-collision_layer = 4
-collision_mask = 0
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel5/StaticBody3D" unique_id=568513759]
-material_override = SubResource("StandardMaterial3D_dinhu")
-mesh = SubResource("PlaneMesh_kvpfn")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel5/StaticBody3D" unique_id=930081827]
-shape = SubResource("BoxShape3D_kvpfn")
-
-[node name="floor_panel7" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=260983683]
-transform = Transform3D(-3.893351, 0, 4.881582, 0, 1, 0, -4.018188, 0, -4.7299204, 37.736248, 0.98959327, -9.708468)
-
-[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel7" unique_id=915088261]
-collision_layer = 4
-collision_mask = 0
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel7/StaticBody3D" unique_id=100461602]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.450581e-09, 0, -0.32794738)
-material_override = ExtResource("8_dinhu")
-mesh = SubResource("PlaneMesh_kvpfn")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel7/StaticBody3D" unique_id=1533146684]
-shape = SubResource("BoxShape3D_kvpfn")
-
-[node name="floor_panel8" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=1486504171]
-transform = Transform3D(-1.5911615, 0.5950754, 7.993606e-15, -5.149951e-08, -3.5129528e-08, 1.91, 1.1781716, 0.80366987, 8.348875e-08, 35.96148, 2.830265, -2.9906764)
-
-[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel8" unique_id=208697318]
-collision_layer = 4
-collision_mask = 0
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel8/StaticBody3D" unique_id=739229797]
-material_override = ExtResource("5_kvpfn")
-mesh = SubResource("PlaneMesh_kvpfn")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel8/StaticBody3D" unique_id=636954347]
-shape = SubResource("BoxShape3D_kvpfn")
-
-[node name="floor_panel9" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=340534908]
-transform = Transform3D(1.9183624, -0.24732052, 0, 2.1403814e-08, 4.235344e-08, 1.91, -0.48966232, -0.9689337, 8.348876e-08, 35.64056, 2.830265, -3.6497755)
-
-[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel9" unique_id=1702569464]
-collision_layer = 4
-collision_mask = 0
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel9/StaticBody3D" unique_id=77769338]
-material_override = ExtResource("5_kvpfn")
-mesh = SubResource("PlaneMesh_kvpfn")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel9/StaticBody3D" unique_id=387043340]
-shape = SubResource("BoxShape3D_kvpfn")
-
-[node name="floor_panel10" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=1892743486]
-transform = Transform3D(3.5243454, 0.29678917, -1.791648, -2.3847084, 0.90461886, 0, 3.6326532, 0.30590993, 1.7382296, 46.781338, -1.35158, -3.7630742)
-
-[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel10" unique_id=630015717]
-collision_layer = 4
-collision_mask = 0
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel10/StaticBody3D" unique_id=1356048983]
-material_override = ExtResource("8_dinhu")
-mesh = SubResource("PlaneMesh_kvpfn")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel10/StaticBody3D" unique_id=1499271442]
-shape = SubResource("BoxShape3D_kvpfn")
-
-[node name="floor_panel11" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=1878496726]
-transform = Transform3D(4.764039, -0.5948228, -4.9661015e-08, 0, -4.371139e-08, 1.91, -3.5252037, -0.80385685, -6.711301e-08, 38.138046, 2.8302653, -0.049215987)
-
-[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel11" unique_id=2131204260]
-collision_layer = 4
-collision_mask = 0
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel11/StaticBody3D" unique_id=538784705]
-material_override = ExtResource("5_kvpfn")
-mesh = SubResource("PlaneMesh_kvpfn")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel11/StaticBody3D" unique_id=1753606177]
-shape = SubResource("BoxShape3D_kvpfn")
-
-[node name="floor_panel6" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=1450396415]
-transform = Transform3D(3.8684816, 0, 1.1633763, 0, 1, 0, -2.8531327, 0, 1.5773888, 38.00185, 0.98959327, -2.2120185)
-
-[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel6" unique_id=693542715]
-collision_layer = 4
-collision_mask = 0
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel6/StaticBody3D" unique_id=566749130]
-material_override = ExtResource("8_dinhu")
-mesh = SubResource("PlaneMesh_kvpfn")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel6/StaticBody3D" unique_id=223625001]
-shape = SubResource("BoxShape3D_kvpfn")
-
-[node name="floor_panel12" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=1381397539]
-transform = Transform3D(-0.85392195, -0.94369715, -4.966102e-08, -1.07796644e-07, -1.2912691e-08, 1.91, -2.4359646, 0.3308109, -6.711301e-08, 42.044983, 2.8302653, -3.9341726)
-
-[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel12" unique_id=1679470486]
-collision_layer = 4
-collision_mask = 0
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel12/StaticBody3D" unique_id=57764549]
-material_override = ExtResource("5_kvpfn")
-mesh = SubResource("PlaneMesh_kvpfn")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel12/StaticBody3D" unique_id=575057120]
-shape = SubResource("BoxShape3D_kvpfn")
-
-[node name="floor_panel13" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=403515546]
-transform = Transform3D(4.744421, 0.74245715, -1.3626911e-07, 3.0812248e-07, -4.2343533e-09, 5.241012, 5.2583137, -0.66989696, -1.8415712e-07, 45.981163, -0.48394075, -1.0207152)
-
-[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel13" unique_id=247217340]
-collision_layer = 4
-collision_mask = 0
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel13/StaticBody3D" unique_id=1371162353]
-material_override = ExtResource("5_kvpfn")
-mesh = SubResource("PlaneMesh_kvpfn")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel13/StaticBody3D" unique_id=1063841958]
-shape = SubResource("BoxShape3D_kvpfn")
-
-[node name="floor_panel14" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=1777233192]
-transform = Transform3D(3.6163304, 0.68422884, -8.881784e-16, -1.4831238e-07, 3.1877292e-08, 1.91, 3.3929918, -0.72926736, 8.348876e-08, 31.703587, 2.8302648, -6.864572)
-
-[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel14" unique_id=1231798109]
-collision_layer = 4
-collision_mask = 0
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel14/StaticBody3D" unique_id=375517850]
-material_override = ExtResource("5_kvpfn")
-mesh = SubResource("PlaneMesh_kvpfn")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel14/StaticBody3D" unique_id=1470584941]
-shape = SubResource("BoxShape3D_kvpfn")
-
-[node name="floor_panel15" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=346047315]
-transform = Transform3D(-4.132531, 0.6857296, 0, -1.7018364e-07, -3.1815617e-08, 1.91, 3.893347, 0.7278564, 8.348876e-08, 33.15648, 2.830265, -12.957268)
-
-[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel15" unique_id=594528952]
-collision_layer = 4
-collision_mask = 0
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel15/StaticBody3D" unique_id=921223025]
-material_override = ExtResource("5_kvpfn")
-mesh = SubResource("PlaneMesh_kvpfn")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel15/StaticBody3D" unique_id=655189702]
-shape = SubResource("BoxShape3D_kvpfn")
-
-[node name="floor_panel16" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=1452081124]
-transform = Transform3D(-8.867835, -0.74200976, -2.25302e-14, 4.2903858e-07, -2.9303557e-08, 6.056312, -9.81526, 0.6703871, 2.6472983e-07, 44.501896, -1.1492914, -8.015606)
-
-[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel16" unique_id=1387514555]
-collision_layer = 4
-collision_mask = 0
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel16/StaticBody3D" unique_id=1440499307]
-material_override = ExtResource("5_kvpfn")
-mesh = SubResource("PlaneMesh_kvpfn")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel16/StaticBody3D" unique_id=748528254]
-shape = SubResource("BoxShape3D_kvpfn")
-
-[node name="floor_panel17" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=1677590217]
-transform = Transform3D(5.2342467, -0.6497281, -2.1094903e-07, -2.1105478e-08, -4.3603887e-08, 8.113257, -4.4737883, -0.7601697, -2.8508123e-07, 52.55747, -2.411744, 2.29589)
-
-[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel17" unique_id=1456823089]
-collision_layer = 4
-collision_mask = 0
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel17/StaticBody3D" unique_id=1498536535]
-material_override = ExtResource("5_kvpfn")
-mesh = SubResource("PlaneMesh_kvpfn")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel17/StaticBody3D" unique_id=31976283]
-shape = SubResource("BoxShape3D_kvpfn")
-
-[node name="floor_panel18" type="Node3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=33005867]
-transform = Transform3D(-4.931111, 0.6979545, -1.3626914e-07, 4.065517e-08, 4.3310894e-08, 5.241012, 4.805858, 0.71614534, -1.8415713e-07, 48.575077, -8.880832, 1.4980911)
-
-[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel18" unique_id=1025654769]
-collision_layer = 4
-collision_mask = 0
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel18/StaticBody3D" unique_id=1676111026]
-material_override = ExtResource("5_kvpfn")
-mesh = SubResource("PlaneMesh_kvpfn")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/InitLevel/floor_panel18/StaticBody3D" unique_id=1482628711]
-shape = SubResource("BoxShape3D_kvpfn")
-
-[node name="OmniLight3D" type="OmniLight3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=2137657941]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.392103, 3.5618234, 0)
-
-[node name="OmniLight3D2" type="OmniLight3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=885519870]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 37.481026, 3.5618234, 0)
-
-[node name="OmniLight3D3" type="OmniLight3D" parent="RootSceneContainer/InitWorld/InitLevel" unique_id=241819083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40.41094, 3.5618234, -12.238376)
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/DebugScene/Plane/StaticBody3D" unique_id=365733809]
+shape = SubResource("BoxShape3D_p57ef")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/DebugScene/Plane/StaticBody3D" unique_id=1525409517]
+material_override = ExtResource("2_u5sy4")
+mesh = SubResource("PlaneMesh_p57ef")
+
+[node name="Monsters" type="Node3D" parent="RootSceneContainer/InitWorld/DebugScene" unique_id=851583654]
+
+[node name="Knight" type="Node3D" parent="RootSceneContainer/InitWorld/DebugScene/Monsters" unique_id=2143670257]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.053025, 1.1048777, 0)
+script = ExtResource("3_gee14")
+MonsterName = "Knight"
+
+[node name="Knight2" type="Node3D" parent="RootSceneContainer/InitWorld/DebugScene/Monsters" unique_id=1561845780]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.986901, 1.1048777, 7.2213087)
+script = ExtResource("3_gee14")
+MonsterName = "Knight"
+
+[node name="Knight3" type="Node3D" parent="RootSceneContainer/InitWorld/DebugScene/Monsters" unique_id=1681180910]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.7975988, 1.1048777, -11.390091)
+script = ExtResource("3_gee14")
+MonsterName = "Knight"
+
+[node name="Knight4" type="Node3D" parent="RootSceneContainer/InitWorld/DebugScene/Monsters" unique_id=961289649]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.045541, 1.1048777, 3.474928)
+script = ExtResource("3_gee14")
+MonsterName = "Knight"
+
+[node name="Knight5" type="Node3D" parent="RootSceneContainer/InitWorld/DebugScene/Monsters" unique_id=1441692904]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.153702, 1.1048777, -10.586631)
+script = ExtResource("3_gee14")
+MonsterName = "Knight"
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="RootSceneContainer/InitWorld/DebugScene" unique_id=1703488335]
+transform = Transform3D(1, 0, 0, 0, 0.82029164, 0.5719455, 0, -0.5719455, 0.82029164, 0, 0, 0)
 
 [node name="DeadArea" type="Node3D" parent="RootSceneContainer/InitWorld" unique_id=1971856949]
 transform = Transform3D(1000, 0, 0, 0, 1, 0, 0, 0, 1000, 0, -123.34897, 0)

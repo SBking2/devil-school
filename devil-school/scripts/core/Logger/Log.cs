@@ -50,11 +50,11 @@ namespace EGame
         /// </summary>
         private static void LogMessage(LogLevel level, string message, bool is_show_stack_trace, int skip_frame, LogType type, bool is_color = true)
         {
-            if (level < Settins.LogLevel)
+            if (level < Settings.LogLevel)
                 return;
 
-            // 分类过滤：Settins.LogType 或者本条日志的 type 有一个是 None（不限分类），或者两者相同，才输出
-            if (Settins.LogType != LogType.None && type != LogType.None && Settins.LogType != type)
+            // 分类过滤：Settings.LogType 或者本条日志的 type 有一个是 None（不限分类），或者两者相同，才输出
+            if (Settings.LogType != LogType.None && type != LogType.None && Settings.LogType != type)
                 return;
 
             var time_stamp = DateTime.Now.ToString("HH:mm:ss");

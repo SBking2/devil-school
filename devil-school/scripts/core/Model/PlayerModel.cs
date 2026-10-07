@@ -27,7 +27,7 @@ namespace EGame
             sword_attack1.NextState = sword_idle;
             sword_attack2.NextState = sword_idle;
             sword_attack3.NextState = sword_idle;
-
+            
             var ans = new CreatureAnimator(hand_idle);
 
             // 每种武器类型对应的 trigger 名字统一从 WeaponConfig 查，跟武器 Model 那边用的是同一份，不会对不上

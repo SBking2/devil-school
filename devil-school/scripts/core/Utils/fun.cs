@@ -1,4 +1,5 @@
 
+using Godot;
 using System;
 
 namespace EGame
@@ -19,6 +20,17 @@ namespace EGame
 
             value = default(T);
             return false;
+        }
+
+        public static void PlayAnimation(Node node, string anim, bool is_from_start = false)
+        {
+            var animator = node.GetAnimationPlayer();
+            if (animator != null)
+            {
+                animator.Play(anim);
+                if(is_from_start)
+                    animator.Seek(0, true);
+            }
         }
     }
 }

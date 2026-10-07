@@ -12,6 +12,7 @@ namespace EGame
 		{
 			typeof(PlayerModel),
 			typeof(ZombieModel),
+			typeof(KnightModel),
 			typeof(GreateSwordModel),
 			typeof(ShotgunPistolModel),
 			typeof(SwordModel),

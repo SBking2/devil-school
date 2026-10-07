@@ -1,0 +1,9 @@
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://b8uhsskd1f7op"]
+
+[ext_resource type="Texture2D" uid="uid://d0d81u7x6h15q" path="res://images/debug/godot_blue.png" id="1_72cqi"]
+
+[resource]
+albedo_texture = ExtResource("1_72cqi")
+uv1_scale = Vector3(0.2, 0.2, 0.2)
+uv1_triplanar = true
+uv1_world_triplanar = true

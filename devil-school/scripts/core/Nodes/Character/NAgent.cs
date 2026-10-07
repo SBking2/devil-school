@@ -19,7 +19,12 @@ namespace EGame
         public CharacterModel Data => _AgentModel as CharacterModel;
         private AgentModel _AgentModel;
 
-        public void TakeDamage(DamageInfo info)
+        public void OnAttack(DamageInfo info)
+        {
+
+        }
+
+        public void OnDamage(DamageInfo info)
         {
             if (Data.HP <= 0)
                 return;    // 已经死了，不再触发受伤反馈
@@ -45,9 +50,41 @@ namespace EGame
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    时间缩放
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        // 角色自己的本地时间倍率，行为树、移动的 dt 都乘它，动画速度也跟着它
+        private float _TimeScale = 1f;
+        private float TimeScale
+        {
+            get
+            {
+                return _TimeScale;
+            }
+
+            set
+            {
+                if (value < 0)
+                    throw new ArgumentException("Argument less than zero!");
+
+                _TimeScale = value;
+                _Animator?.SetSpeed(value);
+            }
+        }
+
+        private void HitStop(float duration)
+        {
+            TimeScale = 0.05f;
+            Timer.Instance.SetTimerTask(duration, () =>
+            {
+                TimeScale = 1f;
+            });
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
         ////////                                    Intent 意图机制
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
-        
+
         //模拟角色的输入
         public AgentIntent Intent { get; private set; } = new AgentIntent();
         public Blackboard Blackboard { get; private set; } = new Blackboard();
@@ -85,23 +122,29 @@ namespace EGame
             float drop = (float)(curSpeed * friction * dt);
             float totalSpeed = Mathf.Max(0f, curSpeed - drop);
 
-            return source * (totalSpeed / curSpeed);    
+            return source * (totalSpeed / curSpeed);
         }
 
         /// <summary>
         /// 面朝向朝向移动方向
         /// </summary>
-        private Quaternion ApplyFaceRota(Quaternion cur, Vector3 velocity, double dt)
+        private Quaternion ApplyFaceRota(Quaternion cur, Vector3 direction, float rotation_rate, double dt)
         {
-            var horizontal_vel = velocity;
-            horizontal_vel.Y = 0f;
+            var horizontal_dir = direction;
+            horizontal_dir.Y = 0f;
 
-            if (horizontal_vel.LengthSquared() < 0.0001f)
-                return cur;   // 没有水平移动，保持当前朝向，避免除零/朝向乱转
+            if (horizontal_dir.LengthSquared() < 0.0001f)
+                return cur;   // 没有水平方向，保持当前朝向，避免除零/朝向乱转
 
-            var target = Basis.LookingAt(horizontal_vel, Vector3.Up).GetRotationQuaternion();
-            float weight = 1f - Mathf.Exp(-_RotationRate * (float)dt);   // 跟你项目里蹲伏/相机那套指数衰减插值是同一个写法
+            var target = Basis.LookingAt(horizontal_dir, Vector3.Up).GetRotationQuaternion();
+            float weight = 1f - Mathf.Exp(-rotation_rate * (float)dt);   // 跟你项目里蹲伏/相机那套指数衰减插值是同一个写法
             return cur.Slerp(target, weight);
+        }
+
+        // 行为主动要求转身（比如攻击窗口期朝向玩家），不依赖移动速度
+        public void TurnToward(Vector3 direction, float rotation_rate, double dt)
+        {
+            this.Quaternion = ApplyFaceRota(this.Quaternion, direction, rotation_rate, dt);
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -135,7 +178,7 @@ namespace EGame
         ////////                                    行为树
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        private AbstractAgentBehaviorNode _Root;
+        private AbstractAgentBehaviourNode _Root;
 
         private readonly HashSet<string> _PendingEvents = new HashSet<string>();
 
@@ -148,10 +191,10 @@ namespace EGame
 
         private double _DecisionTimer;
         public bool HasEvent(string eventName) => _PendingEvents.Contains(eventName);
-        public void SetBehaviorTree(AbstractAgentBehaviorNode root)
+        public void SetBehaviourTree(AbstractAgentBehaviourNode root)
         {
             if (_Root != null)
-                throw new InvalidOperationException("Agent already has a behavior tree!");
+                throw new InvalidOperationException("Agent already has a behaviour tree!");
 
             _Root = root;
         }
@@ -168,11 +211,17 @@ namespace EGame
                 return;
             }
 
-            TreeTick(0);
+            TreeTick();
             _DecisionTimer = 0;
         }
 
-        private void TreeTick(double dt)
+        // 行为自己知道什么时候结束（受击倒计时完、攻击打完），不用等下一个决策间隔
+        public void RequestDecision()
+        {
+            _DecisionTimer = DecisionInterval;
+        }
+
+        private void TreeTick()
         {
             _Ticking = true;
             try
@@ -181,8 +230,7 @@ namespace EGame
                 do
                 {
                     _RestartRequested = false;
-                    _Root.Tick(this, dt);
-                    dt = 0; // 重启的这几遍不重复消耗时间
+                    _Root.Decide(this);
                 }
                 while (_RestartRequested && ++restarts < _MaxRestartsPerTick);
 
@@ -202,12 +250,13 @@ namespace EGame
                 return;
 
             _DecisionTimer += dt;
-            if (_DecisionTimer < DecisionInterval)
-                return;
+            if (_DecisionTimer >= DecisionInterval)
+            {
+                _DecisionTimer = 0;
+                TreeTick();
+            }
 
-            double elapsed = _DecisionTimer;
-            _DecisionTimer = 0;
-            TreeTick(elapsed);
+            _Root.Process(this, dt);
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -215,19 +264,21 @@ namespace EGame
         {
             base._PhysicsProcess(delta);
 
-            OnTreeProcess(delta);
+            double dt = delta * TimeScale;
+
+            OnTreeProcess(dt);
 
             Vector3 horizontal = new Vector3(Velocity.X, 0, Velocity.Z);
-            horizontal = ApplyFriction(horizontal, _Friction, delta);
-            horizontal = ApplyAcceleration(horizontal, Intent.WishDir, _AccelerationRate, WalkSpeed, delta);
+            horizontal = ApplyFriction(horizontal, _Friction, dt);
+            horizontal = ApplyAcceleration(horizontal, Intent.WishDir, _AccelerationRate, WalkSpeed, dt);
             Velocity = new Vector3(horizontal.X, Velocity.Y, horizontal.Z);
 
             if (!IsOnFloor())
-                Velocity += Vector3.Down * _Gravity * (float)delta;
+                Velocity += Vector3.Down * _Gravity * (float)dt;
             else
-                this.Quaternion = ApplyFaceRota(this.Quaternion, Velocity, delta);
+                this.Quaternion = ApplyFaceRota(this.Quaternion, Velocity, _RotationRate, dt);
 
-            MoveAndSlide();
+            this.MoveAndSlideScaled(TimeScale);
         }
     }
 }
