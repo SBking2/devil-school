@@ -6,8 +6,6 @@
 [ext_resource type="Script" uid="uid://dsy8h32r4tgwf" path="res://scripts/Core/Nodes/Input/NInputManager.cs" id="3_lbhrr"]
 [ext_resource type="PackedScene" uid="uid://drjgdl7h8yx3o" path="res://scenes/dev_console/dev_console.tscn" id="4_lbhrr"]
 [ext_resource type="Script" uid="uid://deesrpgwse4xm" path="res://scripts/Core/Nodes/Level/DeathArea.cs" id="6_vtaks"]
-[ext_resource type="Texture2D" uid="uid://c6ulnut3217a6" path="res://images/effects/flash.png" id="8_kvpfn"]
-[ext_resource type="ArrayMesh" uid="uid://dlhohmuy8xh75" path="res://models/effects/flash01.tres" id="8_vtaks"]
 
 [sub_resource type="Environment" id="Environment_rmeui"]
 ambient_light_source = 2
@@ -19,23 +17,6 @@ size = Vector3(2, 0.01, 2)
 [sub_resource type="PlaneMesh" id="PlaneMesh_p57ef"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_0tnpc"]
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_kvuet"]
-transparency = 1
-blend_mode = 1
-cull_mode = 2
-albedo_texture = ExtResource("8_kvpfn")
-
-[sub_resource type="Curve" id="Curve_kvpfn"]
-_data = [Vector2(0.012944981, 1), 0.0, 8.740206, 0, 0, Vector2(0.13268608, 1), -4.151594, -4.151594, 0, 0, Vector2(0.9999999, 0.007180214), -0.18400401, 0.0, 0, 0]
-point_count = 3
-
-[sub_resource type="CurveTexture" id="CurveTexture_dinhu"]
-curve = SubResource("Curve_kvpfn")
-
-[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_kvpfn"]
-gravity = Vector3(0, 0, 0)
-scale_curve = SubResource("CurveTexture_dinhu")
 
 [node name="NGame" type="Node" unique_id=943147096]
 script = ExtResource("1_uwrxv")
@@ -111,14 +92,6 @@ shape = SubResource("BoxShape3D_0tnpc")
 
 [node name="Pool" type="Node" parent="." unique_id=1006785782]
 unique_name_in_owner = true
-
-[node name="GPUParticles3D" type="GPUParticles3D" parent="Pool" unique_id=921375311]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.4880757, -6.206126)
-material_override = SubResource("StandardMaterial3D_kvuet")
-amount = 1
-lifetime = 0.25
-process_material = SubResource("ParticleProcessMaterial_kvpfn")
-draw_pass_1 = ExtResource("8_vtaks")
 
 [node name="Sound" type="Node" parent="." unique_id=966475614]
 unique_name_in_owner = true

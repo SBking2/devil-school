@@ -70,6 +70,7 @@ namespace EGame
             AnimUtils.ShakeRotation(CameraEffectNode, 0.2f, Vector3.One * 3f, 15f, 5f).SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
             var hud_panel = UIManager.Instance.Get(UIPanelType.HudPanel) as NHUDPanel;
             hud_panel.HurtTip(info.Attacker.GlobalPosition, this.GlobalPosition, this.Basis.Z);
+            HitStop(0.2f);
             //AnimUtils.ShakeRotation(WeaponCameraEffectNode, 0.5f, Vector3.One * 1f, 8f, 2f);
 
             if (Data.HP <= 0)
@@ -144,7 +145,7 @@ namespace EGame
 
         private void HitStop(float duration)
         {
-            TimeScale = 0.05f;
+            TimeScale = 0.1f;
             Timer.Instance.SetTimerTask(duration, () =>
             {
                 TimeScale = 1f;
