@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://cewmuls0i8ism" path="res://scripts/Core/Nodes/Level/MonsterSpawnPoint.cs" id="1_odvkl"]
 [ext_resource type="Material" uid="uid://dpnaftk78xl72" path="res://materials/world/init_world/floor_debug.tres" id="2_0nla2"]
 [ext_resource type="Material" uid="uid://b58bmmn3mlrh4" path="res://materials/world/init_world/wall_debug.tres" id="3_a57d5"]
-[ext_resource type="Texture2D" uid="uid://c7vwxv56mg0v3" path="res://images/world/horo_texture_pack_128/Wall/Horror_Wall_13-128x128.png" id="4_wmgkw"]
+[ext_resource type="Texture2D" uid="uid://c7vwxv56mg0v3" path="res://images/worlds/horo_texture_pack_128/Wall/Horror_Wall_13-128x128.png" id="4_wmgkw"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_kvpfn"]
 

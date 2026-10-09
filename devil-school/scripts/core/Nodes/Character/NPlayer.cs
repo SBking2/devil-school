@@ -827,7 +827,14 @@ namespace EGame
             var greate_sword = ModelDB.MeleeWeapon<GreateSwordModel>() as MeleeWeaponModel;
             var greate_sword_n = NWeapon.Create(this, greate_sword);
             PickWeapon(greate_sword_n);
-            greate_sword_n.AttackCollision.BodyEntered += (body) => OnMeleeHit(greate_sword_n, body);
+            greate_sword_n.AttackCollision.BodyEntered += (Node3D body) => 
+            {
+                OnMeleeHit(greate_sword_n, body);
+                var effect = PoolManager.Instance.Get("effect/greate_sword_hit");
+                GpuParticles3D e = effect as GpuParticles3D;
+                e.GlobalPosition = greate_sword_n.GlobalPosition;
+                e.Restart();
+            };
         }
 
         // 近战武器的 AttackCollision 扫到目标时调用，伤害按这一下命中时的连击段数取

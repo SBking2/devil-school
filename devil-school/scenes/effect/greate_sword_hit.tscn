@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://drwuhf7oylxnc"]
+
+[ext_resource type="Material" uid="uid://uvb881k6s8no" path="res://materials/effect/material/greate_sword_hit.tres" id="1_ytcmk"]
+[ext_resource type="Material" uid="uid://10o3xb50xk03" path="res://materials/effect/process_material/greate_sword_hit.tres" id="2_hxb44"]
+
+[sub_resource type="QuadMesh" id="QuadMesh_gee14"]
+
+[node name="GreateSwordHit" type="GPUParticles3D" unique_id=539847963]
+material_override = ExtResource("1_ytcmk")
+emitting = false
+amount = 1
+lifetime = 0.2
+one_shot = true
+process_material = ExtResource("2_hxb44")
+draw_pass_1 = SubResource("QuadMesh_gee14")
