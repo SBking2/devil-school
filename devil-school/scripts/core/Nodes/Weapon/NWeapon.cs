@@ -16,6 +16,12 @@ namespace EGame
             var instance = SceneHelper.LoadScene<NWeapon>(model.PrefabName);
             instance.RangedData = model;
             instance._Owner = player;
+
+            instance.AttackCollision.BodyEntered += (Node3D body) =>
+            {
+                instance.OnMeleeHit(body);
+            };
+
             return instance;
         }
 
@@ -24,6 +30,12 @@ namespace EGame
             var instance = SceneHelper.LoadScene<NWeapon>(model.PrefabName);
             instance.MeleeData = model;
             instance._Owner = player;
+
+            instance.AttackCollision.BodyEntered += (Node3D body) =>
+            {
+                instance.OnMeleeHit(body);
+            };
+
             return instance;
         }
 
@@ -88,6 +100,25 @@ namespace EGame
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
         ///////                                        Ranged Attack
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        // 近战武器的 AttackCollision 扫到目标时调用，伤害按这一下命中时的连击段数取
+        private void OnMeleeHit(Node3D body)
+        {
+            Log.VeryDebug($"[MeleeHit] 打到了: {body.Name}");
+            int damage = this.MeleeData.GetDamage(this.CurrentComboIndex);
+            var damageInfo = new DamageInfo(_Owner, body, body.GlobalPosition, Vector3.Up, _Owner.Data, damage);
+            DamageSystem.Instance.ReportHit(damageInfo);
+
+            PlayMeleeHitEffect();
+        }
+
+        private void PlayMeleeHitEffect()
+        {
+            var effect = PoolManager.Instance.Get("effect/greate_sword_hit");
+            GpuParticles3D e = effect as GpuParticles3D;
+            e.GlobalPosition = this.GlobalPosition;
+            e.Restart();
+        }
 
         // 远程：什么时候开火由玩家的动作层状态决定，进入 Fire 状态时调用一次
         public void FireInternal()

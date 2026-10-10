@@ -37,10 +37,7 @@ namespace EGame
             player.OnAmmoChanged += OnAmmoChanged;
             RefreshCurrentAmmo();    // 面板初始化时武器已经拿好了，要主动同步一次
 
-            NGame.Instance.PlayerNode.Data.OnHPChanged += (int old_hp, int new_hp) =>
-            {
-                RefreshBar(new_hp, NGame.Instance.PlayerNode.Data.MaxHP);
-            };
+            NGame.Instance.PlayerNode.Data.OnHPChanged += RefreshBar;
         }
 
         public override void _Process(double delta)
@@ -62,6 +59,7 @@ namespace EGame
             {
                 player.OnWeaponChanged -= OnWeaponChanged;
                 player.OnAmmoChanged -= OnAmmoChanged;
+                player.Data.OnHPChanged -= RefreshBar;
             }
         }
 
@@ -91,7 +89,12 @@ namespace EGame
                 RefreshBulletCount(ranged.Type, ranged.CurrentAmmo, ranged.MagazineSize, ranged.TotalAmmo);
         }
 
-        private void RefreshBar(int hp, int max_hp)
+        private void RefreshBar(int old, int new_hp)
+        {
+            RefreshBarInternal(new_hp, NGame.Instance.PlayerNode.Data.MaxHP);
+        }
+
+        private void RefreshBarInternal(int hp, int max_hp)
         {
             float total_width = _BGBar.Size.X;
             float new_width = hp * 1.0f / max_hp * total_width;

@@ -728,13 +728,6 @@ namespace EGame
             SetWeapon(_Weapons.Count - 1);
         }
 
-        private void RemoveWeapon(int index)
-        {
-            _Weapons.RemoveAt(index);
-            if (_CurrentWeaponIndex == index)
-                SetWeapon(0);
-        }
-
         private void SetWeapon(int index)
         {
             AssertWeaponIndex(index);
@@ -780,7 +773,7 @@ namespace EGame
 
         private void AssertWeaponIndex(int index)
         {
-            if (index < 0 && index >= _Weapons.Count)
+            if (index < 0 || index >= _Weapons.Count)
                 throw new ArgumentException("Weapon Index is overflow!");
         }
 
@@ -827,23 +820,6 @@ namespace EGame
             var greate_sword = ModelDB.MeleeWeapon<GreateSwordModel>() as MeleeWeaponModel;
             var greate_sword_n = NWeapon.Create(this, greate_sword);
             PickWeapon(greate_sword_n);
-            greate_sword_n.AttackCollision.BodyEntered += (Node3D body) => 
-            {
-                OnMeleeHit(greate_sword_n, body);
-                var effect = PoolManager.Instance.Get("effect/greate_sword_hit");
-                GpuParticles3D e = effect as GpuParticles3D;
-                e.GlobalPosition = greate_sword_n.GlobalPosition;
-                e.Restart();
-            };
-        }
-
-        // 近战武器的 AttackCollision 扫到目标时调用，伤害按这一下命中时的连击段数取
-        private void OnMeleeHit(NWeapon weapon, Node3D body)
-        {
-            Log.VeryDebug($"[MeleeHit] 打到了: {body.Name}");
-            int damage = weapon.MeleeData.GetDamage(weapon.CurrentComboIndex);
-            var damageInfo = new DamageInfo(this, body, body.GlobalPosition, Vector3.Up, Data, damage);
-            DamageSystem.Instance.ReportHit(damageInfo);
         }
 
         private bool _IsFly = false;
