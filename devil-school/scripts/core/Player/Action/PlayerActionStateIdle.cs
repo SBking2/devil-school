@@ -17,7 +17,12 @@ namespace EGame
             if (weapon.MeleeData != null)
             {
                 if (player.Intent.JustPressed)
-                    player.ActionLayer.ChangeState(PlayerConfig.ActionMelee);
+                {
+                    if (weapon.MeleeData.CanAttack)
+                        player.ActionLayer.ChangeState(PlayerConfig.ActionMelee);
+                    else
+                        Log.Warn($"{weapon.MeleeData.ID} 没有配置 ComboSteps，不能攻击", type: Log.LogType.Combat);
+                }
                 return;
             }
 

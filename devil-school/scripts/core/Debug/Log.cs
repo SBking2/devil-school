@@ -25,6 +25,10 @@ namespace EGame
             GameSync = 5
         }
 
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    输出接口
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
         public static void VeryDebug(string message, bool is_show_stack_trace = false, int skip_frame = 2, LogType type = LogType.None)
         {
             LogMessage(LogLevel.VeryDebug, message, is_show_stack_trace, skip_frame, type);
@@ -44,6 +48,10 @@ namespace EGame
         {
             LogMessage(LogLevel.Error, message, is_show_stack_trace, skip_frame, type);
         }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    格式化与过滤
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         /// <summary>
         /// skip_frame为略过调用栈的顶部
@@ -75,7 +83,7 @@ namespace EGame
 
             GD.PrintRich(normal_message);
         }
-        
+
         private static string GetLevelStr(LogLevel level)
         {
             switch(level)

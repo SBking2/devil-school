@@ -7,18 +7,8 @@ namespace EGame
 {
     public partial class NPlayer : CharacterBody3D, INCharacter
     {
-        private const string _PrefabPath = "player/player";
-        public static NPlayer Create(Player player)
-        {
-            var instance = SceneHelper.LoadScene<NPlayer>(_PrefabPath);
-            instance.PlayerData = player;
-            instance.Data.OnCharacterCreated(instance);
-            instance.Data.OnPlayerCreated(instance);
-            return instance;
-        }
-
         public Player PlayerData { get; private set; }
-        
+
         public CharacterModel Data
         {
             get
@@ -32,6 +22,133 @@ namespace EGame
         public PlayerStateLayer ModeLayer { get; private set; }
         public PlayerStateLayer MovementLayer { get; private set; }
         public PlayerStateLayer ActionLayer { get; private set; }
+
+        // 开火输入意图，动作层状态从这里读
+        public WeaponIntent Intent { get; } = new WeaponIntent();
+
+        // 当前手上的武器，没有武器时是 null；动作层状态都从这里拿武器
+        public NWeapon CurrentWeapon => WeaponIndexValid ? _Weapons[_CurrentWeaponIndex] : null;
+
+        // 当前武器换了（拿到新武器/切枪）时触发
+        public event Action<NWeapon> OnWeaponChanged;
+
+        // 当前武器的弹药变了（当前弹匣或者备弹任意一个）就转发这个事件，外部（HUD）只用订阅这一个
+        public event Action OnAmmoChanged;
+
+        public Node3D RealCamera => _RealCamera;
+        public Node3D CameraEffectNode { get; private set; }
+        public Node3D WeaponCameraEffectNode { get; private set; }
+
+        public float WalkSpeed => PlayerData.PlayerModel.MoveSpeed;
+        public float RunSpeed => PlayerData.PlayerModel.RunSpeed;
+        public float CrouchSpeed => PlayerData.PlayerModel.CrouchSpeed;
+
+        public bool RunInput
+        {
+            get
+            {
+                return false;
+                return Input.IsActionPressed(EGInput.RUN) && IsCrouch == false;
+            }
+        }
+
+        public bool JumpPressed => Input.IsActionJustPressed(EGInput.JUMP);
+        public bool DashPressed => Input.IsActionJustPressed(EGInput.DASH);
+        public bool ReloadPressed => Input.IsActionJustPressed(EGInput.RELOAD);
+        public bool WalkPressed => Input.IsActionJustPressed(EGInput.Walk);
+
+        public bool IsCrouch
+        {
+            get
+            {
+                return Input.IsActionPressed(EGInput.CROUCH);
+            }
+        }
+
+        // 身体正前方（水平），跟 GetMoveDir 里"按前进键"的方向一致
+        public Vector3 ForwardDirection => _YawNode.Quaternion * Vector3.Back;
+
+        // 玩家想往哪走：输入方向按当前朝向转到世界空间
+        public Vector3 WishDirection => _YawNode.Quaternion * GetMoveDir();
+        public Vector3 FlyDirection => _YawNode.Quaternion * Quaternion.FromEuler(new Vector3(Mathf.DegToRad(_PitchAngle), 0f, 0f)) * GetMoveDir();
+
+        public bool CanDash => _DashCooldownRemaining <= 0;
+
+        // 给 HUD 显示冷却用
+        public float DashCooldownTime => (float)_DashCooldown;
+        public float DashCooldownRemaining => (float)Math.Max(_DashCooldownRemaining, 0.0);
+
+        // 状态控制的开关：冲刺这类需要平直移动的状态会关掉重力
+        public bool GravityEnabled { get; set; } = true;
+
+        // 自由环游模式关掉碰撞：不调 MoveAndSlide，直接改 GlobalPosition，能穿墙穿地板
+        public bool CollisionEnabled { get; set; } = true;
+
+        public readonly float WalkBobRate = 0.8f;
+        public readonly float RunBobRate = 1.2f;
+        public readonly float CrouchBobRate = 0.6f;
+
+        // 移动层状态控制的开关：Bob 开不开、当前用多快的节奏
+        public bool ViewBobEnabled { get; set; } = true;
+        public float ViewBobRate { get; set; } = 0.8f;
+
+        public bool WeaponBobEnabled { get; set; } = true;
+        public bool WeaponSwayEnabled { get; set; } = true;   // 转头滞后，跟脚步相位无关
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    创建与初始化
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private const string _PrefabPath = "player/player";
+
+        public static NPlayer Create(Player player)
+        {
+            var instance = SceneHelper.LoadScene<NPlayer>(_PrefabPath);
+            instance.PlayerData = player;
+            instance.Data.OnCharacterCreated(instance);
+            instance.Data.OnPlayerCreated(instance);
+            return instance;
+        }
+
+        public override void _Ready()
+        {
+            base._Ready();
+
+            Input.MouseMode = Input.MouseModeEnum.Captured;
+
+            _MoveCollisionShape = GetNode<CollisionShape3D>("%MoveCollider");
+            _YawNode = this;
+            _PitchNode = GetNode<Node3D>("%Pitch");
+            _RealCamera = GetNode<Camera3D>("%RealCamera");
+            _CameraLeanNode = GetNode<Node3D>("%CameraLean");
+            _CameraBobNode = GetNode<Node3D>("%CameraBob");
+            _CameraLandNode = GetNode<Node3D>("%CameraLand");
+            _WeaponBobNode = GetNodeOrNull<Node3D>("%WeaponBob");
+            _WeaponSwayNode = GetNodeOrNull<Node3D>("%WeaponSway");
+            _WeaponSpeedPullNode = GetNodeOrNull<Node3D>("%WeaponSpeedPull");
+            _WeaponLandingNode = GetNodeOrNull<Node3D>("%WeaponLanding");
+            CameraEffectNode = GetNodeOrNull<Node3D>("%CameraEffect");
+            WeaponCameraEffectNode = GetNodeOrNull<Node3D>("%WeaponCameraEffect");
+
+            _EyesPos = _StandHeight - _EyeOffsetFromTop;
+            _PitchNode.Position = new Vector3(0.0f, _EyesPos, 0.0f);
+
+            RegisterWeaponBoneAttachment();
+
+            // 状态机要先启动，再拿武器：拿武器时会让动作层切到 Switch，得有一个已经在跑的动作层
+            BuildStateLayers();
+
+            var pistol = ModelDB.RangedWeapon<ShotgunPistolModel>().MutableClone() as RangedWeaponModel;
+            PickWeapon(NWeapon.Create(this, pistol));
+
+            var greate_sword = ModelDB.MeleeWeapon<GreateSwordModel>().MutableClone() as MeleeWeaponModel;
+            var greate_sword_n = NWeapon.Create(this, greate_sword);
+            PickWeapon(greate_sword_n);
+
+            var hand = ModelDB.MeleeWeapon<HandModel>().MutableClone() as MeleeWeaponModel;
+            var hand_n = NWeapon.Create(this, hand);
+            PickWeapon(hand_n);
+        }
 
         private void BuildStateLayers()
         {
@@ -58,8 +175,9 @@ namespace EGame
             ModeLayer.ChangeState(PlayerConfig.ModeNormal);
         }
 
-        // 开火输入意图，动作层状态从这里读
-        public WeaponIntent Intent { get; } = new WeaponIntent();
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    受击与死亡
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         public void OnDamage(DamageInfo info)
         {
@@ -94,7 +212,7 @@ namespace EGame
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
-        ////////                                    Animator
+        ////////                                    动画
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private CreatureAnimator _Animator;
@@ -152,58 +270,14 @@ namespace EGame
             });
         }
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //////                                      人物移动
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        public float WalkSpeed => PlayerData.PlayerModel.MoveSpeed;
-        public float RunSpeed => PlayerData.PlayerModel.RunSpeed;
-        public float CrouchSpeed => PlayerData.PlayerModel.CrouchSpeed;
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    地面与空中移动
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private readonly float _MinStopSpeed = 2.54f;
         private readonly float _Friction = 6f;
         private readonly float _AirFriction = 1f;    // 空中水平摩擦，比地面小很多，只给一点点空气阻力感
         private readonly float _AccelerationRate = 10f;
-
-        public bool RunInput
-        {
-            get
-            {
-                return false;
-                return Input.IsActionPressed(EGInput.RUN) && IsCrouch == false;
-            }
-        }
-
-        public bool JumpPressed => Input.IsActionJustPressed(EGInput.JUMP);
-        public bool DashPressed => Input.IsActionJustPressed(EGInput.DASH);
-        public bool ReloadPressed => Input.IsActionJustPressed(EGInput.RELOAD);
-        public bool WalkPressed => Input.IsActionJustPressed(EGInput.Walk);
-
-        // 冲刺冷却：从开始冲刺那一刻算起，CanDash 为 true 才允许再冲
-        private readonly double _DashCooldown = 1.5f;
-        private double _DashCooldownRemaining;
-
-        public bool CanDash => _DashCooldownRemaining <= 0;
-
-        // 给 HUD 显示冷却用
-        public float DashCooldownTime => (float)_DashCooldown;
-        public float DashCooldownRemaining => (float)Math.Max(_DashCooldownRemaining, 0.0);
-
-        public void StartDashCooldown()
-        {
-            _DashCooldownRemaining = _DashCooldown;
-        }
-
-        // 身体正前方（水平），跟 GetMoveDir 里"按前进键"的方向一致
-        public Vector3 ForwardDirection => _YawNode.Quaternion * Vector3.Back;
-
-        // 玩家想往哪走：输入方向按当前朝向转到世界空间
-        public Vector3 WishDirection => _YawNode.Quaternion * GetMoveDir();
-
-        // 自由环游模式用：按摄像机完整朝向（含俯仰）转输入方向，抬头按前进就是往上飞。
-        // 不能直接拿 _RealCamera.GlobalTransform.Basis 乘——Godot 真实摄像机是 -Z 朝前，
-        // 跟这个项目自己"局部 +Z 才是前方"的约定是反的，得复用 _YawNode.Quaternion 这套已经处理对的
-        public Vector3 FlyDirection => _YawNode.Quaternion * Quaternion.FromEuler(new Vector3(Mathf.DegToRad(_PitchAngle), 0f, 0f)) * GetMoveDir();
 
         // 下面三个是给状态机用的"怎么动"：状态决定什么时候用、用多大速度，具体的加速/摩擦公式留在这里
         public void MoveOnGround(double dt, float speed)
@@ -230,9 +304,24 @@ namespace EGame
             return RunInput ? PlayerConfig.MoveRun : PlayerConfig.MoveWalk;
         }
 
-        public void Jump()
+        private Vector3 GetMoveDir()
         {
-            Velocity = ApplyJump(Velocity);
+            var dir = Vector3.Zero;
+
+            if (Input.IsActionPressed(EGInput.UP))
+                dir.Z += 1f;
+
+            if (Input.IsActionPressed(EGInput.DOWN))
+                dir.Z -= 1f;
+
+            if (Input.IsActionPressed(EGInput.RIGHT))
+                dir.X -= 1f;
+
+            if (Input.IsActionPressed(EGInput.LEFT))
+                dir.X += 1f;
+
+            dir = dir.Normalized();
+            return dir;
         }
 
         private Vector3 ApplyAcceleration(Vector3 source, Vector3 wish_dir, float acceleration_rate, float move_speed, double dt)
@@ -241,10 +330,10 @@ namespace EGame
                 return source;
 
             float vel_proj = source.Dot(wish_dir) / wish_dir.Length();
-            
+
             float add_speed = move_speed - vel_proj;    //计算出当前速度距离目标速度还差多少
             float true_add_speed = Mathf.Min((float)(add_speed * dt * acceleration_rate), add_speed);  //钳制最大速度，防止速度超出最大速度
-            
+
             return source += wish_dir * true_add_speed;
         }
 
@@ -270,20 +359,32 @@ namespace EGame
             return source * (total_speed / cur_speed);
         }
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //////                                      Y轴速度相关
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    冲刺冷却
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        // 状态控制的开关：冲刺这类需要平直移动的状态会关掉重力
-        public bool GravityEnabled { get; set; } = true;
+        // 从开始冲刺那一刻算起，CanDash 为 true 才允许再冲
+        private readonly double _DashCooldown = 1.5f;
+        private double _DashCooldownRemaining;
 
-        // 自由环游模式关掉碰撞：不调 MoveAndSlide，直接改 GlobalPosition，能穿墙穿地板
-        public bool CollisionEnabled { get; set; } = true;
+        public void StartDashCooldown()
+        {
+            _DashCooldownRemaining = _DashCooldown;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    重力与跳跃
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private readonly float _UpGravity = -9.8f;
         private readonly float _DownGravity = -15.0f;
 
         private readonly float _JumpSpeed = 4.6f;
+
+        public void Jump()
+        {
+            Velocity = ApplyJump(Velocity);
+        }
 
         private Vector3 ApplyGravity(Vector3 source, double dt)
         {
@@ -304,9 +405,9 @@ namespace EGame
             return source + new Vector3(0.0f, _JumpSpeed, 0.0f);
         }
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //////                                      蹲伏相关
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    蹲伏
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private readonly float _StandHeight = 1.8f;
         private readonly float _CrouchHeight = 1.2f;
@@ -316,14 +417,6 @@ namespace EGame
         private float _EyesPos = 0.0f;
 
         private CollisionShape3D _MoveCollisionShape;
-        
-        public bool IsCrouch
-        {
-            get
-            {
-                return Input.IsActionPressed(EGInput.CROUCH);
-            }
-        }
 
         private void UpdateCrouch(double dt)
         {
@@ -341,9 +434,9 @@ namespace EGame
             _PitchNode.Position = new Vector3(0.0f, _EyesPos, 0.0f);
         }
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //////                                      相机上下左右旋转相关
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    视角旋转
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private Node3D _YawNode;
         private Node3D _PitchNode;
@@ -357,6 +450,14 @@ namespace EGame
 
         private Vector2 ViewAngleDegrees => new Vector2(_PitchAngle, RotationDegrees.Y);
 
+        public override void _Input(InputEvent @event)
+        {
+            base._Input(@event);
+
+            if (@event is InputEventMouseMotion motion)
+                HandleCameraRotation(motion.Relative);
+        }
+
         private void HandleCameraRotation(Vector2 mouse_delta)
         {
             float x_delta = -mouse_delta.X * _RotateSensity.X;
@@ -368,9 +469,9 @@ namespace EGame
             _PitchNode.Quaternion = Quaternion.FromEuler(new Vector3(Mathf.DegToRad(_PitchAngle), 0.0f, 0.0f));
         }
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //////                                       视角 Lean
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    视角 Lean
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private Node3D _CameraLeanNode;
 
@@ -388,21 +489,14 @@ namespace EGame
             _CameraLeanNode.Rotation = _ViewRunLeanAngles;
         }
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //////                                       相机Bob
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    相机 Bob
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
         private Node3D _CameraBobNode;
 
-        public readonly float WalkBobRate = 0.8f;
-        public readonly float RunBobRate = 1.2f;
-        public readonly float CrouchBobRate = 0.6f;
         private readonly float _MinBobSpeed = 0.3f;      //低于这个速度直接清零，不产生 bob
 
-        // 移动层状态控制的开关：Bob 开不开、当前用多快的节奏
-        public bool ViewBobEnabled { get; set; } = true;
-        public float ViewBobRate { get; set; } = 0.8f;
-        
         private readonly float _CameraBobRightScale = 0.009f;   //Bob水平幅度
         private readonly float _CameraBobUpScale = 0.0025f;      //Bob垂直幅度
         private readonly float _CameraLookAheadDistance = 15f;
@@ -449,9 +543,9 @@ namespace EGame
             _CameraBobNode.LookAt(look_target, lean_up);
         }
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //////                                       落地时的冲击力
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    落地冲击
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private Node3D _CameraLandNode;
 
@@ -510,13 +604,11 @@ namespace EGame
             _CameraLandNode.Position = new Vector3(0.0f, _LandOffset, 0.0f);
         }
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //////                                       武器 Bob
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    武器 Bob
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private Node3D _WeaponBobNode;
-
-        public bool WeaponBobEnabled { get; set; } = true;
 
         private readonly float _WeaponBobRightScale = -0.002f;
         private readonly float _WeaponBobUpScale = 0.001f;
@@ -530,7 +622,7 @@ namespace EGame
                 ? ComputeWeaponBobOffset(_BobCycle, _XySpeed)
                 : Vector3.Zero;
         }
-        
+
         private Vector3 ComputeWeaponBobOffset(float bob_cycle, float xy_speed)
         {
             float bob_right = xy_speed * _WeaponBobRightScale * Mathf.Sin(bob_cycle);
@@ -538,13 +630,11 @@ namespace EGame
             return new Vector3(bob_right, bob_up, 0f);
         }
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //////                                       武器 Sway
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    武器 Sway
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private Node3D _WeaponSwayNode;
-
-        public bool WeaponSwayEnabled { get; set; } = true;   // 转头滞后，跟脚步相位无关
 
         private readonly float _WeaponTurnSwayScale = 0.05f;
         private readonly float _WeaponTurnSwayMaxDegrees = 6.0f;
@@ -609,15 +699,15 @@ namespace EGame
             return new Vector3(diff.X, diff.Y, 0);
         }
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //////                                       武器 速度后拉
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    武器 速度后拉
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private Node3D _WeaponSpeedPullNode;
 
         private readonly float _WeaponSpeedPullReferenceSpeed = 6f;   // 用来把 xy_speed 归一化到 0~1，再套缓动曲线
         private readonly float _WeaponSpeedPullMax = 0.06f;           // 曲线顶点对应的最大后拉幅度
-        
+
         private void UpdateWeaponSpeedPull(double dt)
         {
             if (_WeaponSpeedPullNode == null)
@@ -636,9 +726,9 @@ namespace EGame
             return new Vector3(0f, 0f, pull);
         }
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //////                                       武器 Landing
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    武器 Landing
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private Node3D _WeaponLandingNode;
 
@@ -650,47 +740,16 @@ namespace EGame
             _WeaponLandingNode.Position = LandingDipOffset * 0.25f;   // 武器自己的落地冲击，强度是摄像机那份的 0.25 倍
         }
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //////                                      辅助函数
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    武器管理
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        private Vector3 GetMoveDir()
-        {
-            var dir = Vector3.Zero;
-
-            if (Input.IsActionPressed(EGInput.UP))
-                dir.Z += 1f;
-
-            if (Input.IsActionPressed(EGInput.DOWN))
-                dir.Z -= 1f;
-
-            if (Input.IsActionPressed(EGInput.RIGHT))
-                dir.X -= 1f;
-
-            if (Input.IsActionPressed(EGInput.LEFT))
-                dir.X += 1f;
-
-            dir = dir.Normalized();
-            return dir;
-        }
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //////                                          武器管理
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+        private Node3D _DefaultWeaponParent;
         private Dictionary<string, BoneAttachment3D> _BoneAttachmentDic = new Dictionary<string, BoneAttachment3D>();
         private List<NWeapon> _Weapons = new List<NWeapon>();
         private int _CurrentWeaponIndex = -1;
+
         private bool WeaponIndexValid => _CurrentWeaponIndex >= 0 && _CurrentWeaponIndex < _Weapons.Count;
-
-        // 当前手上的武器，没有武器时是 null；动作层状态都从这里拿武器
-        public NWeapon CurrentWeapon => WeaponIndexValid ? _Weapons[_CurrentWeaponIndex] : null;
-
-        // 当前武器换了（拿到新武器/切枪）时触发
-        public event Action<NWeapon> OnWeaponChanged;
-
-        // 当前武器的弹药变了（当前弹匣或者备弹任意一个）就转发这个事件，外部（HUD）只用订阅这一个
-        public event Action OnAmmoChanged;
 
         private void RaiseAmmoChanged()
         {
@@ -699,30 +758,33 @@ namespace EGame
 
         private void RegisterWeaponBoneAttachment()
         {
-            var model = GetNodeOrNull<Node3D>("%Model");
-            if(model != null)
+            _DefaultWeaponParent = GetNodeOrNull<Node3D>("%Model");
+            if (_DefaultWeaponParent != null)
             {
                 var bone_attach_ments = FindChildren("*", nameof(BoneAttachment3D), true);
-                foreach(var bone in bone_attach_ments)
+                foreach (var bone in bone_attach_ments)
                 {
                     if (_BoneAttachmentDic.ContainsKey(bone.Name) == false)
                         _BoneAttachmentDic.Add(bone.Name, bone as BoneAttachment3D);
                 }
             }
+            else
+                throw new ArgumentNullException("The node named 'Model' in not exist!");
         }
 
         private void PickWeapon(NWeapon weapon)
         {
             var parent_name = weapon.Data.ParentName;
+            Node3D parent = null;
             if (_BoneAttachmentDic.ContainsKey(parent_name))
-            {
-                _BoneAttachmentDic[parent_name].AddChild(weapon);
-                weapon.Position = Vector3.Zero;
-                weapon.Quaternion = Quaternion.Identity;
-                weapon.Scale = Vector3.One * 0.01f;
-            }
+                parent = _BoneAttachmentDic[parent_name];
             else
-                throw new InvalidOperationException($"Unknow weapon parent : {parent_name}");
+                parent = _DefaultWeaponParent;
+
+            parent.AddChild(weapon);
+            weapon.Position = Vector3.Zero;
+            weapon.Quaternion = Quaternion.Identity;
+            weapon.Scale = Vector3.One * 0.01f;
 
             _Weapons.Add(weapon);
             SetWeapon(_Weapons.Count - 1);
@@ -777,52 +839,19 @@ namespace EGame
                 throw new ArgumentException("Weapon Index is overflow!");
         }
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-        public Node3D CameraEffectNode { get; private set; }
-        public Node3D WeaponCameraEffectNode { get; private set; }
-
-        public override void _Ready()
-        {
-            base._Ready();
-
-            Input.MouseMode = Input.MouseModeEnum.Captured;
-
-            _MoveCollisionShape = GetNode<CollisionShape3D>("%MoveCollider");
-            _YawNode = this;
-            _PitchNode = GetNode<Node3D>("%Pitch");
-            _RealCamera = GetNode<Camera3D>("%RealCamera");
-            _CameraLeanNode = GetNode<Node3D>("%CameraLean");
-            _CameraBobNode = GetNode<Node3D>("%CameraBob");
-            _CameraLandNode = GetNode<Node3D>("%CameraLand");
-            _WeaponBobNode = GetNodeOrNull<Node3D>("%WeaponBob");
-            _WeaponSwayNode = GetNodeOrNull<Node3D>("%WeaponSway");
-            _WeaponSpeedPullNode = GetNodeOrNull<Node3D>("%WeaponSpeedPull");
-            _WeaponLandingNode = GetNodeOrNull<Node3D>("%WeaponLanding");
-            CameraEffectNode = GetNodeOrNull<Node3D>("%CameraEffect");
-            WeaponCameraEffectNode = GetNodeOrNull<Node3D>("%WeaponCameraEffect");
-
-            _EyesPos = _StandHeight - _EyeOffsetFromTop;
-            _PitchNode.Position = new Vector3(0.0f, _EyesPos, 0.0f);
-
-            RegisterWeaponBoneAttachment();
-
-            // 状态机要先启动，再拿武器：拿武器时会让动作层切到 Switch，得有一个已经在跑的动作层
-            BuildStateLayers();
-
-            /*var hand = ModelDB.MeleeWeapon<SwordModel>() as MeleeWeaponModel;
-            var hand_weapon = NWeapon.Create(this, hand);
-            PickWeapon(hand_weapon); // AddChild 之后 NWeapon._Ready() 才跑完，AttackCollision 才有值
-            hand_weapon.AttackCollision.BodyEntered += (body) => OnMeleeHit(hand_weapon, body);*/
-
-            var pistol = ModelDB.RangedWeapon<ShotgunPistolModel>().MutableClone() as RangedWeaponModel;
-            PickWeapon(NWeapon.Create(this, pistol));
-
-            var greate_sword = ModelDB.MeleeWeapon<GreateSwordModel>() as MeleeWeaponModel;
-            var greate_sword_n = NWeapon.Create(this, greate_sword);
-            PickWeapon(greate_sword_n);
-        }
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    自由环游
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private bool _IsFly = false;
+
+        public void ResetFly()
+        {
+            _IsFly = false;
+
+            if (ModeLayer.CurrentName == PlayerConfig.ModeFly)
+                ModeLayer.ChangeState(PlayerConfig.ModeNormal);
+        }
 
         private void SetFly(bool active)
         {
@@ -839,23 +868,10 @@ namespace EGame
                 ModeLayer.ChangeState(PlayerConfig.ModeNormal);
         }
 
-        public void ResetFly()
-        {
-            _IsFly = false;
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    每帧更新
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-            if (ModeLayer.CurrentName == PlayerConfig.ModeFly)
-                ModeLayer.ChangeState(PlayerConfig.ModeNormal);
-        }
-
-        public override void _Input(InputEvent @event)
-        {
-            base._Input(@event);
-            
-            if (@event is InputEventMouseMotion motion)
-                HandleCameraRotation(motion.Relative);
-
-        }
-        
         public override void _Process(double delta)
         {
             base._Process(delta);

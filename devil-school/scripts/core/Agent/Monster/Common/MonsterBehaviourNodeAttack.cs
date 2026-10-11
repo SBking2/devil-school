@@ -7,6 +7,10 @@ namespace EGame
     // 不然玩家一后退，攻击到一半就被 Selector 交还给 chase。打完返回 Success，下一次决策才重新问"玩家还在范围内吗"
     public class MonsterBehaviourNodeAttack : AbstractAgentBehaviourNode
     {
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    攻击流程
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
         private double _Timer;
         private bool _IsWindingUp;
         private bool _IsFinished;
@@ -58,6 +62,21 @@ namespace EGame
             agent.RequestDecision();
         }
 
+        private void FireMelee(NAgent agent)
+        {
+            Vector3 forward = -agent.GlobalTransform.Basis.Z;
+            var target = CollisionDetection.FindMeleeTarget(agent.GetWorld3D(), GetAttackPos(agent), forward, GetRange(), CollisionMask.PlayerMask);
+            if (target == null)
+                return;
+
+            var damageInfo = new DamageInfo(agent, target, target.GlobalPosition, Vector3.Up, agent.Data, GetDamage());
+            DamageSystem.Instance.ReportHit(damageInfo);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    转向窗口
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
         // 窗口期按进入攻击后的时间算，窗口外朝向保持不变
         private void TurnToPlayer(NAgent agent, double dt)
         {
@@ -71,16 +90,25 @@ namespace EGame
             agent.TurnToward(player.GlobalPosition - agent.GlobalPosition, GetTurnRate(), dt);
         }
 
-        private void FireMelee(NAgent agent)
+        // 转向窗口：进入攻击后 [起点, 终点) 秒内朝向玩家，默认是整个前摇
+        protected virtual float GetTurnStartTime()
         {
-            Vector3 forward = -agent.GlobalTransform.Basis.Z;
-            var target = CollisionDetection.FindMeleeTarget(agent.GetWorld3D(), GetAttackPos(agent), forward, GetRange(), CollisionMask.PlayerMask);
-            if (target == null)
-                return;
-
-            var damageInfo = new DamageInfo(agent, target, target.GlobalPosition, Vector3.Up, agent.Data, GetDamage());
-            DamageSystem.Instance.ReportHit(damageInfo);
+            return 0f;
         }
+
+        protected virtual float GetTurnEndTime()
+        {
+            return GetWindupTime();
+        }
+
+        protected virtual float GetTurnRate()
+        {
+            return 8f;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    可重写的攻击参数
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         protected virtual float GetRange()
         {
@@ -105,22 +133,6 @@ namespace EGame
         protected virtual float GetWindupTime()
         {
             return 0.5f;
-        }
-
-        // 转向窗口：进入攻击后 [起点, 终点) 秒内朝向玩家，默认是整个前摇
-        protected virtual float GetTurnStartTime()
-        {
-            return 0f;
-        }
-
-        protected virtual float GetTurnEndTime()
-        {
-            return GetWindupTime();
-        }
-
-        protected virtual float GetTurnRate()
-        {
-            return 8f;
         }
 
         protected virtual Vector3 GetAttackPos(NAgent agent)

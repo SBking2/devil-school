@@ -11,14 +11,15 @@ namespace EGame
         public static SoundManager Instance { get; } = new SoundManager();
 
         private Node _Root;
-        private Dictionary<string, AudioStream> _Cache = new Dictionary<string, AudioStream>();
-        private List<AudioStreamPlayer> _PlayerPool = new List<AudioStreamPlayer>();
-        private List<AudioStreamPlayer3D> _PlayerPool3D = new List<AudioStreamPlayer3D>();
 
         public void Init(Node root)
         {
             _Root = root;
         }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    播放
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         public void Play(string path)
         {
@@ -57,6 +58,12 @@ namespace EGame
             player.Play();
         }
 
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    资源缓存
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private Dictionary<string, AudioStream> _Cache = new Dictionary<string, AudioStream>();
+
         private async Task<AudioStream> GetOrLoadAsync(string path)
         {
             if (_Cache.TryGetValue(path, out var cached))
@@ -88,6 +95,19 @@ namespace EGame
             return stream;
         }
 
+        // 清空缓存的资源引用，具体什么时候调（切场景/内存紧张）先留着以后再接
+        public void ClearCache()
+        {
+            _Cache.Clear();
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    播放器池
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private List<AudioStreamPlayer> _PlayerPool = new List<AudioStreamPlayer>();
+        private List<AudioStreamPlayer3D> _PlayerPool3D = new List<AudioStreamPlayer3D>();
+
         // 找一个空闲的播放器，没有就新建一个加进池子，池子不设上限（音效数量少，够用）
         private AudioStreamPlayer GetFreePlayer()
         {
@@ -115,12 +135,6 @@ namespace EGame
             _Root.AddChild(new_player);
             _PlayerPool3D.Add(new_player);
             return new_player;
-        }
-
-        // 清空缓存的资源引用，具体什么时候调（切场景/内存紧张）先留着以后再接
-        public void ClearCache()
-        {
-            _Cache.Clear();
         }
     }
 }

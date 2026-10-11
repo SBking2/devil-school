@@ -7,6 +7,12 @@ namespace EGame
     // 一层状态机：同一时刻只有一个当前状态，按名字切换。顶层/移动层/动作层都是这个类的实例
     public class PlayerStateLayer
     {
+        public string CurrentName => _Current?.StateName;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    状态切换
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
         private readonly NPlayer _Player;
         private readonly Dictionary<string, PlayerState> _States = new Dictionary<string, PlayerState>();
         private PlayerState _Current;
@@ -15,8 +21,6 @@ namespace EGame
         {
             _Player = player;
         }
-
-        public string CurrentName => _Current?.StateName;
 
         public void Add(PlayerState state)
         {
@@ -39,6 +43,10 @@ namespace EGame
             _Current?.OnExit(_Player);
             _Current = null;
         }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    每帧更新
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         public void Process(double dt)
         {

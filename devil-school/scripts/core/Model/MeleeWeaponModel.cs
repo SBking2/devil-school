@@ -8,21 +8,11 @@ namespace EGame
     {
         // 每一段连击(招式)自己一个完整配置：阶段时间点 lock -> release_input -> combo -> duration(结束)，
         // 加另一套独立的碰撞体开关时间点，再加这一下的伤害——都写在同一个 MeleeComboStep 里，全是从这一招开始算起的绝对时间
-        protected virtual MeleeComboStep[] ComboSteps => new MeleeComboStep[]
-        {
-            new MeleeComboStep()
-            {
-                LockEndTime = 0.25f,
-                ReleaseInputEndTime = 0.35f,
-                ComboEndTime = 0.55f,
-                Duration = 0.85f,
-                HitboxOpenTime = 0.2f,
-                HitboxCloseTime = 0.35f,
-                Damage = 2,
-            },
-        };
+        protected virtual MeleeComboStep[] ComboSteps => null;
 
-        public int ComboCount => ComboSteps.Length;
+        // 没有配置连击就不能攻击
+        public bool CanAttack => ComboSteps != null && ComboSteps.Length > 0;
+        public int ComboCount => CanAttack ? ComboSteps.Length : 0;
 
         public float GetLockEndTime(int comboIndex) => ComboSteps[comboIndex].LockEndTime;
         public float GetReleaseInputEndTime(int comboIndex) => ComboSteps[comboIndex].ReleaseInputEndTime;

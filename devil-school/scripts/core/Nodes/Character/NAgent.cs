@@ -7,6 +7,20 @@ namespace EGame
 {
     public partial class NAgent : CharacterBody3D, INCharacter
     {
+        public CharacterModel Data => _AgentModel as CharacterModel;
+
+        //模拟角色的输入
+        public AgentIntent Intent { get; private set; } = new AgentIntent();
+        public Blackboard Blackboard { get; private set; } = new Blackboard();
+
+        public double DecisionInterval { get; set; } = 0.2;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    创建
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private AgentModel _AgentModel;
+
         public static NAgent Create(AgentModel data)
         {
             var prefab = SceneHelper.LoadScene<NAgent>(data.PrefabPath);
@@ -16,8 +30,9 @@ namespace EGame
             return prefab;
         }
 
-        public CharacterModel Data => _AgentModel as CharacterModel;
-        private AgentModel _AgentModel;
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    受击与死亡
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         public void OnAttack(DamageInfo info)
         {
@@ -82,23 +97,16 @@ namespace EGame
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
-        ////////                                    Intent 意图机制
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        //模拟角色的输入
-        public AgentIntent Intent { get; private set; } = new AgentIntent();
-        public Blackboard Blackboard { get; private set; } = new Blackboard();
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////
-        ////////                                    Movement
+        ////////                                    移动
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private const float _Gravity = 14f;
-        private float WalkSpeed => Data.MoveSpeed;
         private const float _MinStopSpeed = 2.54f;
         private const float _Friction = 6f;
         private const float _AccelerationRate = 10f;
         private const float _RotationRate = 10f;
+
+        private float WalkSpeed => Data.MoveSpeed;
 
         private Vector3 ApplyAcceleration(Vector3 source, Vector3 wishDir, float accelerationRate, float moveSpeed, double dt)
         {
@@ -125,9 +133,6 @@ namespace EGame
             return source * (totalSpeed / curSpeed);
         }
 
-        /// <summary>
-        /// 面朝向朝向移动方向
-        /// </summary>
         private Quaternion ApplyFaceRota(Quaternion cur, Vector3 direction, float rotation_rate, double dt)
         {
             var horizontal_dir = direction;
@@ -137,7 +142,7 @@ namespace EGame
                 return cur;   // 没有水平方向，保持当前朝向，避免除零/朝向乱转
 
             var target = Basis.LookingAt(horizontal_dir, Vector3.Up).GetRotationQuaternion();
-            float weight = 1f - Mathf.Exp(-rotation_rate * (float)dt);   // 跟你项目里蹲伏/相机那套指数衰减插值是同一个写法
+            float weight = 1f - Mathf.Exp(-rotation_rate * (float)dt);
             return cur.Slerp(target, weight);
         }
 
@@ -148,7 +153,7 @@ namespace EGame
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
-        ////////                                    Animator
+        ////////                                    动画
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private CreatureAnimator _Animator;
@@ -184,13 +189,13 @@ namespace EGame
 
         private bool _Ticking;
         private bool _RestartRequested;
+        private double _DecisionTimer;
 
         // 兜底：防止事件互相触发形成死循环
         private const int _MaxRestartsPerTick = 8;
-        public double DecisionInterval { get; set; } = 0.2;
 
-        private double _DecisionTimer;
         public bool HasEvent(string eventName) => _PendingEvents.Contains(eventName);
+
         public void SetBehaviourTree(AbstractAgentBehaviourNode root)
         {
             if (_Root != null)
@@ -259,7 +264,10 @@ namespace EGame
             _Root.Process(this, dt);
         }
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    每帧更新
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
         public override void _PhysicsProcess(double delta)
         {
             base._PhysicsProcess(delta);

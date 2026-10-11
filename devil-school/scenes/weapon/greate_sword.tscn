@@ -2,10 +2,11 @@
 
 [ext_resource type="Script" uid="uid://cs6iryxdoic8n" path="res://scripts/Core/Nodes/Weapon/NWeapon.cs" id="1_2wjy5"]
 [ext_resource type="PackedScene" uid="uid://b14gvwqk5003t" path="res://models/weapon/greate_sword/Sword.fbx" id="2_2wjy5"]
+[ext_resource type="Script" uid="uid://swrirh72ekud" path="res://scripts/Core/Nodes/Collision/NMeleeCast.cs" id="3_xjbkv"]
 
-[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_f73me"]
-radius = 0.099609375
-height = 1.0974121
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_x1rx2"]
+radius = 0.095
+height = 1.09
 
 [node name="GreateSword" type="Node3D" unique_id=526183678]
 script = ExtResource("1_2wjy5")
@@ -15,11 +16,11 @@ transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0
 
 [node name="Sword" parent="TransformOffset" unique_id=294916183 instance=ExtResource("2_2wjy5")]
 
-[node name="AttackCollision" type="Area3D" parent="TransformOffset" unique_id=625744456]
+[node name="ShapeCast" type="ShapeCast3D" parent="TransformOffset" unique_id=59113885]
 unique_name_in_owner = true
-collision_layer = 16
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.62927055, 0)
+shape = SubResource("CapsuleShape3D_x1rx2")
+target_position = Vector3(0, 0, 0)
 collision_mask = 8
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="TransformOffset/AttackCollision" unique_id=1785237999]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.6373687, 4.755494e-08)
-shape = SubResource("CapsuleShape3D_f73me")
+script = ExtResource("3_xjbkv")
+metadata/_custom_type_script = "uid://swrirh72ekud"

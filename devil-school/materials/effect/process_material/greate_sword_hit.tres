@@ -23,9 +23,14 @@ _limits = [0.0, 2.0328908, 0.0, 1.0]
 _data = [Vector2(0, 0), 0.0, 4.2327957, 0, 0, Vector2(0.99715906, 2.0328908), 0.0, 0.0, 0, 0]
 point_count = 2
 
+[sub_resource type="Curve" id="Curve_k1csr"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
+point_count = 2
+
 [sub_resource type="CurveXYZTexture" id="CurveXYZTexture_k1csr"]
 curve_x = SubResource("Curve_s7vj3")
 curve_y = SubResource("Curve_gqjeg")
+curve_z = SubResource("Curve_k1csr")
 
 [resource]
 gravity = Vector3(0, 0, 0)

@@ -6,14 +6,9 @@ namespace EGame
 {
     public partial class NHUDPanel : NAbstractPanel
     {
-        private Control _HPBar;
-        private Control _BGBar;
-
-        private TextureProgressBar _DashTimerCDProgress;
-        private Label _BulletCountLabel;
-        private Label _TotalBulletCountLabel;
-
-        private List<Control> _HurtTips;
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    初始化与销毁
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         public override void _Ready()
         {
@@ -40,16 +35,6 @@ namespace EGame
             NGame.Instance.PlayerNode.Data.OnHPChanged += RefreshBar;
         }
 
-        public override void _Process(double delta)
-        {
-            base._Process(delta);
-
-            var player = NGame.Instance?.PlayerNode;
-            if (player == null)
-                return;
-
-            RefreshDashTimer(player.DashCooldownRemaining, player.DashCooldownTime);
-        }
         public override void OnDestry()
         {
             base.OnDestry();
@@ -62,6 +47,54 @@ namespace EGame
                 player.Data.OnHPChanged -= RefreshBar;
             }
         }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    血量
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private Control _HPBar;
+        private Control _BGBar;
+
+        private void RefreshBar(int old, int new_hp)
+        {
+            RefreshBarInternal(new_hp, NGame.Instance.PlayerNode.Data.MaxHP);
+        }
+
+        private void RefreshBarInternal(int hp, int max_hp)
+        {
+            float total_width = _BGBar.Size.X;
+            float new_width = hp * 1.0f / max_hp * total_width;
+            _HPBar.SetSize(new Vector2(new_width, _HPBar.Size.Y));
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    冲刺冷却
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private TextureProgressBar _DashTimerCDProgress;
+
+        public override void _Process(double delta)
+        {
+            base._Process(delta);
+
+            var player = NGame.Instance?.PlayerNode;
+            if (player == null)
+                return;
+
+            RefreshDashTimer(player.DashCooldownRemaining, player.DashCooldownTime);
+        }
+
+        private void RefreshDashTimer(float rest_time, float max_time)
+        {
+            _DashTimerCDProgress.Value = ((max_time - rest_time) / max_time) * _DashTimerCDProgress.MaxValue;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    弹药与武器
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private Label _BulletCountLabel;
+        private Label _TotalBulletCountLabel;
 
         // 不缓存武器引用：换武器/弹药变化时只是收到一个通知，真正的数据每次都现从
         // NGame.Instance.PlayerNode 这个单例上现取，武器的生命周期完全交给 NPlayer 自己管
@@ -89,28 +122,17 @@ namespace EGame
                 RefreshBulletCount(ranged.Type, ranged.CurrentAmmo, ranged.MagazineSize, ranged.TotalAmmo);
         }
 
-        private void RefreshBar(int old, int new_hp)
-        {
-            RefreshBarInternal(new_hp, NGame.Instance.PlayerNode.Data.MaxHP);
-        }
-
-        private void RefreshBarInternal(int hp, int max_hp)
-        {
-            float total_width = _BGBar.Size.X;
-            float new_width = hp * 1.0f / max_hp * total_width;
-            _HPBar.SetSize(new Vector2(new_width, _HPBar.Size.Y));
-        }
-        
-        private void RefreshDashTimer(float rest_time, float max_time)
-        {
-            _DashTimerCDProgress.Value = ((max_time - rest_time) / max_time) * _DashTimerCDProgress.MaxValue;
-        }
-
         private void RefreshBulletCount(WeaponModel.WeaponType type, int cur_bullet, int max_bullet, int total_bullet)
         {
             _BulletCountLabel.Text = $"{cur_bullet}/{max_bullet}";
             _TotalBulletCountLabel.Text = total_bullet.ToString();
         }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    受击提示
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private List<Control> _HurtTips;
 
         public void HurtTip(Vector3 attacker, Vector3 player, Vector3 player_fwd)
         {

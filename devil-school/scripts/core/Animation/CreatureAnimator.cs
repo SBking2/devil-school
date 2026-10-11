@@ -10,11 +10,11 @@ namespace EGame
     /// </summary>
     public class CreatureAnimator
     {
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    播放器
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
         private AnimationPlayer _AnimPlayer;
-
-        private AnimState _CurrentState;
-
-        private readonly AnimState _AnyState;   //CallTrigger的时候优先查这个状态
 
         public CreatureAnimator(AnimState init_state)
         {
@@ -39,6 +39,14 @@ namespace EGame
                 _AnimPlayer.SpeedScale = speed;
         }
 
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    触发与分支
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private AnimState _CurrentState;
+
+        private readonly AnimState _AnyState;   //CallTrigger的时候优先查这个状态
+
         public void AddAnyBranch(string trigger, AnimState state, Func<bool> condition = null)
         {
             _AnyState.AddBranch(trigger, state, condition);
@@ -49,11 +57,15 @@ namespace EGame
             var anim = _AnyState.CallTrigger(trigger);
             if(anim == null)
                 anim = _CurrentState.CallTrigger(trigger);
-            
+
             if (anim != null)
                 PlayAnimation(anim);
         }
-        
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    播放
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
         private void PlayAnimation(AnimState state)
         {
             if(state == null)
@@ -71,7 +83,7 @@ namespace EGame
             if (_CurrentState.NextState != null)
                 AddNextAnimation(state.NextState);
         }
-        
+
         private void AddNextAnimation(AnimState state)
         {
             if(state == null)
@@ -94,7 +106,7 @@ namespace EGame
 
             if(_AnimPlayer == null || state == null)
                 return false;
-            
+
             if(_AnimPlayer.HasAnimation(state.ID) == false)
             {
                 Warn($"AnimationPlayer missing animation: {state.ID}", type: LogType.World);

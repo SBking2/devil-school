@@ -7,6 +7,10 @@ namespace EGame
     {
         public override string StateName => PlayerConfig.ActionMelee;
 
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    连击推进
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
         private enum Phase { Lock, ReleaseInput, Combo, Exit }
 
         // 进入时记下这把武器，退出时要关的是它的碰撞体（切枪时当前武器已经变了）
@@ -15,7 +19,6 @@ namespace EGame
         private double _StepTime;
         private int _ComboIndex;
         private bool _BufferedNextAttack;
-        private bool _HitboxOpen;
 
         public override void OnEnter(NPlayer player)
         {
@@ -82,6 +85,24 @@ namespace EGame
             SetHitboxOpen(false);
         }
 
+        // 每次真正开始一段新的连击（包括从头开始或者连到下一段）都要重置这一段的绝对时间线
+        private void EnterStep()
+        {
+            _Phase = Phase.Lock;
+            _StepTime = 0;
+            _BufferedNextAttack = false;
+            _Weapon.CurrentComboIndex = _ComboIndex;
+            SetHitboxOpen(false);
+            _Weapon.TriggerAnim(WeaponConfig.GetAttackAnimTrigger(_Weapon.MeleeData.Type, _ComboIndex));
+            Log.VeryDebug($"Attack Anim : {WeaponConfig.GetAttackAnimTrigger(_Weapon.MeleeData.Type, _ComboIndex)}!");
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    命中判定窗口
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private bool _HitboxOpen;
+
         private void UpdateHitbox(MeleeWeaponModel model)
         {
             bool should_open = _StepTime >= model.GetHitboxOpenTime(_ComboIndex) && _StepTime < model.GetHitboxCloseTime(_ComboIndex);
@@ -94,20 +115,13 @@ namespace EGame
                 return;
 
             _HitboxOpen = open;
-            if (_Weapon.AttackCollision != null)
-                _Weapon.AttackCollision.Monitoring = open;
-        }
+            if (_Weapon.MeleeCast == null)
+                return;
 
-        // 每次真正开始一段新的连击（包括从头开始或者连到下一段）都要重置这一段的绝对时间线
-        private void EnterStep()
-        {
-            _Phase = Phase.Lock;
-            _StepTime = 0;
-            _BufferedNextAttack = false;
-            _Weapon.CurrentComboIndex = _ComboIndex;
-            SetHitboxOpen(false);
-            _Weapon.TriggerAnim(WeaponConfig.GetAttackAnimTrigger(_Weapon.MeleeData.Type, _ComboIndex));
-            Log.VeryDebug($"Attack Anim : {WeaponConfig.GetAttackAnimTrigger(_Weapon.MeleeData.Type, _ComboIndex)}!");
+            if (open)
+                _Weapon.MeleeCast.Start();
+            else
+                _Weapon.MeleeCast.Stop();
         }
     }
 }

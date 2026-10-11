@@ -9,6 +9,10 @@ namespace EGame
     /// </summary>
     public static class ModelDB
     {
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    初始化
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
         private static Dictionary<ModelID, AbstractModel> _ModelInstance = new Dictionary<ModelID, AbstractModel>();
 
         public static void OnInit()
@@ -23,15 +27,9 @@ namespace EGame
             }
         }
 
-        public static ModelID GetID<T>() where T : AbstractModel
-        {
-            return GetID(typeof(T));
-        }
-
-        public static ModelID GetID(Type type)
-        {
-            return ToModelID(type);
-        }
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    查询
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         public static MonsterModel Monster<T>() where T : MonsterModel
         {
@@ -63,6 +61,17 @@ namespace EGame
             return Get<T>() as MeleeWeaponModel;
         }
 
+        public static bool Contains<T>() where T : AbstractModel
+        {
+            return Contains(typeof(T));
+        }
+
+        public static bool Contains(Type type)
+        {
+            var id = ToModelID(type);
+            return _ModelInstance.ContainsKey(id);
+        }
+
         private static AbstractModel Get<T>() where T : AbstractModel
         {
             return Get(typeof(T));
@@ -92,17 +101,31 @@ namespace EGame
             return null;
         }
 
-        public static bool Contains<T>() where T : AbstractModel
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    ModelID
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        public static ModelID GetID<T>() where T : AbstractModel
         {
-            return Contains(typeof(T));
-        }
-        public static bool Contains(Type type)
-        {
-            var id = ToModelID(type);
-            return _ModelInstance.ContainsKey(id);
+            return GetID(typeof(T));
         }
 
-        ///////////////////////////////////////////// 获取ModelID ////////////////////////////////////
+        public static ModelID GetID(Type type)
+        {
+            return ToModelID(type);
+        }
+
+        public static string Entry(Type type)
+        {
+            var ct = EntryType(type);
+            var result = ct.Name.Slugify();
+            if (result.EndsWith("_MODEL"))
+            {
+                int length = "_MODEL".Length;
+                result = result.Substring(0, result.Length - length);
+            }
+            return result;
+        }
 
         private static ModelID ToModelID(Type type)
         {
@@ -121,25 +144,13 @@ namespace EGame
             return result;
         }
 
-        public static string Entry(Type type)
-        {
-            var ct = EntryType(type);
-            var result = ct.Name.Slugify();
-            if (result.EndsWith("_MODEL"))
-            {
-                int length = "_MODEL".Length;
-                result = result.Substring(0, result.Length - length);
-            }
-            return result;
-        }
-
         private static Type CatogoryType(Type type)
         {
             var tmp_type = type;
 
             //查找Category类（要么有标记，要么是Abstract直系继承）
             while (
-                Attribute.IsDefined(tmp_type, typeof(ModelCategoryAttribute)) == false 
+                Attribute.IsDefined(tmp_type, typeof(ModelCategoryAttribute)) == false
                 && tmp_type.BaseType != typeof(AbstractModel)
                 && tmp_type.BaseType != null
                 )

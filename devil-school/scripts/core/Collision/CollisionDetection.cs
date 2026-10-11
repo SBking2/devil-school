@@ -18,9 +18,13 @@ namespace EGame
         }
     }
 
-    // 近战命中检测：球心往面朝方向前移、半径减半，避免打到身后的目标；只挑离 origin 最近的一个
     public static class CollisionDetection
     {
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    近战
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        // 球心往面朝方向前移、半径减半，避免打到身后的目标；只挑离 origin 最近的一个
         public static Node3D FindMeleeTarget(World3D world, Vector3 origin, Vector3 forward, float range, uint mask)
         {
             var space_state = world.DirectSpaceState;
@@ -35,7 +39,7 @@ namespace EGame
             query.CollisionMask = mask;
 
             var results = space_state.IntersectShape(query);
-            
+
             Node3D target = null;
             float closestDistance = float.MaxValue;
 
@@ -54,7 +58,11 @@ namespace EGame
             return target;
         }
 
-        // 远程命中检测：从 from 往 to 打一条射线，打不中返回 false
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    射线
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        // 从 from 往 to 打一条射线，打不中返回 false
         public static bool FindRayTarget(World3D world, Vector3 from, Vector3 to, uint mask, out Node3D hitObject, out Vector3 hitPoint, out Vector3 hitNormal)
         {
             var space_state = world.DirectSpaceState;
@@ -78,7 +86,11 @@ namespace EGame
             return true;
         }
 
-        // 霰弹枪命中检测：以 forward 为中心，在圆锥范围内打 pellet_count 条射线，只返回真正打中的
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    霰弹枪
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        // 以 forward 为中心，在圆锥范围内打 pellet_count 条射线，只返回真正打中的
         public static List<RayHitResult> FindShotgunTargets(World3D world, Vector3 origin, Vector3 forward, Vector3 right, Vector3 up, float range, uint mask, int pellet_count, float spread_degrees)
         {
             var results = new List<RayHitResult>();

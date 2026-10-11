@@ -9,6 +9,10 @@ namespace EGame
     {
         public static NCollisionDebugDraw Instance { get; private set; }
 
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    图元数据
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
         private const int _CircleSegments = 24;
         private const int _SphereRings = 12;
         private const int _SphereSegments = 24;
@@ -44,8 +48,32 @@ namespace EGame
             }
         }
 
+        private readonly struct DebugQuad
+        {
+            public readonly Vector3 A;
+            public readonly Vector3 B;
+            public readonly Vector3 C;
+            public readonly Vector3 D;
+            public readonly ulong ExpireMsec;
+
+            public DebugQuad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, ulong expireMsec)
+            {
+                A = a;
+                B = b;
+                C = c;
+                D = d;
+                ExpireMsec = expireMsec;
+            }
+        }
+
         private readonly List<DebugLine> _Lines = new List<DebugLine>();
         private readonly List<DebugSphere> _Spheres = new List<DebugSphere>();
+        private readonly List<DebugQuad> _Quads = new List<DebugQuad>();
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    生命周期
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
         private ImmediateMesh _Mesh;
         private StandardMaterial3D _LineMaterial;
         private StandardMaterial3D _FillMaterial;
@@ -105,7 +133,9 @@ namespace EGame
             base._Process(delta);
 
             ulong now = Time.GetTicksMsec();
-            int removed = _Lines.RemoveAll(line => line.ExpireMsec <= now) + _Spheres.RemoveAll(sphere => sphere.ExpireMsec <= now);
+            int removed = _Lines.RemoveAll(line => line.ExpireMsec <= now)
+                + _Spheres.RemoveAll(sphere => sphere.ExpireMsec <= now)
+                + _Quads.RemoveAll(quad => quad.ExpireMsec <= now);
             if (removed > 0)
                 _Dirty = true;
 
@@ -115,6 +145,10 @@ namespace EGame
             _Dirty = false;
             Rebuild();
         }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    添加图元
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         public void AddLine(Vector3 from, Vector3 to, double duration)
         {
@@ -128,12 +162,42 @@ namespace EGame
             _Dirty = true;
         }
 
+        // a、b 是两个半球的球心
+        public void AddCapsule(Vector3 a, Vector3 b, float radius, double duration)
+        {
+            AddSphere(a, radius, duration);
+            AddSphere(b, radius, duration);
+
+            Vector3 axis = (b - a).Normalized();
+            Vector3 side_x = axis.Cross(Vector3.Up);
+            if (side_x.LengthSquared() < 0.0001f)
+                side_x = axis.Cross(Vector3.Right);
+            side_x = side_x.Normalized() * radius;
+            Vector3 side_y = axis.Cross(side_x).Normalized() * radius;
+
+            AddLine(a + side_x, b + side_x, duration);
+            AddLine(a - side_x, b - side_x, duration);
+            AddLine(a + side_y, b + side_y, duration);
+            AddLine(a - side_y, b - side_y, duration);
+        }
+
+        // a-b-c-d 要按顺序围成一圈
+        public void AddQuad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, double duration)
+        {
+            _Quads.Add(new DebugQuad(a, b, c, d, Time.GetTicksMsec() + (ulong)(duration * 1000.0)));
+            _Dirty = true;
+        }
+
         public void AddCross(Vector3 point, float size, double duration)
         {
             AddLine(point - Vector3.Right * size, point + Vector3.Right * size, duration);
             AddLine(point - Vector3.Up * size, point + Vector3.Up * size, duration);
             AddLine(point - Vector3.Back * size, point + Vector3.Back * size, duration);
         }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    网格重建
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private void Rebuild()
         {
@@ -153,11 +217,16 @@ namespace EGame
                 _Mesh.SurfaceEnd();
             }
 
-            if (_Spheres.Count > 0)
+            if (_Spheres.Count > 0 || _Quads.Count > 0)
             {
                 _Mesh.SurfaceBegin(Mesh.PrimitiveType.Triangles, _FillMaterial);
                 foreach (DebugSphere sphere in _Spheres)
                     AddSphereTriangleVertices(sphere.Center, sphere.Radius);
+                foreach (DebugQuad quad in _Quads)
+                {
+                    AddTriangleVertices(quad.A, quad.B, quad.C);
+                    AddTriangleVertices(quad.A, quad.C, quad.D);
+                }
                 _Mesh.SurfaceEnd();
             }
         }

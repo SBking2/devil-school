@@ -13,7 +13,7 @@ namespace EGame
             Sword,
         }
 
-        public abstract string ParentName { get; }
+        public virtual string ParentName => string.Empty;
         public abstract WeaponType Type { get; }
         public virtual string PrefabName => "weapon/" + ID.Entry.ToLowerInvariant();
         public virtual float SwitchTime => 0.3f;

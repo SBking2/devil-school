@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://sjbtfmea5x3e"]
+
+[ext_resource type="Script" uid="uid://cs6iryxdoic8n" path="res://scripts/Core/Nodes/Weapon/NWeapon.cs" id="1_fgmpx"]
+
+[node name="Hand" type="Node3D" unique_id=526183678]
+script = ExtResource("1_fgmpx")

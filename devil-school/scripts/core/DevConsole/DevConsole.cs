@@ -9,16 +9,18 @@ namespace EGame
     public class DevConsole
     {
         public static DevConsole Instance { get; } = new DevConsole(false);
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    命令注册
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
         private Dictionary<string, AbstractConsoleCmd> _CmdDic = new Dictionary<string, AbstractConsoleCmd>();
-        private FixedSizeQueue<string> _Historys;
-        private int _HistoryIndex = -1;
-        private string _HistoryFilePath;
 
         public DevConsole(bool is_only_debug)
         {
             //记录命令
             _HistoryFilePath = UserDataPathProvider.GetAccountScopedBasePath("console_history.log");
-            
+
             var user_data_header = "user://";
             var start_index = _HistoryFilePath.IndexOf(user_data_header);
             var console_file_path = _HistoryFilePath.Remove(start_index, user_data_header.Length);
@@ -35,11 +37,25 @@ namespace EGame
             }
         }
 
+        private void RegisterCmd(AbstractConsoleCmd cmd)
+        {
+            if (_CmdDic.ContainsKey(cmd.CmdName) == false)
+                _CmdDic[cmd.CmdName] = cmd;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    命令历史
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private FixedSizeQueue<string> _Historys;
+        private int _HistoryIndex = -1;
+        private string _HistoryFilePath;
+
         public string GetNextCommand()
         {
             if(_HistoryIndex + 1 >= _Historys.Count)
                 return string.Empty;
-            
+
             _HistoryIndex++;
             return _Historys[_HistoryIndex];
         }
@@ -51,12 +67,6 @@ namespace EGame
 
             _HistoryIndex--;
             return _Historys[_HistoryIndex];
-        }
-
-        private void RegisterCmd(AbstractConsoleCmd cmd)
-        {
-            if (_CmdDic.ContainsKey(cmd.CmdName) == false)
-                _CmdDic[cmd.CmdName] = cmd;
         }
 
         private void LoadHistory()
@@ -82,6 +92,10 @@ namespace EGame
                 file.Close();
             }
         }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    命令执行
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         public CmdResult ProcessCmd(string cmd)
         {

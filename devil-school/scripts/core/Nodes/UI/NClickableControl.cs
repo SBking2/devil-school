@@ -11,10 +11,34 @@ namespace EGame
         [Signal] public delegate void MousePressedEventHandler(InputEvent input_event);
         [Signal] public delegate void MouseReleasedEventHandler(InputEvent input_event);
 
+        public bool IsFocus { get; private set; }
+
+        [Export(PropertyHint.None, "拖动距离阈值")]
+        protected float _DragThreshold = -1.0f;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    监听 Godot 原生信号
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private bool _IsControlFocus = false;
+        private bool _IsControlHorver = false;
+        private bool _IsPress = false;
+        private Vector2 _BeginDragPos = Vector2.Zero;
+
         public override void _Ready()
         {
             base._Ready();
             ConnectSignal();
+        }
+
+        public override void _GuiInput(InputEvent @event)
+        {
+            base._GuiInput(@event);
+
+            if(@event is InputEventMouseButton mouse_event)
+            {
+                EmitSignal(mouse_event.IsPressed() ? SignalName.MousePressed : SignalName.MouseReleased, @event);
+            }
         }
 
         protected virtual void ConnectSignal()
@@ -29,24 +53,12 @@ namespace EGame
             Connect(SignalName.MouseReleased, Callable.From<InputEventMouseButton>(OnMouseReleasedHandler));
         }
 
-        /////////////////////////////////////////////////////////////////////////
-        //////                     监听Godot原生信号
-        /////////////////////////////////////////////////////////////////////////
-
-        private bool _IsControlFocus = false;
-        private bool _IsControlHorver = false;
-        private bool _IsPress = false;
-        private Vector2 _BeginDragPos = Vector2.Zero;
-        
-        [Export(PropertyHint.None, "拖动距离阈值")] 
-        protected float _DragThreshold = -1.0f;
-        
         private void OnHorveredHandler()
         {
             _IsControlHorver = true;
             RefreshFocus();
         }
-        
+
         private void OnUnHorveredHandler()
         {
             _IsControlHorver = false;
@@ -78,7 +90,7 @@ namespace EGame
             if(IsFocus)
             {
                 OnReleased();
-            }    
+            }
         }
 
         private void PressHandler()
@@ -109,19 +121,9 @@ namespace EGame
             }
         }
 
-        public override void _GuiInput(InputEvent @event)
-        {
-            base._GuiInput(@event);
-
-            if(@event is InputEventMouseButton mouse_event)
-            {
-                EmitSignal(mouse_event.IsPressed() ? SignalName.MousePressed : SignalName.MouseReleased, @event);
-            }
-        }
-
-        /////////////////////////////////////////////////////////////////////////
-        //////                      开放给项目使用
-        /////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    开放给子类使用
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         protected void CheckDragThreshold(InputEvent input_event)
         {
@@ -132,13 +134,11 @@ namespace EGame
             }
         }
 
-        public bool IsFocus { get; private set; }
-
         protected virtual void OnPressed()
         {
 
         }
-        
+
         protected virtual void OnReleased()
         {
 

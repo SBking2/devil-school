@@ -6,6 +6,15 @@ namespace EGame
 {
     public class AnimState
     {
+        public string ID { get;}
+        public bool IsLoop { get;}
+        public float MixDuration { get; }
+        public AnimState NextState { get; set; }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    触发分支
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
         private struct Branch
         {
             public AnimState State;
@@ -13,10 +22,7 @@ namespace EGame
         }
 
         private Dictionary<string, List<Branch>> _Branches;
-        public string ID { get;}
-        public bool IsLoop { get;}
-        public float MixDuration { get; }
-        public AnimState NextState { get; set; }
+
         public AnimState(string id, float mix_duration = 0f, bool is_loop = false)
         {
             this.ID = id;
