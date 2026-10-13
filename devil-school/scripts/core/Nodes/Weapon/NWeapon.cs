@@ -7,6 +7,8 @@ namespace EGame
 {
     public partial class NWeapon : Node3D
     {
+        [Export] public RotationCurve[] AttackCameraRotationCurves;
+
         // 远程和近战是两套完全独立的 Model，一把武器只会用到其中一个，另一个是 null
         public RangedWeaponModel RangedData { get; private set; }
         public MeleeWeaponModel MeleeData { get; private set; }

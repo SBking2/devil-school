@@ -5,6 +5,7 @@
 [ext_resource type="Script" uid="uid://cewmuls0i8ism" path="res://scripts/Core/Nodes/Level/MonsterSpawnPoint.cs" id="3_gee14"]
 [ext_resource type="Script" uid="uid://dsy8h32r4tgwf" path="res://scripts/Core/Nodes/Input/NInputManager.cs" id="3_lbhrr"]
 [ext_resource type="PackedScene" uid="uid://drjgdl7h8yx3o" path="res://scenes/dev_console/dev_console.tscn" id="4_lbhrr"]
+[ext_resource type="Material" uid="uid://dpnaftk78xl72" path="res://materials/world/init_world/floor_debug.tres" id="4_u5sy4"]
 [ext_resource type="Script" uid="uid://deesrpgwse4xm" path="res://scripts/Core/Nodes/Level/DeathArea.cs" id="6_vtaks"]
 
 [sub_resource type="Environment" id="Environment_rmeui"]
@@ -15,6 +16,10 @@ ambient_light_color = Color(0.84709084, 0.87673146, 0.99999875, 1)
 size = Vector3(2, 0.01, 2)
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_p57ef"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_u5sy4"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_gee14"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_0tnpc"]
 
@@ -50,6 +55,7 @@ material_override = ExtResource("2_u5sy4")
 mesh = SubResource("PlaneMesh_p57ef")
 
 [node name="Monsters" type="Node3D" parent="RootSceneContainer/InitWorld/DebugScene" unique_id=851583654]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.395853, 0, 0)
 
 [node name="Knight" type="Node3D" parent="RootSceneContainer/InitWorld/DebugScene/Monsters" unique_id=2143670257]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.053025, 1.1048777, 0)
@@ -78,6 +84,76 @@ MonsterName = "Knight"
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="RootSceneContainer/InitWorld/DebugScene" unique_id=1703488335]
 transform = Transform3D(1, 0, 0, 0, 0.82029164, 0.5719455, 0, -0.5719455, 0.82029164, 0, 0, 0)
+
+[node name="Box" type="Node3D" parent="RootSceneContainer/InitWorld/DebugScene" unique_id=1074229219]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4910856, 0)
+
+[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/DebugScene/Box" unique_id=726760666]
+collision_layer = 4
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/DebugScene/Box/StaticBody3D" unique_id=447993013]
+shape = SubResource("BoxShape3D_u5sy4")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/DebugScene/Box/StaticBody3D" unique_id=1158235898]
+material_override = ExtResource("4_u5sy4")
+mesh = SubResource("BoxMesh_gee14")
+
+[node name="Box2" type="Node3D" parent="RootSceneContainer/InitWorld/DebugScene" unique_id=545962262]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.4910856, 0)
+
+[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/DebugScene/Box2" unique_id=1934095384]
+collision_layer = 4
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/DebugScene/Box2/StaticBody3D" unique_id=630927986]
+shape = SubResource("BoxShape3D_u5sy4")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/DebugScene/Box2/StaticBody3D" unique_id=1833700220]
+material_override = ExtResource("4_u5sy4")
+mesh = SubResource("BoxMesh_gee14")
+
+[node name="Box3" type="Node3D" parent="RootSceneContainer/InitWorld/DebugScene" unique_id=1415808316]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1.4910855, 0)
+
+[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/DebugScene/Box3" unique_id=1054794929]
+collision_layer = 4
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/DebugScene/Box3/StaticBody3D" unique_id=594307480]
+shape = SubResource("BoxShape3D_u5sy4")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/DebugScene/Box3/StaticBody3D" unique_id=525960665]
+material_override = ExtResource("4_u5sy4")
+mesh = SubResource("BoxMesh_gee14")
+
+[node name="Box4" type="Node3D" parent="RootSceneContainer/InitWorld/DebugScene" unique_id=689793341]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.4910855, 0)
+
+[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/DebugScene/Box4" unique_id=778654797]
+collision_layer = 4
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/DebugScene/Box4/StaticBody3D" unique_id=1151249538]
+shape = SubResource("BoxShape3D_u5sy4")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/DebugScene/Box4/StaticBody3D" unique_id=974085951]
+material_override = ExtResource("4_u5sy4")
+mesh = SubResource("BoxMesh_gee14")
+
+[node name="Box5" type="Node3D" parent="RootSceneContainer/InitWorld/DebugScene" unique_id=277816931]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 2.4910855, 0)
+
+[node name="StaticBody3D" type="StaticBody3D" parent="RootSceneContainer/InitWorld/DebugScene/Box5" unique_id=1821618754]
+collision_layer = 4
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RootSceneContainer/InitWorld/DebugScene/Box5/StaticBody3D" unique_id=2012367205]
+shape = SubResource("BoxShape3D_u5sy4")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/DebugScene/Box5/StaticBody3D" unique_id=2136796379]
+material_override = ExtResource("4_u5sy4")
+mesh = SubResource("BoxMesh_gee14")
 
 [node name="DeadArea" type="Node3D" parent="RootSceneContainer/InitWorld" unique_id=1971856949]
 transform = Transform3D(1000, 0, 0, 0, 1, 0, 0, 0, 1000, 0, -123.34897, 0)

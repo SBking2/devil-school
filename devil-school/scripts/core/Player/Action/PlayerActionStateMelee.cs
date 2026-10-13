@@ -1,4 +1,6 @@
 
+using Godot;
+
 namespace EGame
 {
     // 近战攻击：阶段轨道 lock -> release_input -> combo -> duration(结束) 决定连击怎么走；
@@ -77,12 +79,14 @@ namespace EGame
             }
 
             UpdateHitbox(model);
+            UpdateCameraRotation(player);
         }
 
         public override void OnExit(NPlayer player)
         {
             base.OnExit(player);
             SetHitboxOpen(false);
+            ResetCameraRotation(player);
         }
 
         // 每次真正开始一段新的连击（包括从头开始或者连到下一段）都要重置这一段的绝对时间线
@@ -93,8 +97,43 @@ namespace EGame
             _BufferedNextAttack = false;
             _Weapon.CurrentComboIndex = _ComboIndex;
             SetHitboxOpen(false);
+            StartCameraRotation();
             _Weapon.TriggerAnim(_Weapon.MeleeData.GetAttackTrigger(_ComboIndex));
             Log.VeryDebug($"Attack Anim : {_Weapon.MeleeData.GetAttackTrigger(_ComboIndex)}!");
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    镜头旋转
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private RotationCurve _RotationCurve;
+
+        private void StartCameraRotation()
+        {
+            var curves = _Weapon.AttackCameraRotationCurves;
+            _RotationCurve = curves != null && _ComboIndex < curves.Length ? curves[_ComboIndex] : null;
+        }
+
+        // 曲线横轴就是这一招开始后的秒数，直接用 _StepTime 采样，和命中窗口、卡肉共用同一条时间线
+        private void UpdateCameraRotation(NPlayer player)
+        {
+            if (player.CameraAttackEffect == null)
+                return;
+
+            if (_RotationCurve == null || _StepTime >= _RotationCurve.Duration)
+            {
+                player.CameraAttackEffect.Quaternion = Quaternion.Identity;
+                return;
+            }
+
+            player.CameraAttackEffect.Quaternion = _RotationCurve.Sample((float)_StepTime);
+        }
+
+        private void ResetCameraRotation(NPlayer player)
+        {
+            _RotationCurve = null;
+            if (player.CameraAttackEffect != null)
+                player.CameraAttackEffect.Quaternion = Quaternion.Identity;
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////

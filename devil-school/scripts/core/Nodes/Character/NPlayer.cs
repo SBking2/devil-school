@@ -37,6 +37,7 @@ namespace EGame
 
         public Node3D RealCamera => _RealCamera;
         public Node3D CameraEffectNode { get; private set; }
+        public Node3D CameraAttackEffect { get; private set; }
         public Node3D WeaponCameraEffectNode { get; private set; }
 
         public float WalkSpeed => PlayerData.PlayerModel.MoveSpeed;
@@ -128,6 +129,7 @@ namespace EGame
             _WeaponSpeedPullNode = GetNodeOrNull<Node3D>("%WeaponSpeedPull");
             _WeaponLandingNode = GetNodeOrNull<Node3D>("%WeaponLanding");
             CameraEffectNode = GetNodeOrNull<Node3D>("%CameraEffect");
+            CameraAttackEffect = GetNodeOrNull<Node3D>("%CameraAttackEffect");
             WeaponCameraEffectNode = GetNodeOrNull<Node3D>("%WeaponCameraEffect");
 
             _EyesPos = _StandHeight - _EyeOffsetFromTop;
@@ -198,6 +200,7 @@ namespace EGame
         public void OnAttack(DamageInfo info)
         {
             HitStop(0.1f);
+            AnimUtils.ShakeRotation(CameraEffectNode, 0.1f, 1f * Vector3.One, 5f, 10f);
         }
 
         public void Die()
@@ -497,8 +500,8 @@ namespace EGame
 
         private readonly float _MinBobSpeed = 0.3f;      //低于这个速度直接清零，不产生 bob
 
-        private readonly float _CameraBobRightScale = 0.009f;   //Bob水平幅度
-        private readonly float _CameraBobUpScale = 0.0025f;      //Bob垂直幅度
+        private readonly float _CameraBobRightScale = 0.012f;   //Bob水平幅度
+        private readonly float _CameraBobUpScale = 0.004f;      //Bob垂直幅度
         private readonly float _CameraLookAheadDistance = 15f;
 
         private float _BobCycle;

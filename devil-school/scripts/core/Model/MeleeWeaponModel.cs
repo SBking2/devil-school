@@ -6,9 +6,7 @@ namespace EGame
     // 近战武器专用 Model：走连击 + 碰撞体判定
     public abstract class MeleeWeaponModel : WeaponModel
     {
-        // 每一段连击(招式)自己一个完整配置：阶段时间点 lock -> release_input -> combo -> duration(结束)，
-        // 加另一套独立的碰撞体开关时间点，再加这一下的伤害——都写在同一个 MeleeComboStep 里，全是从这一招开始算起的绝对时间
-        protected virtual MeleeComboStep[] ComboSteps => null;
+        public virtual MeleeComboStep[] ComboSteps => WeaponConfig.GetDefaultComboStep(Type);
 
         // 没有配置连击就不能攻击
         public bool CanAttack => ComboSteps != null && ComboSteps.Length > 0;

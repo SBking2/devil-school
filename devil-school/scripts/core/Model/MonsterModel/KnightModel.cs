@@ -3,7 +3,7 @@ namespace EGame
 {
     public class KnightModel : MonsterModel
     {
-        public override int MaxHP => 1000;
+        public override int MaxHP => 20;
 
         protected override void RegisterNodeReplacements(BehaviourNodeFactory factory)
         {
