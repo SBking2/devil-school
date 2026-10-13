@@ -12,11 +12,22 @@ namespace EGame
             Shotgun,
             Sword,
         }
-
+        
         public virtual string ParentName => string.Empty;
         public abstract WeaponType Type { get; }
         public virtual string PrefabName => "weapon/" + ID.Entry.ToLowerInvariant();
         public virtual float SwitchTime => 0.3f;
-        public string SwitchAnimTrigger => WeaponConfig.GetSwitchAnimTrigger(Type);
+        public virtual string SwitchTrigger
+        {
+            get
+            {
+                return WeaponConfig.GetSwitchAnimTrigger(Type);
+            }
+        }
+
+        public virtual string GetAttackTrigger(int comboIndex = 0)
+        {
+            return WeaponConfig.GetAttackAnimTrigger(Type, comboIndex);
+        }
     }
 }

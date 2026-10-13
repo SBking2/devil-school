@@ -107,14 +107,14 @@ namespace EGame
 
         public void FireInternal()
         {
-            TriggerAnim(WeaponConfig.GetAttackAnimTrigger(RangedData.Type, 0));
+            TriggerAnim(RangedData.GetAttackTrigger());
             SoundManager.Instance.Play("fire");
             FireRanged();
         }
 
         public void FireShotgunInternal()
         {
-            TriggerAnim(WeaponConfig.GetAttackAnimTrigger(RangedData.Type, 0));
+            TriggerAnim(RangedData.GetAttackTrigger());
             SoundManager.Instance.Play("fire");
             FireShotgun();
         }

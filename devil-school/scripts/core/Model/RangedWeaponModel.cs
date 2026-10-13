@@ -18,6 +18,13 @@ namespace EGame
         public virtual float ReloadTime => 2f;
         public virtual float FireTime => 1f;
         public virtual float Range => 100f;
+        public virtual string ReloadTrigger
+        {
+            get
+            {
+                return WeaponConfig.GetReloadAnimTrigger(Type);
+            }
+        }
 
         // 弹药是运行时状态，只有 MutableClone 出来的副本才能改；current/total 任意一个变了都触发同一个事件，
         // 外部（HUD）不关心具体是哪个变了、变成多少，收到通知后自己现取最新值就行

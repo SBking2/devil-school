@@ -11,7 +11,7 @@ namespace EGame
         public override void OnEnter(NPlayer player)
         {
             base.OnEnter(player);
-            player.AnimTrigger(WeaponConfig.GetReloadAnimTrigger(player.CurrentWeapon.RangedData.Type));
+            player.AnimTrigger(player.CurrentWeapon.RangedData.ReloadTrigger);
         }
 
         public override void OnProcess(NPlayer player, double dt)

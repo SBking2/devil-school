@@ -8,7 +8,7 @@ namespace EGame
         public override void OnEnter(NPlayer player)
         {
             base.OnEnter(player);
-            player.AnimTrigger(player.CurrentWeapon.Data.SwitchAnimTrigger);
+            player.AnimTrigger(player.CurrentWeapon.Data.SwitchTrigger);
         }
 
         public override void OnProcess(NPlayer player, double dt)

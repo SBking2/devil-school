@@ -93,8 +93,8 @@ namespace EGame
             _BufferedNextAttack = false;
             _Weapon.CurrentComboIndex = _ComboIndex;
             SetHitboxOpen(false);
-            _Weapon.TriggerAnim(WeaponConfig.GetAttackAnimTrigger(_Weapon.MeleeData.Type, _ComboIndex));
-            Log.VeryDebug($"Attack Anim : {WeaponConfig.GetAttackAnimTrigger(_Weapon.MeleeData.Type, _ComboIndex)}!");
+            _Weapon.TriggerAnim(_Weapon.MeleeData.GetAttackTrigger(_ComboIndex));
+            Log.VeryDebug($"Attack Anim : {_Weapon.MeleeData.GetAttackTrigger(_ComboIndex)}!");
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
