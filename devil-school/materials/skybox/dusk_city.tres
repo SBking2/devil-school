@@ -1,0 +1,6 @@
+[gd_resource type="PanoramaSkyMaterial" format=3 uid="uid://bynys2yqv2jki"]
+
+[ext_resource type="Texture2D" uid="uid://dwyue0040iieh" path="res://images/skybox/sunset_jhbcentral_2k.hdr" id="1_hxf5b"]
+
+[resource]
+panorama = ExtResource("1_hxf5b")

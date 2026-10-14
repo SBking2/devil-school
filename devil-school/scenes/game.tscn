@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://dge3avc7g1le2"]
 
 [ext_resource type="Script" uid="uid://bgg7dp3nm278q" path="res://scripts/Core/Nodes/NGame.cs" id="1_uwrxv"]
+[ext_resource type="Material" uid="uid://bynys2yqv2jki" path="res://materials/skybox/dusk_city.tres" id="2_gee14"]
 [ext_resource type="Material" uid="uid://b8uhsskd1f7op" path="res://materials/world/init_world/godot_ground.tres" id="2_u5sy4"]
 [ext_resource type="Script" uid="uid://cewmuls0i8ism" path="res://scripts/Core/Nodes/Level/MonsterSpawnPoint.cs" id="3_gee14"]
 [ext_resource type="Script" uid="uid://dsy8h32r4tgwf" path="res://scripts/Core/Nodes/Input/NInputManager.cs" id="3_lbhrr"]
@@ -8,8 +9,13 @@
 [ext_resource type="Material" uid="uid://dpnaftk78xl72" path="res://materials/world/init_world/floor_debug.tres" id="4_u5sy4"]
 [ext_resource type="Script" uid="uid://deesrpgwse4xm" path="res://scripts/Core/Nodes/Level/DeathArea.cs" id="6_vtaks"]
 
+[sub_resource type="Sky" id="Sky_gee14"]
+sky_material = ExtResource("2_gee14")
+
 [sub_resource type="Environment" id="Environment_rmeui"]
-ambient_light_source = 2
+background_mode = 2
+sky = SubResource("Sky_gee14")
+ambient_light_source = 3
 ambient_light_color = Color(0.84709084, 0.87673146, 0.99999875, 1)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_p57ef"]

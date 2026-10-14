@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://drwuhf7oylxnc"]
 
-[ext_resource type="Material" uid="uid://uvb881k6s8no" path="res://materials/effect/material/greate_sword_hit.tres" id="1_ytcmk"]
-[ext_resource type="Material" uid="uid://10o3xb50xk03" path="res://materials/effect/process_material/greate_sword_hit.tres" id="2_hxb44"]
+[ext_resource type="Material" uid="uid://uvb881k6s8no" path="res://materials/effect/greate_sword_hit.tres" id="1_ytcmk"]
+[ext_resource type="Material" uid="uid://10o3xb50xk03" path="res://materials/effect/greate_sword_hit_process.tres" id="2_hxb44"]
 
 [sub_resource type="QuadMesh" id="QuadMesh_gee14"]
 

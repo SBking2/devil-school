@@ -500,8 +500,8 @@ namespace EGame
 
         private readonly float _MinBobSpeed = 0.3f;      //低于这个速度直接清零，不产生 bob
 
-        private readonly float _CameraBobRightScale = 0.012f;   //Bob水平幅度
-        private readonly float _CameraBobUpScale = 0.004f;      //Bob垂直幅度
+        private readonly float _CameraBobRightScale = 0.010f;   //Bob水平幅度
+        private readonly float _CameraBobUpScale = 0.0025f;      //Bob垂直幅度
         private readonly float _CameraLookAheadDistance = 15f;
 
         private float _BobCycle;
