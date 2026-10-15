@@ -23,7 +23,7 @@ namespace EGame
 
         public void Play(string path)
         {
-            var ui_audio_path = "res://audios/ui_audios/" + path + ".mp3";
+            var ui_audio_path = "res://audios/ui_audios/" + path + ".wav";
             TaskHelper.RunSafely(PlayAsync(ui_audio_path));
         }
 

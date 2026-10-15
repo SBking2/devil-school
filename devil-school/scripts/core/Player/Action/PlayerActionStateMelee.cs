@@ -98,7 +98,8 @@ namespace EGame
             _Weapon.CurrentComboIndex = _ComboIndex;
             SetHitboxOpen(false);
             StartCameraRotation();
-            _Weapon.TriggerAnim(_Weapon.MeleeData.GetAttackTrigger(_ComboIndex));
+            _Weapon.Player.AnimTrigger(_Weapon.MeleeData.GetAttackTrigger(_ComboIndex));
+            SoundManager.Instance.Play("sword_attack1");
             Log.VeryDebug($"Attack Anim : {_Weapon.MeleeData.GetAttackTrigger(_ComboIndex)}!");
         }
 

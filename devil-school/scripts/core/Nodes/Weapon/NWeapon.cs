@@ -32,6 +32,8 @@ namespace EGame
         ///////                                        创建
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+        public NPlayer Player => _Owner;
+
         private NPlayer _Owner;
 
         public static NWeapon Create(NPlayer player, RangedWeaponModel model)
@@ -72,11 +74,6 @@ namespace EGame
             this.SetActive(false);
         }
 
-        public void TriggerAnim(string trigger)
-        {
-            _Owner.AnimTrigger(trigger);
-        }
-
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
         ///////                                        近战
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -87,6 +84,7 @@ namespace EGame
             int damage = this.MeleeData.GetDamage(this.CurrentComboIndex);
             var damageInfo = new DamageInfo(_Owner, target, point, normal, _Owner.Data, damage);
             DamageSystem.Instance.ReportHit(damageInfo);
+            SoundManager.Instance.Play("sword_hit");
 
             PlayMeleeHitEffect(point);
         }
@@ -109,14 +107,14 @@ namespace EGame
 
         public void FireInternal()
         {
-            TriggerAnim(RangedData.GetAttackTrigger());
+            this.Player.AnimTrigger(RangedData.GetAttackTrigger());
             SoundManager.Instance.Play("fire");
             FireRanged();
         }
 
         public void FireShotgunInternal()
         {
-            TriggerAnim(RangedData.GetAttackTrigger());
+            this.Player.AnimTrigger(RangedData.GetAttackTrigger());
             SoundManager.Instance.Play("fire");
             FireShotgun();
         }
