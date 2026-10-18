@@ -91,14 +91,13 @@ namespace EGame
         private void CreatePlayer()
         {
             PlayerNode = NPlayer.Create(new Player());
-            AddChild(PlayerNode);
-
             var spawn_point = GetNodeOrNull<Node3D>("%PlayerSpawnPoint");
             if (spawn_point != null)
             {
                 PlayerNode.GlobalPosition = spawn_point.GlobalPosition;
                 PlayerNode.GlobalRotation = spawn_point.GlobalRotation;
             }
+            spawn_point.AddChild(PlayerNode);
 
             UIManager.Instance.Show(UIPanelType.HudPanel);
         }

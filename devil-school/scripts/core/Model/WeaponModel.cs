@@ -11,6 +11,8 @@ namespace EGame
             Pistol,
             Shotgun,
             Sword,
+            Rifle,
+            Sniper
         }
         
         public virtual string ParentName => string.Empty;

@@ -7,6 +7,7 @@
 [ext_resource type="Script" uid="uid://dsy8h32r4tgwf" path="res://scripts/Core/Nodes/Input/NInputManager.cs" id="3_lbhrr"]
 [ext_resource type="PackedScene" uid="uid://drjgdl7h8yx3o" path="res://scenes/dev_console/dev_console.tscn" id="4_lbhrr"]
 [ext_resource type="Material" uid="uid://dpnaftk78xl72" path="res://materials/world/init_world/floor_debug.tres" id="4_u5sy4"]
+[ext_resource type="PackedScene" uid="uid://c7x61k0nobbjy" path="res://models/worlds/col_test/debug_level.fbx" id="6_0tnpc"]
 [ext_resource type="Script" uid="uid://deesrpgwse4xm" path="res://scripts/Core/Nodes/Level/DeathArea.cs" id="6_vtaks"]
 
 [sub_resource type="Sky" id="Sky_gee14"]
@@ -57,6 +58,7 @@ collision_mask = 0
 shape = SubResource("BoxShape3D_p57ef")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="RootSceneContainer/InitWorld/DebugScene/Plane/StaticBody3D" unique_id=1525409517]
+transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 0, 0, 0)
 material_override = ExtResource("2_u5sy4")
 mesh = SubResource("PlaneMesh_p57ef")
 
@@ -89,7 +91,8 @@ script = ExtResource("3_gee14")
 MonsterName = "Knight"
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="RootSceneContainer/InitWorld/DebugScene" unique_id=1703488335]
-transform = Transform3D(1, 0, 0, 0, 0.82029164, 0.5719455, 0, -0.5719455, 0.82029164, 0, 0, 0)
+transform = Transform3D(0.829301, -2.9802322e-08, -0.5588021, 0.31960437, 0.8202917, 0.47431496, 0.4583807, -0.57194555, 0.6802687, 0, 0, 0)
+shadow_enabled = true
 
 [node name="Box" type="Node3D" parent="RootSceneContainer/InitWorld/DebugScene" unique_id=1074229219]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4910856, 0)
@@ -161,6 +164,13 @@ shape = SubResource("BoxShape3D_u5sy4")
 material_override = ExtResource("4_u5sy4")
 mesh = SubResource("BoxMesh_gee14")
 
+[node name="debug_level" parent="RootSceneContainer/InitWorld/DebugScene" unique_id=322754610 instance=ExtResource("6_0tnpc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.024290085, 0)
+
+[node name="Trainer_Col" parent="RootSceneContainer/InitWorld/DebugScene/debug_level" index="1" unique_id=1903603527]
+collision_layer = 4
+collision_mask = 0
+
 [node name="DeadArea" type="Node3D" parent="RootSceneContainer/InitWorld" unique_id=1971856949]
 transform = Transform3D(1000, 0, 0, 0, 1, 0, 0, 0, 1000, 0, -123.34897, 0)
 
@@ -194,3 +204,5 @@ grow_vertical = 2
 
 [node name="DevConsole" parent="." unique_id=1579904544 instance=ExtResource("4_lbhrr")]
 layer = 2
+
+[editable path="RootSceneContainer/InitWorld/DebugScene/debug_level"]

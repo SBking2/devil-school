@@ -22,6 +22,11 @@ namespace EGame
             return false;
         }
 
+        public static float ExpDecayWeight(float speed, double dt)
+        {
+            return 1f - Mathf.Exp(-speed * (float)dt);
+        }
+
         public static void PlayAnimation(Node node, string anim, bool is_from_start = false)
         {
             var animator = node.GetAnimationPlayer();

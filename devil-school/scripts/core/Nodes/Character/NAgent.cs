@@ -142,7 +142,7 @@ namespace EGame
                 return cur;   // 没有水平方向，保持当前朝向，避免除零/朝向乱转
 
             var target = Basis.LookingAt(horizontal_dir, Vector3.Up).GetRotationQuaternion();
-            float weight = 1f - Mathf.Exp(-rotation_rate * (float)dt);
+            float weight = fun.ExpDecayWeight(rotation_rate, dt);
             return cur.Slerp(target, weight);
         }
 

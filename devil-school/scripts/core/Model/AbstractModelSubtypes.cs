@@ -18,6 +18,8 @@ namespace EGame
 			typeof(GreateSwordModel),
 			typeof(ShotgunPistolModel),
 			typeof(SwordModel),
+			typeof(RifleModel),
+			typeof(SniperModel)
 		};
 	}
 }

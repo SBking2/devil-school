@@ -25,41 +25,47 @@ unique_name_in_owner = true
 [node name="CameraBob" type="Node3D" parent="CameraLand/Pitch/CameraLean" unique_id=1328708813]
 unique_name_in_owner = true
 
-[node name="CameraEffect" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob" unique_id=2063842622]
+[node name="CameraRecoil" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob" unique_id=826004327]
 unique_name_in_owner = true
 
-[node name="CameraAttackEffect" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect" unique_id=1265192374]
+[node name="CameraEffect" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil" unique_id=2063842622]
 unique_name_in_owner = true
 
-[node name="WeaponCameraEffect" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect" unique_id=1590576576]
+[node name="CameraAttackEffect" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect" unique_id=1265192374]
 unique_name_in_owner = true
 
-[node name="WeaponBob" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/WeaponCameraEffect" unique_id=-1446858772]
+[node name="RealCamera" type="Camera3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect" unique_id=1806356304]
 unique_name_in_owner = true
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, 0)
 
-[node name="WeaponSway" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/WeaponCameraEffect/WeaponBob" unique_id=-1097384845]
+[node name="WeaponRecoil" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect" unique_id=1315885710]
 unique_name_in_owner = true
 
-[node name="WeaponSpeedPull" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/WeaponCameraEffect/WeaponBob/WeaponSway" unique_id=816042753]
+[node name="WeaponCameraEffect" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect/WeaponRecoil" unique_id=1590576576]
 unique_name_in_owner = true
 
-[node name="WeaponLanding" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull" unique_id=-186404905]
+[node name="WeaponBob" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect/WeaponRecoil/WeaponCameraEffect" unique_id=-1446858772]
+unique_name_in_owner = true
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, 0)
+
+[node name="WeaponSway" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect/WeaponRecoil/WeaponCameraEffect/WeaponBob" unique_id=-1097384845]
 unique_name_in_owner = true
 
-[node name="Recoil" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding" unique_id=1017113471]
+[node name="WeaponSpeedPull" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway" unique_id=816042753]
 unique_name_in_owner = true
 
-[node name="Model" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil" unique_id=1418540739]
+[node name="WeaponLanding" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull" unique_id=-186404905]
+unique_name_in_owner = true
+
+[node name="Model" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding" unique_id=1418540739]
 unique_name_in_owner = true
 transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, -1.689, -0.102)
 
-[node name="Sword_Test" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil/Model" unique_id=377457861 instance=ExtResource("3_gmlin")]
+[node name="Sword_Test" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Model" unique_id=1377953705 instance=ExtResource("3_gmlin")]
 
-[node name="Skeleton3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil/Model/Sword_Test/ArmsRig" parent_id_path=PackedInt32Array(377457861, 605209177) index="0" unique_id=2092572660]
+[node name="Skeleton3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Model/Sword_Test/ArmsRig" parent_id_path=PackedInt32Array(1377953705, 239760847) index="0" unique_id=1930758188]
 bones/1/position = Vector3(-0.00018299998, 0.0013940048, 0.0006839999)
 bones/1/rotation = Quaternion(-0.613981, 0.3509132, 0.35115877, 0.6136569)
-bones/1/scale = Vector3(1.0000001, 1, 1)
 bones/2/position = Vector3(-8.6518325e-05, 0.00202249, -0.00010968281)
 bones/2/rotation = Quaternion(-0.07880055, -0.7409909, 0.280257, 0.6051273)
 bones/2/scale = Vector3(0.9999999, 1.0000001, 1)
@@ -89,7 +95,6 @@ bones/10/rotation = Quaternion(0.012233878, -0.41402027, -0.30925593, 0.85603637
 bones/10/scale = Vector3(1.0000001, 1.0000001, 1)
 bones/11/position = Vector3(9.724098e-10, 0.00044762887, 5.0241195e-10)
 bones/11/rotation = Quaternion(0.17710862, 0.0033358799, 0.022474779, 0.983929)
-bones/11/scale = Vector3(0.99999994, 0.99999976, 1)
 bones/12/position = Vector3(-6.276335e-10, 0.00035887898, -1.6153219e-10)
 bones/12/rotation = Quaternion(0.09226236, -0.11139392, 0.031413324, 0.9889855)
 bones/12/scale = Vector3(1, 0.9999999, 0.9999999)
@@ -119,7 +124,6 @@ bones/20/rotation = Quaternion(-0.0022162036, 0.98713017, -0.15748014, -0.027733
 bones/20/scale = Vector3(1.0000001, 1.0000004, 0.9999999)
 bones/21/position = Vector3(2.5312231e-11, 0.00050526817, -2.4280555e-09)
 bones/21/rotation = Quaternion(-0.00405622, -0.0049342006, 0.0042691226, 0.9999705)
-bones/21/scale = Vector3(1, 1.0000001, 1)
 bones/22/position = Vector3(1.1953721e-10, 0.00031932376, 9.633875e-10)
 bones/22/rotation = Quaternion(0.039756015, 0.039046776, 0.0028529884, 0.9984421)
 bones/22/scale = Vector3(0.9999999, 1, 1)
@@ -167,7 +171,6 @@ bones/36/rotation = Quaternion(-0.0020885959, 0.0032941874, -0.004392462, 0.9999
 bones/36/scale = Vector3(0.99999994, 1.0000001, 0.99999994)
 bones/37/position = Vector3(1.3031731e-10, 0.00025813095, 3.8179399e-10)
 bones/37/rotation = Quaternion(3.019501e-09, 2.0081892e-09, -1.0031881e-08, 1)
-bones/37/scale = Vector3(1, 0.9999999, 1)
 bones/38/position = Vector3(-8.271706e-05, -2.754426e-05, 0.00020711008)
 bones/38/rotation = Quaternion(0.012232752, 0.4140222, 0.3092537, 0.8560363)
 bones/38/scale = Vector3(1, 1.0000001, 1)
@@ -233,27 +236,21 @@ bones/58/rotation = Quaternion(-3.574294e-12, 1.39124126e-08, 8.844253e-09, 1)
 bones/58/scale = Vector3(0.99999994, 0.99999994, 1)
 bones/60/position = Vector3(2.8189895e-09, 0.0011373492, 6.337113e-11)
 bones/60/rotation = Quaternion(8.652835e-09, -9.729462e-10, 3.5852166e-09, 1)
-bones/60/scale = Vector3(1, 0.99999994, 1)
 bones/62/position = Vector3(-8.588089e-11, 0.0009694023, -3.9345427e-10)
 bones/62/rotation = Quaternion(0, -5.551111e-17, 3.3087225e-24, 1)
 bones/64/position = Vector3(-2.8189895e-09, 0.0011373492, 6.337113e-11)
 bones/64/rotation = Quaternion(8.652835e-09, 9.729462e-10, -3.5852166e-09, 1)
-bones/64/scale = Vector3(1, 0.99999994, 1)
 bones/66/position = Vector3(8.588089e-11, 0.0009694023, -3.9345427e-10)
 bones/66/rotation = Quaternion(0, 5.551111e-17, -3.3087225e-24, 1)
 
-[node name="hand_r" type="BoneAttachment3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil/Model/Sword_Test/ArmsRig/Skeleton3D" index="1" unique_id=1148893884]
-transform = Transform3D(-0.9986688, -0.0016690588, 0.0515607, 0.05156599, -0.0032900576, 0.9986641, -0.0014971944, 0.99999344, 0.0033716552, 0.0031832682, -0.00021074951, 0.015348706)
+[node name="hand_r" type="BoneAttachment3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Model/Sword_Test/ArmsRig/Skeleton3D" index="1" unique_id=1148893884]
+transform = Transform3D(-0.5882415, -0.80502677, 0.07683434, 0.0005127787, -0.09538268, -0.99544036, 0.80868495, -0.5855201, 0.05652093, -0.0066047376, 0.00050747854, 0.013061)
 bone_name = "handIK.R"
 bone_idx = 59
-
-[node name="RealCamera" type="Camera3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect" unique_id=1806356304]
-unique_name_in_owner = true
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, 0)
 
 [node name="MoveCollider" type="CollisionShape3D" parent="." unique_id=745978355]
 unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 shape = SubResource("CapsuleShape3D_dcsok")
 
-[editable path="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Recoil/Model/Sword_Test"]
+[editable path="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Model/Sword_Test"]

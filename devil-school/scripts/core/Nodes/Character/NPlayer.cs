@@ -131,6 +131,8 @@ namespace EGame
             CameraEffectNode = GetNodeOrNull<Node3D>("%CameraEffect");
             CameraAttackEffect = GetNodeOrNull<Node3D>("%CameraAttackEffect");
             WeaponCameraEffectNode = GetNodeOrNull<Node3D>("%WeaponCameraEffect");
+            _CameraRecoil = GetNodeOrNull<Node3D>("%CameraRecoil");
+            _WeaponRecoil = GetNodeOrNull<Node3D>("%WeaponRecoil");
 
             _EyesPos = _StandHeight - _EyeOffsetFromTop;
             _PitchNode.Position = new Vector3(0.0f, _EyesPos, 0.0f);
@@ -150,6 +152,14 @@ namespace EGame
             var hand = ModelDB.MeleeWeapon<HandModel>().MutableClone() as MeleeWeaponModel;
             var hand_n = NWeapon.Create(this, hand);
             PickWeapon(hand_n);
+
+            var sniper_data = ModelDB.RangedWeapon<SniperModel>().MutableClone() as SniperModel;
+            var sniper = NWeapon.Create(this, sniper_data);
+            PickWeapon(sniper);
+
+            var rifle_data = ModelDB.RangedWeapon<RifleModel>().MutableClone() as RifleModel;
+            var rifle = NWeapon.Create(this, rifle_data);
+            PickWeapon(rifle);
         }
 
         private void BuildStateLayers()
@@ -428,7 +438,7 @@ namespace EGame
             var capsule = (CapsuleShape3D)_MoveCollisionShape.Shape;
 
             float target_eyes_offset = _StandHeight - _EyeOffsetFromTop;
-            float weight = 1f - Mathf.Exp(-_CrouchChangeSpeed * (float)dt);
+            float weight = fun.ExpDecayWeight(_CrouchChangeSpeed, dt);
 
             _EyesPos = Mathf.Lerp(_EyesPos, target_eyes_offset, weight);
             capsule.Height = Mathf.Lerp(capsule.Height, target_crouch_height, weight);
@@ -451,8 +461,6 @@ namespace EGame
         private readonly Vector2 _PitchLimit = new Vector2(-90f, 90f);
         private float _PitchAngle = 0f;
 
-        private Vector2 ViewAngleDegrees => new Vector2(_PitchAngle, RotationDegrees.Y);
-
         public override void _Input(InputEvent @event)
         {
             base._Input(@event);
@@ -467,9 +475,12 @@ namespace EGame
             _YawNode.Rotate(Vector3.Up, Mathf.DegToRad(x_delta));
 
             float y_delta = mouse_delta.Y * _RotateSensity.Y;
+            float last_pitch = _PitchAngle;
             _PitchAngle += y_delta;
             _PitchAngle = Mathf.Clamp(_PitchAngle, _PitchLimit.X, _PitchLimit.Y);
             _PitchNode.Quaternion = Quaternion.FromEuler(new Vector3(Mathf.DegToRad(_PitchAngle), 0.0f, 0.0f));
+
+            AccumulateViewDelta(_PitchAngle - last_pitch, x_delta);
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -517,7 +528,7 @@ namespace EGame
             if (!ViewBobEnabled || _XySpeed <= _MinBobSpeed)
             {
                 _BobCycle = 0f;
-                _ViewBobPosition = _ViewBobPosition.Lerp(Vector3.Zero, (float)dt * 10f);
+                _ViewBobPosition = _ViewBobPosition.Lerp(Vector3.Zero, fun.ExpDecayWeight(10f, dt));
                 ApplyBobToCamera();
                 return;
             }
@@ -639,20 +650,27 @@ namespace EGame
 
         private Node3D _WeaponSwayNode;
 
-        private readonly float _WeaponTurnSwayScale = 0.05f;
-        private readonly float _WeaponTurnSwayMaxDegrees = 6.0f;
-        private readonly int _WeaponTurnSwayAverageFrames = 10;
+        // 每 1 度/秒 的转速对应的武器偏转角度
+        private readonly float _WeaponTurnSwayYawScale = 0.0015f;
+        private readonly float _WeaponTurnSwayPitchScale = 0.00375f;
+        private readonly float _WeaponTurnSwayMaxDegrees = 6f;
+        private readonly float _WeaponTurnSwaySmoothSpeed = 12f;
 
-        // 视角历史用数组+游标模拟环形缓冲，而不是 Queue——这样可以按"帧号"直接索引取值，
-        // 不用每帧都做一次出队/入队
-        private readonly Vector2[] _ViewAngleHistory = new Vector2[64];
-        private int _ViewAngleWriteIndex;
-        private int _ViewAngleFrameCount;
+        // 按渲染帧累计转动量：物理帧采样时每帧摊到的输入忽多忽少，快速转动会抽搐
+        private Vector2 _PendingViewDelta;
+
+        private void AccumulateViewDelta(float pitch_delta, float yaw_delta)
+        {
+            _PendingViewDelta += new Vector2(pitch_delta, yaw_delta);
+        }
 
         private void UpdateWeaponSway(double dt)
         {
             if (_WeaponSwayNode == null)
                 return;
+
+            Vector2 view_delta = _PendingViewDelta;
+            _PendingViewDelta = Vector2.Zero;
 
             if (!WeaponSwayEnabled)
             {
@@ -660,46 +678,17 @@ namespace EGame
                 return;
             }
 
-            Vector2 view_angle_degrees = ViewAngleDegrees;
-            LogViewAngle(view_angle_degrees);
+            if (dt <= 0)
+                return;
 
-            _WeaponSwayNode.RotationDegrees = ComputeWeaponTurnOffset(view_angle_degrees);
-        }
+            Vector2 view_speed = view_delta / (float)dt;
+            Vector3 target = new Vector3(
+                Mathf.Clamp(-view_speed.X * _WeaponTurnSwayPitchScale, -_WeaponTurnSwayMaxDegrees, _WeaponTurnSwayMaxDegrees),
+                0f,
+                Mathf.Clamp(view_speed.Y * _WeaponTurnSwayYawScale, -_WeaponTurnSwayMaxDegrees, _WeaponTurnSwayMaxDegrees));
 
-        private void LogViewAngle(Vector2 view_angle_degrees)
-        {
-            _ViewAngleHistory[_ViewAngleWriteIndex % _ViewAngleHistory.Length] = view_angle_degrees;
-            _ViewAngleWriteIndex++;
-            _ViewAngleFrameCount = Mathf.Min(_ViewAngleFrameCount + 1, _ViewAngleHistory.Length);
-        }
-
-        private Vector3 ComputeWeaponTurnOffset(Vector2 current_view_angle)
-        {
-            if (_ViewAngleFrameCount == 0) return Vector3.Zero;
-
-            //取最近n帧
-            int n = Mathf.Min(_WeaponTurnSwayAverageFrames, _ViewAngleFrameCount);
-
-            //计算最近n帧内，视角的评价偏移
-            Vector2 avg = current_view_angle;
-            for (int j = 1; j < n; j++)
-            {
-                int idx = (_ViewAngleWriteIndex - 1 - j + _ViewAngleHistory.Length) % _ViewAngleHistory.Length;
-                Vector2 sample = _ViewAngleHistory[idx];
-
-                //如果往右偏移视角，希望武器也往右偏移
-                float yaw_delta = current_view_angle.Y - sample.Y;
-
-                if (yaw_delta > 180f) yaw_delta -= 360f;
-                else if (yaw_delta < -180f) yaw_delta += 360f;
-                avg += new Vector2(sample.X - current_view_angle.X, yaw_delta) / n;
-            }
-
-            //移动的平均偏移越大，武器越偏
-            Vector2 diff = (avg - current_view_angle) * _WeaponTurnSwayScale;
-            /*diff.X = Mathf.Clamp(diff.X, -_WeaponTurnSwayMaxDegrees, _WeaponTurnSwayMaxDegrees);
-            diff.Y = Mathf.Clamp(diff.Y, -_WeaponTurnSwayMaxDegrees, _WeaponTurnSwayMaxDegrees);*/
-            return new Vector3(diff.X, diff.Y, 0);
+            float weight = fun.ExpDecayWeight(_WeaponTurnSwaySmoothSpeed, dt);
+            _WeaponSwayNode.RotationDegrees = _WeaponSwayNode.RotationDegrees.Lerp(target, weight);
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -742,6 +731,13 @@ namespace EGame
 
             _WeaponLandingNode.Position = LandingDipOffset * 0.25f;   // 武器自己的落地冲击，强度是摄像机那份的 0.25 倍
         }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////                                    后坐力系统
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private Node3D _CameraRecoil;
+        private Node3D _WeaponRecoil;
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
         ////////                                    武器管理
@@ -889,32 +885,18 @@ namespace EGame
 
             double dt = delta * TimeScale;
 
-            HandleWeaponInput();
-            ModeLayer.Process(dt);
-            MovementLayer.Process(dt);
-            ActionLayer.Process(dt);
-        }
-
-        public override void _PhysicsProcess(double delta)
-        {
-            double dt = delta * TimeScale;
+            if (GravityEnabled)
+                Velocity = ApplyGravity(Velocity, dt);
 
             if (_DashCooldownRemaining > 0)
                 _DashCooldownRemaining -= dt;
 
-            // 状态机负责水平速度和起跳（移动层），重力、蹲伏碰撞体、MoveAndSlide 和镜头效果每帧都要算，留在这里
-            ModeLayer.PhysicalProcess(dt);
-            MovementLayer.PhysicalProcess(dt);
-            ActionLayer.PhysicalProcess(dt);
+            HandleWeaponInput();
+            ModeLayer.Process(dt);
+            MovementLayer.Process(dt);
+            ActionLayer.Process(dt);
 
-            if (GravityEnabled)
-                Velocity = ApplyGravity(Velocity, dt);
-
-            if (CollisionEnabled)
-            {
-                UpdateCrouch(dt);
-                this.MoveAndSlideScaled(TimeScale);
-            }
+            UpdateWeaponSway(delta);
 
             UpdateCameraLean();
             UpdateViewBob(delta);
@@ -922,9 +904,23 @@ namespace EGame
             TrachFallSpeed();
             UpdateLandingOffset();
             UpdateWeaponBob(delta);
-            UpdateWeaponSway(delta);
             UpdateWeaponSpeedPull(delta);
             UpdateWeaponLanding(delta);
+        }
+
+        public override void _PhysicsProcess(double delta)
+        {
+            double dt = delta * TimeScale;
+
+            ModeLayer.PhysicalProcess(dt);
+            MovementLayer.PhysicalProcess(dt);
+            ActionLayer.PhysicalProcess(dt);
+
+            if (CollisionEnabled)
+            {
+                UpdateCrouch(dt);
+                this.MoveAndSlideScaled(TimeScale);
+            }    
         }
     }
 }
