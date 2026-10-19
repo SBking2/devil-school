@@ -213,7 +213,7 @@ namespace EGame
         public void OnAttack(DamageInfo info)
         {
             //HitStop(0.1f);
-            AnimUtils.ShakeRotation(CameraEffectNode, 0.1f, 1f * Vector3.One, 5f, 10f);
+            //AnimUtils.ShakeRotation(CameraEffectNode, 0.1f, 1f * Vector3.One, 5f, 10f);
         }
 
         public void Die()
@@ -752,15 +752,9 @@ namespace EGame
         private Vector3[] _AnimRecoilList = new Vector3[]
         {
             // 前几发：轻微上抬，略往右
-            new Vector3(-0.3f, 0f, 0f),
-            new Vector3(-0.4f, -0.05f, 0f),
-            new Vector3(-0.5f, -0.08f, 0f),
-            new Vector3(-0.6f, -0.12f, 0f),
-            new Vector3(-0.75f, -0.15f, 0f),
+
             // 往左摆
-            new Vector3(-0.9f, 0.15f, 0f),
-            new Vector3(-1.05f, 0.25f, 0f),
-            new Vector3(-1.2f, 0.3f, 0f),
+
             new Vector3(-1.35f, 0.35f, 0f),
             new Vector3(-1.5f, 0.3f, 0f),
             new Vector3(-1.65f, 0.2f, 0f),
@@ -796,7 +790,7 @@ namespace EGame
 
         //镜头后坐力
         private Vector3 _CameraRecoil;
-        private Vector3 _CameraRecoilMaxAngle = new Vector3(0.02f, 0.04f, 0.0f);
+        private Vector3 _CameraRecoilMaxAngle = new Vector3(0.2f, 0.3f, 0.0f);
         private float _CameraRecoilScale = 0.45f;
         private float _CameraRecoilStopSpeed = 12f;
 
