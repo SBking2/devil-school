@@ -108,6 +108,7 @@ namespace EGame
         public void FireInternal()
         {
             this.Player.AnimTrigger(RangedData.GetAttackTrigger());
+            this.Player.OnFireHandleRecoil();
             SoundManager.Instance.Play("fire");
             FireRanged();
         }

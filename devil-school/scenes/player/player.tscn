@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://buqwigxw4vjjt"]
 
-[ext_resource type="Script" uid="uid://dmyd70a5e1x8d" path="res://scripts/Core/Nodes/Character/NPlayer.cs" id="1_0cfoe"]
+[ext_resource type="Script" uid="uid://dmyd70a5e1x8d" path="res://scripts/core/Nodes/Character/NPlayer.cs" id="1_0cfoe"]
 [ext_resource type="PackedScene" uid="uid://dvyrj1m3hvjq4" path="res://models/characters/fps/Sword_Test.fbx" id="3_gmlin"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_dcsok"]
@@ -25,45 +25,45 @@ unique_name_in_owner = true
 [node name="CameraBob" type="Node3D" parent="CameraLand/Pitch/CameraLean" unique_id=1328708813]
 unique_name_in_owner = true
 
-[node name="CameraRecoil" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob" unique_id=826004327]
+[node name="CameraEffect" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob" unique_id=2063842622]
 unique_name_in_owner = true
 
-[node name="CameraEffect" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil" unique_id=2063842622]
+[node name="CameraAttackEffect" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect" unique_id=1265192374]
 unique_name_in_owner = true
 
-[node name="CameraAttackEffect" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect" unique_id=1265192374]
+[node name="CameraRecoil" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect" unique_id=826004327]
 unique_name_in_owner = true
 
-[node name="RealCamera" type="Camera3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect" unique_id=1806356304]
-unique_name_in_owner = true
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, 0)
-
-[node name="WeaponRecoil" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect" unique_id=1315885710]
-unique_name_in_owner = true
-
-[node name="WeaponCameraEffect" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect/WeaponRecoil" unique_id=1590576576]
-unique_name_in_owner = true
-
-[node name="WeaponBob" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect/WeaponRecoil/WeaponCameraEffect" unique_id=-1446858772]
+[node name="RealCamera" type="Camera3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/CameraRecoil" unique_id=1806356304]
 unique_name_in_owner = true
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, 0)
 
-[node name="WeaponSway" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect/WeaponRecoil/WeaponCameraEffect/WeaponBob" unique_id=-1097384845]
+[node name="WeaponRecoil" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/CameraRecoil" unique_id=1315885710]
 unique_name_in_owner = true
 
-[node name="WeaponSpeedPull" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway" unique_id=816042753]
+[node name="WeaponCameraEffect" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/CameraRecoil/WeaponRecoil" unique_id=1590576576]
 unique_name_in_owner = true
 
-[node name="WeaponLanding" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull" unique_id=-186404905]
+[node name="WeaponBob" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/CameraRecoil/WeaponRecoil/WeaponCameraEffect" unique_id=-1446858772]
+unique_name_in_owner = true
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, 0)
+
+[node name="WeaponSway" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/CameraRecoil/WeaponRecoil/WeaponCameraEffect/WeaponBob" unique_id=-1097384845]
 unique_name_in_owner = true
 
-[node name="Model" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding" unique_id=1418540739]
+[node name="WeaponSpeedPull" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/CameraRecoil/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway" unique_id=816042753]
+unique_name_in_owner = true
+
+[node name="WeaponLanding" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/CameraRecoil/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull" unique_id=-186404905]
+unique_name_in_owner = true
+
+[node name="Model" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/CameraRecoil/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding" unique_id=1418540739]
 unique_name_in_owner = true
 transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, -1.689, -0.102)
 
-[node name="Sword_Test" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Model" unique_id=1377953705 instance=ExtResource("3_gmlin")]
+[node name="Sword_Test" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/CameraRecoil/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Model" unique_id=1377953705 instance=ExtResource("3_gmlin")]
 
-[node name="Skeleton3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Model/Sword_Test/ArmsRig" parent_id_path=PackedInt32Array(1377953705, 239760847) index="0" unique_id=1930758188]
+[node name="Skeleton3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/CameraRecoil/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Model/Sword_Test/ArmsRig" parent_id_path=PackedInt32Array(1377953705, 1711893512) index="0" unique_id=1397605650]
 bones/1/position = Vector3(-0.00018299998, 0.0013940048, 0.0006839999)
 bones/1/rotation = Quaternion(-0.613981, 0.3509132, 0.35115877, 0.6136569)
 bones/2/position = Vector3(-8.6518325e-05, 0.00202249, -0.00010968281)
@@ -243,14 +243,20 @@ bones/64/rotation = Quaternion(8.652835e-09, 9.729462e-10, -3.5852166e-09, 1)
 bones/66/position = Vector3(8.588089e-11, 0.0009694023, -3.9345427e-10)
 bones/66/rotation = Quaternion(0, 5.551111e-17, -3.3087225e-24, 1)
 
-[node name="hand_r" type="BoneAttachment3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Model/Sword_Test/ArmsRig/Skeleton3D" index="1" unique_id=1148893884]
+[node name="hand_r" type="BoneAttachment3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/CameraRecoil/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Model/Sword_Test/ArmsRig/Skeleton3D" index="1" unique_id=1148893884]
 transform = Transform3D(-0.5882415, -0.80502677, 0.07683434, 0.0005127787, -0.09538268, -0.99544036, 0.80868495, -0.5855201, 0.05652093, -0.0066047376, 0.00050747854, 0.013061)
 bone_name = "handIK.R"
 bone_idx = 59
+
+[node name="AnimRecoil" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect" unique_id=1561093310]
+unique_name_in_owner = true
+
+[node name="Anim" type="Node3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/AnimRecoil" unique_id=1634443659]
+unique_name_in_owner = true
 
 [node name="MoveCollider" type="CollisionShape3D" parent="." unique_id=745978355]
 unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 shape = SubResource("CapsuleShape3D_dcsok")
 
-[editable path="CameraLand/Pitch/CameraLean/CameraBob/CameraRecoil/CameraEffect/CameraAttackEffect/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Model/Sword_Test"]
+[editable path="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/CameraRecoil/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Model/Sword_Test"]

@@ -131,8 +131,11 @@ namespace EGame
             CameraEffectNode = GetNodeOrNull<Node3D>("%CameraEffect");
             CameraAttackEffect = GetNodeOrNull<Node3D>("%CameraAttackEffect");
             WeaponCameraEffectNode = GetNodeOrNull<Node3D>("%WeaponCameraEffect");
-            _CameraRecoil = GetNodeOrNull<Node3D>("%CameraRecoil");
-            _WeaponRecoil = GetNodeOrNull<Node3D>("%WeaponRecoil");
+
+            _AnimNode = GetNodeOrNull<Node3D>("%Anim");
+            _AnimRecoilNode = GetNodeOrNull<Node3D>("%AnimRecoil");
+            _CameraRecoilNode = GetNodeOrNull<Node3D>("%CameraRecoil");
+            _WeaponRecoilNode = GetNodeOrNull<Node3D>("%WeaponRecoil");
 
             _EyesPos = _StandHeight - _EyeOffsetFromTop;
             _PitchNode.Position = new Vector3(0.0f, _EyesPos, 0.0f);
@@ -736,8 +739,123 @@ namespace EGame
         ////////                                    后坐力系统
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        private Node3D _CameraRecoil;
-        private Node3D _WeaponRecoil;
+        private Node3D _AnimNode;
+
+        private Node3D _CameraRecoilNode;
+        private Node3D _AnimRecoilNode;
+        private Node3D _WeaponRecoilNode;
+
+        
+        private Vector3 _AnimRecoil;
+
+        //后坐力表
+        private Vector3[] _AnimRecoilList = new Vector3[]
+        {
+            new Vector3(1.0f, 0.05f, 0f),
+            new Vector3(1.2f, -0.15f, 0f),
+            new Vector3(1.4f, 0.25f, 0f),
+            new Vector3(1.5f, -0.3f, 0f),
+            new Vector3(1.6f, 0.35f, 0f),
+            new Vector3(1.6f, -0.4f, 0f),
+        };
+        private int _AnimRecoilIndex;
+        private float _AnimRecoilStopSpeed = 8f;
+
+        private double _AnimRecoilStopTime = 0.15;
+        private double _AnimRecoilStopTimer = 0;
+
+        //镜头后坐力
+        private Vector3 _CameraRecoil;
+        private Vector3 _CameraRecoilMaxAngle = new Vector3(0.2f, 0.3f, 0.4f);
+        private float _CameraRecoilScale = 0.45f;
+        private float _CameraRecoilStopSpeed = 12f;
+
+        //武器后座力
+        private Vector3 _WeaponRecoil;
+
+        private Vector3[] _WeaponRecoilList = new Vector3[]
+        {
+            new Vector3(0f, 0.002f, -0.03f),
+            new Vector3(0.002f, 0.004f, -0.04f),
+            new Vector3(-0.002f, 0.004f, -0.05f),
+            new Vector3(0.002f, 0.006f, -0.05f),
+        };
+        
+        private int _WeaponRecoilIndex;
+        private float _WeaponRecoilStopSpeed = 10f;
+        private float _WeaponRecoilScale = 0.15f;
+
+        private double _WeaponRecoilStopTime = 0.15;
+        private double _WeaponRecoilStopTimer = 0;
+
+        public void OnFireHandleRecoil()
+        {
+            //瞄准方向旋转后座力
+            _AnimRecoil += _AnimRecoilList[Mathf.Min(_AnimRecoilIndex, _AnimRecoilList.Length - 1)];
+            _AnimRecoilIndex++;
+            _AnimRecoilStopTimer = 0f;
+
+            //相机自身旋转后座力
+            var max = _CameraRecoilMaxAngle;
+            _CameraRecoil = new Vector3(
+                Rng.RealRandom.RangeFloat(-max.X, max.X),
+                Rng.RealRandom.RangeFloat(-max.Y, max.Y),
+                Rng.RealRandom.RangeFloat(-max.Z, max.Z)
+                );
+
+            //武器位移后座力
+            _WeaponRecoil += _WeaponRecoilList[Mathf.Min(_WeaponRecoilIndex, _WeaponRecoilList.Length - 1)];
+            _WeaponRecoilIndex++;
+            _WeaponRecoilStopTimer = 0f;
+        }
+
+        private void ProcessRecoil(double dt)
+        {
+            _AnimRecoilStopTimer += dt;
+            if(_AnimRecoilStopTimer > _AnimRecoilStopTime)
+            {
+                _AnimRecoilStopTimer = 0f;
+                _AnimRecoilIndex--;
+                _AnimRecoilIndex = Mathf.Max(0, _AnimRecoilIndex);
+            }
+
+            _WeaponRecoilStopTimer += dt;
+            if(_WeaponRecoilStopTimer > _WeaponRecoilStopTime)
+            {
+                _WeaponRecoilStopTimer = 0f;
+                _WeaponRecoilIndex--;
+                _WeaponRecoilIndex = Mathf.Max(0, _WeaponRecoilIndex);
+            }
+
+            var rad = Mathf.DegToRad(1f);   //转换为弧度
+
+            //应用anim后座力
+            var rad_angle = _AnimRecoil * rad;
+            _AnimRecoilNode.Quaternion = Quaternion.FromEuler(rad_angle);
+
+            //应用相机后座力
+            var camera_recoil_angle = (_AnimRecoil * _CameraRecoilScale + _CameraRecoil) * rad;
+            _CameraRecoilNode.Quaternion = Quaternion.FromEuler(camera_recoil_angle);
+
+            //应用武器旋转后座力
+            var weapon_recoil_angle = (_AnimRecoil * _WeaponRecoilScale) * rad;
+            _WeaponRecoilNode.Quaternion = Quaternion.FromEuler(weapon_recoil_angle);
+
+            //应用武器位移后座力
+            _WeaponRecoilNode.Position = _WeaponRecoil;
+
+            //减弱Anim后坐力
+            float weight = fun.ExpDecayWeight(_AnimRecoilStopSpeed, dt);
+            _AnimRecoil = _AnimRecoil.Lerp(Vector3.Zero, weight);
+
+            //减弱相机额外后座力
+            float weight2 = fun.ExpDecayWeight(_CameraRecoilStopSpeed, dt);
+            _CameraRecoil = _CameraRecoil.Lerp(Vector3.Zero, weight2);
+
+            //减弱武器位移后座力
+            float weight3 = fun.ExpDecayWeight(_WeaponRecoilStopSpeed, dt);
+            _WeaponRecoil = _WeaponRecoil.Lerp(Vector3.Zero, weight3);
+        }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
         ////////                                    武器管理
@@ -896,16 +1014,17 @@ namespace EGame
             MovementLayer.Process(dt);
             ActionLayer.Process(dt);
 
-            UpdateWeaponSway(delta);
+            UpdateWeaponSway(dt);
 
             UpdateCameraLean();
-            UpdateViewBob(delta);
+            UpdateViewBob(dt);
 
             TrachFallSpeed();
             UpdateLandingOffset();
-            UpdateWeaponBob(delta);
-            UpdateWeaponSpeedPull(delta);
-            UpdateWeaponLanding(delta);
+            UpdateWeaponBob(dt);
+            UpdateWeaponSpeedPull(dt);
+            UpdateWeaponLanding(dt);
+            ProcessRecoil(dt);
         }
 
         public override void _PhysicsProcess(double delta)

@@ -10,7 +10,7 @@ namespace EGame
         {
             { WeaponModel.WeaponType.Hand, "hand_switch" },
             { WeaponModel.WeaponType.Pistol, "pistol_switch" },
-            { WeaponModel.WeaponType.Shotgun, "pistol_switch" },   // 先跟手枪共用一份，之后有霰弹枪专属动画再换
+            { WeaponModel.WeaponType.Shotgun, "pistol_switch" },   // 先跟手枪共用一份，之后有霰弹枪专属动画再换W
             { WeaponModel.WeaponType.Sword, "sword_switch" },
             { WeaponModel.WeaponType.Rifle, "rifle_switch" },
             { WeaponModel.WeaponType.Sniper, "sniper_switch" },
@@ -21,6 +21,7 @@ namespace EGame
         {
             { WeaponModel.WeaponType.Pistol, new string[] { "pistol_fire" } },
             { WeaponModel.WeaponType.Shotgun, new string[] { "pistol_fire" } },   // 先跟手枪共用一份，之后有霰弹枪专属动画再换
+            { WeaponModel.WeaponType.Rifle, new string[] { "rifle_fire" } },
             { WeaponModel.WeaponType.Sword, new string[] { "sword_attack1", "sword_attack2", "sword_attack3" } },
         };
 
