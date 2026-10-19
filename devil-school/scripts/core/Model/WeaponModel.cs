@@ -31,5 +31,7 @@ namespace EGame
         {
             return WeaponConfig.GetAttackAnimTrigger(Type, comboIndex);
         }
+
+        public virtual string HitSoundName => string.Empty;
     }
 }

@@ -5,5 +5,6 @@ namespace EGame
     {
         public override WeaponType Type => WeaponType.Sniper;
         public override string ParentName => "hand_r";
+        public override string FireSoundName => "awp_fire";
     }
 }

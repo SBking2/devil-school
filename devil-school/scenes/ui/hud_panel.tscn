@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://d06w388nihs1s" path="res://scripts/Core/Nodes/UI/Panel/NHUDPanel.cs" id="1_3jruc"]
 [ext_resource type="Texture2D" uid="uid://dw4wt0nsfnncj" path="res://images/common/default_white.png" id="2_fugpu"]
 [ext_resource type="PackedScene" uid="uid://hxr1vr6lsj72" path="res://prefabs/ui/hud_panel/hurt_tip.tscn" id="3_hvpjf"]
+[ext_resource type="Texture2D" uid="uid://0bx53m10cck5" path="res://images/ui/hud_panel/Anim.png" id="4_l2upk"]
 
 [node name="HUDPanel" type="Control" unique_id=986811221]
 layout_mode = 3
@@ -144,3 +145,20 @@ layout_mode = 1
 offset_top = 193.0
 offset_bottom = 193.0
 rotation = 3.1415927
+
+[node name="Anim" type="TextureRect" parent="." unique_id=1462957492]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -67.0
+offset_top = -67.0
+offset_right = 67.0
+offset_bottom = 67.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset_ratio = Vector2(0.5, 0.5)
+texture = ExtResource("4_l2upk")
+expand_mode = 1

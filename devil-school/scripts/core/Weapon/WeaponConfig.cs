@@ -22,6 +22,7 @@ namespace EGame
             { WeaponModel.WeaponType.Pistol, new string[] { "pistol_fire" } },
             { WeaponModel.WeaponType.Shotgun, new string[] { "pistol_fire" } },   // 先跟手枪共用一份，之后有霰弹枪专属动画再换
             { WeaponModel.WeaponType.Rifle, new string[] { "rifle_fire" } },
+            { WeaponModel.WeaponType.Sniper, new string[] { "sniper_fire" } },
             { WeaponModel.WeaponType.Sword, new string[] { "sword_attack1", "sword_attack2", "sword_attack3" } },
         };
 
@@ -46,49 +47,5 @@ namespace EGame
         {
             return _AttackAnimTriggers[type][comboIndex];
         }
-
-        public static MeleeComboStep[] GetDefaultComboStep(WeaponModel.WeaponType type)
-        {
-            return type switch
-            {
-                WeaponModel.WeaponType.Sword => SwordComboStep,
-                WeaponModel.WeaponType.Hand => null,
-                _ => null
-            };
-        }
-
-        private static MeleeComboStep[] SwordComboStep = new MeleeComboStep[]
-        {
-            new MeleeComboStep()
-            {
-                LockEndTime = 0.133f,
-                ReleaseInputEndTime = 0.433f,
-                ComboEndTime = 0.666f,
-                Duration = 1.332f,
-                HitboxOpenTime = 0.099f,
-                HitboxCloseTime = 0.198f,
-                Damage = 2,
-            },
-            new MeleeComboStep()
-            {
-                LockEndTime = 0.149f,
-                ReleaseInputEndTime = 0.3f,
-                ComboEndTime = 0.599f,
-                Duration = 1.332f,
-                HitboxOpenTime = 0.033f,
-                HitboxCloseTime = 0.133f,
-                Damage = 2,
-            },
-            new MeleeComboStep()
-            {
-                LockEndTime = 0.699f,
-                ReleaseInputEndTime = 0.699f,
-                ComboEndTime = 0.699f,
-                Duration = 1.332f,
-                HitboxOpenTime = 0.266f,
-                HitboxCloseTime = 0.323f,
-                Damage = 2,
-            },
-        };
     }
 }

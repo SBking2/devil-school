@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cyfpriy0fxm1l"
-path="res://.godot/imported/hurt_tip.png-446b8641c2ca2d850e7639920784a3f2.ctex"
+uid="uid://0bx53m10cck5"
+path="res://.godot/imported/Anim.png-5a49590daf6a81cf00b470b17570656a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://images/ui/hurt_tip.png"
-dest_files=["res://.godot/imported/hurt_tip.png-446b8641c2ca2d850e7639920784a3f2.ctex"]
+source_file="res://images/ui/hud_panel/Anim.png"
+dest_files=["res://.godot/imported/Anim.png-5a49590daf6a81cf00b470b17570656a.ctex"]
 
 [params]
 

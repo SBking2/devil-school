@@ -2,6 +2,7 @@
 using Godot;
 using System;
 using System.Collections.Generic;
+using static Godot.Image;
 
 namespace EGame
 {
@@ -26,7 +27,7 @@ namespace EGame
         // PlayerActionStateMelee 维护，当前打到第几段连击，命中时用这个查这一下的伤害
         public int CurrentComboIndex { get; set; }
         public NMeleeCast MeleeCast { get; private set; }
-        public Node3D ShootPos => _Owner.RealCamera;
+        public Node3D ShootPos => _Owner.ShootPos;
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
         ///////                                        创建
@@ -80,7 +81,6 @@ namespace EGame
 
         private void OnMeleeHit(Node3D target, Vector3 point, Vector3 normal)
         {
-            Log.VeryDebug($"[MeleeHit] 打到了: {target.Name}");
             int damage = this.MeleeData.GetDamage(this.CurrentComboIndex);
             var damageInfo = new DamageInfo(_Owner, target, point, normal, _Owner.Data, damage);
             DamageSystem.Instance.ReportHit(damageInfo);
@@ -101,6 +101,27 @@ namespace EGame
         ///////                                        远程
         /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+        private void OnRangedHit(Node3D target, Vector3 hit_point, Vector3 hit_normal)
+        {
+            var damageInfo = new DamageInfo(_Owner, target, hit_point, hit_normal, _Owner.Data, RangedData.Attack);
+            DamageSystem.Instance.ReportHit(damageInfo);
+            if(target is INDamageable)
+            {
+                SoundManager.Instance.Play("fire_hit");
+            }
+            else
+            {
+                var decal = PoolManager.Instance.Get("effect/bullet_decal");
+                decal.Position = hit_point;
+                Quaternion rotation = new Quaternion(Vector3.Up, hit_normal.Normalized());
+                decal.Quaternion = rotation;
+                Timer.Instance.SetTimerTask(5.0f, () =>
+                {
+                    PoolManager.Instance.Push("effect/bullet_decal", decal);
+                });
+            }
+        }
+
         // 一次开火打 _ShotgunPelletCount 颗弹丸，每颗各自算一份伤害
         private const int _ShotgunPelletCount = 5;
         private const float _ShotgunSpreadDegrees = 4f;
@@ -109,7 +130,7 @@ namespace EGame
         {
             this.Player.AnimTrigger(RangedData.GetAttackTrigger());
             this.Player.OnFireHandleRecoil();
-            SoundManager.Instance.Play("fire");
+            SoundManager.Instance.Play(this.RangedData.FireSoundName);
             FireRanged();
         }
 
@@ -123,13 +144,12 @@ namespace EGame
         private void FireRanged()
         {
             var from = ShootPos.GlobalPosition;
-            var to = from + (- ShootPos.GlobalTransform.Basis.Z) * RangedData.Range;
+            var to = from + (ShootPos.GlobalTransform.Basis.Z) * RangedData.Range;
             uint mask = (uint)(CollisionMask.GrandMask | CollisionMask.MonsterMask);
 
             if (CollisionDetection.FindRayTarget(GetWorld3D(), from, to, mask, out Node3D hitObject, out Vector3 hitPoint, out Vector3 hitNormal))
             {
-                var damageInfo = new DamageInfo(_Owner, hitObject, hitPoint, hitNormal, _Owner.Data, RangedData.Attack);
-                DamageSystem.Instance.ReportHit(damageInfo);
+                OnRangedHit(hitObject, hitPoint, hitNormal);
             }
         }
 

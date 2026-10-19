@@ -6,7 +6,7 @@ namespace EGame
     // 近战武器专用 Model：走连击 + 碰撞体判定
     public abstract class MeleeWeaponModel : WeaponModel
     {
-        public virtual MeleeComboStep[] ComboSteps => WeaponConfig.GetDefaultComboStep(Type);
+        protected virtual MeleeComboStep[] ComboSteps => null;
 
         // 没有配置连击就不能攻击
         public bool CanAttack => ComboSteps != null && ComboSteps.Length > 0;
@@ -19,5 +19,6 @@ namespace EGame
         public float GetHitboxOpenTime(int comboIndex) => ComboSteps[comboIndex].HitboxOpenTime;
         public float GetHitboxCloseTime(int comboIndex) => ComboSteps[comboIndex].HitboxCloseTime;
         public int GetDamage(int comboIndex) => ComboSteps[comboIndex].Damage;
+        public string GetSoundName(int comboIndex) => ComboSteps[comboIndex].SoundName;
     }
 }

@@ -34,7 +34,7 @@ namespace EGame
 
         // 当前武器的弹药变了（当前弹匣或者备弹任意一个）就转发这个事件，外部（HUD）只用订阅这一个
         public event Action OnAmmoChanged;
-
+        public Node3D ShootPos => _AnimNode;
         public Node3D RealCamera => _RealCamera;
         public Node3D CameraEffectNode { get; private set; }
         public Node3D CameraAttackEffect { get; private set; }
@@ -212,7 +212,7 @@ namespace EGame
 
         public void OnAttack(DamageInfo info)
         {
-            HitStop(0.1f);
+            //HitStop(0.1f);
             AnimUtils.ShakeRotation(CameraEffectNode, 0.1f, 1f * Vector3.One, 5f, 10f);
         }
 
@@ -748,25 +748,55 @@ namespace EGame
         
         private Vector3 _AnimRecoil;
 
-        //后坐力表
+        //后坐力表：每发叠加的角度，Y 负为右、正为左
         private Vector3[] _AnimRecoilList = new Vector3[]
         {
-            new Vector3(1.0f, 0.05f, 0f),
-            new Vector3(1.2f, -0.15f, 0f),
-            new Vector3(1.4f, 0.25f, 0f),
-            new Vector3(1.5f, -0.3f, 0f),
-            new Vector3(1.6f, 0.35f, 0f),
-            new Vector3(1.6f, -0.4f, 0f),
+            // 前几发：轻微上抬，略往右
+            new Vector3(-0.3f, 0f, 0f),
+            new Vector3(-0.4f, -0.05f, 0f),
+            new Vector3(-0.5f, -0.08f, 0f),
+            new Vector3(-0.6f, -0.12f, 0f),
+            new Vector3(-0.75f, -0.15f, 0f),
+            // 往左摆
+            new Vector3(-0.9f, 0.15f, 0f),
+            new Vector3(-1.05f, 0.25f, 0f),
+            new Vector3(-1.2f, 0.3f, 0f),
+            new Vector3(-1.35f, 0.35f, 0f),
+            new Vector3(-1.5f, 0.3f, 0f),
+            new Vector3(-1.65f, 0.2f, 0f),
+            // 往右摆
+            new Vector3(-1.8f, -0.3f, 0f),
+            new Vector3(-1.95f, -0.4f, 0f),
+            new Vector3(-2.1f, -0.45f, 0f),
+            new Vector3(-2.25f, -0.35f, 0f),
+            // 最后 15 发循环：左右分段交替且幅度不等，一轮下来左右基本抵消
+            new Vector3(-2.4f, 0.3f, 0f),
+            new Vector3(-2.5f, 0.4f, 0f),
+            new Vector3(-2.6f, 0.35f, 0f),
+            new Vector3(-2.6f, 0.45f, 0f),
+            new Vector3(-2.7f, 0.5f, 0f),
+            new Vector3(-2.7f, 0.2f, 0f),
+            new Vector3(-2.8f, 0.3f, 0f),
+            new Vector3(-2.8f, 0.4f, 0f),
+            new Vector3(-2.9f, -0.25f, 0f),
+            new Vector3(-2.9f, -0.4f, 0f),
+            new Vector3(-3.0f, -0.5f, 0f),
+            new Vector3(-3.0f, -0.45f, 0f),
+            new Vector3(-3.1f, -0.15f, 0f),
+            new Vector3(-3.1f, -0.3f, 0f),
+            new Vector3(-3.2f, -0.3f, 0f),
         };
+        private int _AnimRecoilLoopCount = 15;
         private int _AnimRecoilIndex;
         private float _AnimRecoilStopSpeed = 8f;
+        private Vector3 _AnimRecoilMaxAngle = new Vector3(0.1f, 0.15f, 0.0f);
 
         private double _AnimRecoilStopTime = 0.15;
         private double _AnimRecoilStopTimer = 0;
 
         //镜头后坐力
         private Vector3 _CameraRecoil;
-        private Vector3 _CameraRecoilMaxAngle = new Vector3(0.2f, 0.3f, 0.4f);
+        private Vector3 _CameraRecoilMaxAngle = new Vector3(0.02f, 0.04f, 0.0f);
         private float _CameraRecoilScale = 0.45f;
         private float _CameraRecoilStopSpeed = 12f;
 
@@ -783,7 +813,7 @@ namespace EGame
         
         private int _WeaponRecoilIndex;
         private float _WeaponRecoilStopSpeed = 10f;
-        private float _WeaponRecoilScale = 0.15f;
+        private Vector3 _WeaponRecoilScale = new Vector3(0.3f, 0.5f, 0f);
 
         private double _WeaponRecoilStopTime = 0.15;
         private double _WeaponRecoilStopTimer = 0;
@@ -791,22 +821,40 @@ namespace EGame
         public void OnFireHandleRecoil()
         {
             //瞄准方向旋转后座力
-            _AnimRecoil += _AnimRecoilList[Mathf.Min(_AnimRecoilIndex, _AnimRecoilList.Length - 1)];
+            var anim_max = _AnimRecoilMaxAngle;
+            var anim_recoil_offset = new Vector3(
+                anim_max.X == 0 ? 0f : Rng.RealRandom.RangeFloat(-anim_max.X, anim_max.X),
+                anim_max.Y == 0 ? 0f : Rng.RealRandom.RangeFloat(-anim_max.Y, anim_max.Y),
+                anim_max.Z == 0 ? 0f : Rng.RealRandom.RangeFloat(-anim_max.Z, anim_max.Z)
+                );
+
+            _AnimRecoil += GetAnimRecoilKick(_AnimRecoilIndex);
+            _AnimRecoil += anim_recoil_offset;
             _AnimRecoilIndex++;
             _AnimRecoilStopTimer = 0f;
 
             //相机自身旋转后座力
             var max = _CameraRecoilMaxAngle;
             _CameraRecoil = new Vector3(
-                Rng.RealRandom.RangeFloat(-max.X, max.X),
-                Rng.RealRandom.RangeFloat(-max.Y, max.Y),
-                Rng.RealRandom.RangeFloat(-max.Z, max.Z)
+                max.X == 0 ? 0f : Rng.RealRandom.RangeFloat(-max.X, max.X),
+                max.Y == 0 ? 0f : Rng.RealRandom.RangeFloat(-max.Y, max.Y),
+                max.Z == 0 ? 0f : Rng.RealRandom.RangeFloat(-max.Z, max.Z)
                 );
 
             //武器位移后座力
             _WeaponRecoil += _WeaponRecoilList[Mathf.Min(_WeaponRecoilIndex, _WeaponRecoilList.Length - 1)];
             _WeaponRecoilIndex++;
             _WeaponRecoilStopTimer = 0f;
+        }
+
+        private Vector3 GetAnimRecoilKick(int index)
+        {
+            int count = _AnimRecoilList.Length;
+            if (index < count)
+                return _AnimRecoilList[index];
+
+            int loop_start = count - _AnimRecoilLoopCount;
+            return _AnimRecoilList[loop_start + (index - count) % _AnimRecoilLoopCount];
         }
 
         private void ProcessRecoil(double dt)
@@ -838,7 +886,11 @@ namespace EGame
             _CameraRecoilNode.Quaternion = Quaternion.FromEuler(camera_recoil_angle);
 
             //应用武器旋转后座力
-            var weapon_recoil_angle = (_AnimRecoil * _WeaponRecoilScale) * rad;
+            var weapon_recoil_angle = new Vector3(
+                    _AnimRecoil.X * _WeaponRecoilScale.X,
+                    _AnimRecoil.Y * _WeaponRecoilScale.Y,
+                    _AnimRecoil.Z * _WeaponRecoilScale.Z
+                ) * rad;
             _WeaponRecoilNode.Quaternion = Quaternion.FromEuler(weapon_recoil_angle);
 
             //应用武器位移后座力

@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://hxr1vr6lsj72"]
 
-[ext_resource type="Texture2D" uid="uid://cyfpriy0fxm1l" path="res://images/ui/hurt_tip.png" id="1_lf8uk"]
+[ext_resource type="Texture2D" uid="uid://cyfpriy0fxm1l" path="res://images/ui/hud_panel/hurt_tip.png" id="1_lf8uk"]
 
 [sub_resource type="Animation" id="Animation_l2upk"]
 length = 0.001

@@ -11,5 +11,6 @@ namespace EGame
         public float HitboxOpenTime;
         public float HitboxCloseTime;
         public int Damage;
+        public string SoundName;
     }
 }

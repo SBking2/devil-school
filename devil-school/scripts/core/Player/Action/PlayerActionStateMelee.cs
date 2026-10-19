@@ -99,7 +99,7 @@ namespace EGame
             SetHitboxOpen(false);
             StartCameraRotation();
             _Weapon.Player.AnimTrigger(_Weapon.MeleeData.GetAttackTrigger(_ComboIndex));
-            SoundManager.Instance.Play("sword_attack1");
+            SoundManager.Instance.Play(_Weapon.MeleeData.GetSoundName(_ComboIndex));
             Log.VeryDebug($"Attack Anim : {_Weapon.MeleeData.GetAttackTrigger(_ComboIndex)}!");
         }
 

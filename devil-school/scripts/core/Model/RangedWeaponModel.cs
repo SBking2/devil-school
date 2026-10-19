@@ -26,6 +26,8 @@ namespace EGame
             }
         }
 
+        public virtual string FireSoundName => "pistol_fire";
+
         // 弹药是运行时状态，只有 MutableClone 出来的副本才能改；current/total 任意一个变了都触发同一个事件，
         // 外部（HUD）不关心具体是哪个变了、变成多少，收到通知后自己现取最新值就行
         public event Action OnAmmoChanged;
