@@ -745,90 +745,50 @@ namespace EGame
         private Node3D _AnimRecoilNode;
         private Node3D _WeaponRecoilNode;
 
-        
+        private RangedRecoilCfg RecoilCfg => CurrentWeapon?.Data.RecoilCfg ?? RangedRecoilCfg.None;
+
         private Vector3 _AnimRecoil;
-
-        //后坐力表：每发叠加的角度，Y 负为右、正为左
-        private Vector3[] _AnimRecoilList = new Vector3[]
-        {
-            // 前几发：轻微上抬，略往右
-
-            // 往左摆
-
-            new Vector3(-1.35f, 0.35f, 0f),
-            new Vector3(-1.5f, 0.3f, 0f),
-            new Vector3(-1.65f, 0.2f, 0f),
-            // 往右摆
-            new Vector3(-1.8f, -0.3f, 0f),
-            new Vector3(-1.95f, -0.4f, 0f),
-            new Vector3(-2.1f, -0.45f, 0f),
-            new Vector3(-2.25f, -0.35f, 0f),
-            // 最后 15 发循环：左右分段交替且幅度不等，一轮下来左右基本抵消
-            new Vector3(-2.4f, 0.3f, 0f),
-            new Vector3(-2.5f, 0.4f, 0f),
-            new Vector3(-2.6f, 0.35f, 0f),
-            new Vector3(-2.6f, 0.45f, 0f),
-            new Vector3(-2.7f, 0.5f, 0f),
-            new Vector3(-2.7f, 0.2f, 0f),
-            new Vector3(-2.8f, 0.3f, 0f),
-            new Vector3(-2.8f, 0.4f, 0f),
-            new Vector3(-2.9f, -0.25f, 0f),
-            new Vector3(-2.9f, -0.4f, 0f),
-            new Vector3(-3.0f, -0.5f, 0f),
-            new Vector3(-3.0f, -0.45f, 0f),
-            new Vector3(-3.1f, -0.15f, 0f),
-            new Vector3(-3.1f, -0.3f, 0f),
-            new Vector3(-3.2f, -0.3f, 0f),
-        };
-        private int _AnimRecoilLoopCount = 15;
-        private int _AnimRecoilIndex;
-        private float _AnimRecoilStopSpeed = 8f;
-        private Vector3 _AnimRecoilMaxAngle = new Vector3(0.1f, 0.15f, 0.0f);
-
-        private double _AnimRecoilStopTime = 0.15;
+        private float _AnimRecoilIndex;
         private double _AnimRecoilStopTimer = 0;
 
         //镜头后坐力
         private Vector3 _CameraRecoil;
-        private Vector3 _CameraRecoilMaxAngle = new Vector3(0.2f, 0.3f, 0.0f);
-        private float _CameraRecoilScale = 0.45f;
-        private float _CameraRecoilStopSpeed = 12f;
 
         //武器后座力
         private Vector3 _WeaponRecoil;
-
-        private Vector3[] _WeaponRecoilList = new Vector3[]
-        {
-            new Vector3(0f, 0.002f, -0.03f),
-            new Vector3(0.002f, 0.004f, -0.04f),
-            new Vector3(-0.002f, 0.004f, -0.05f),
-            new Vector3(0.002f, 0.006f, -0.05f),
-        };
-        
-        private int _WeaponRecoilIndex;
-        private float _WeaponRecoilStopSpeed = 10f;
-        private Vector3 _WeaponRecoilScale = new Vector3(0.3f, 0.5f, 0f);
-
-        private double _WeaponRecoilStopTime = 0.15;
+        private float _WeaponRecoilIndex;
         private double _WeaponRecoilStopTimer = 0;
+
+        private void ResetRecoilProgress()
+        {
+            _AnimRecoilIndex = 0;
+            _AnimRecoilStopTimer = 0;
+            _WeaponRecoilIndex = 0;
+            _WeaponRecoilStopTimer = 0;
+        }
 
         public void OnFireHandleRecoil()
         {
+            var cfg = RecoilCfg;
+
             //瞄准方向旋转后座力
-            var anim_max = _AnimRecoilMaxAngle;
+            var anim_max = cfg.AnimRecoilMaxAngle;
             var anim_recoil_offset = new Vector3(
                 anim_max.X == 0 ? 0f : Rng.RealRandom.RangeFloat(-anim_max.X, anim_max.X),
                 anim_max.Y == 0 ? 0f : Rng.RealRandom.RangeFloat(-anim_max.Y, anim_max.Y),
                 anim_max.Z == 0 ? 0f : Rng.RealRandom.RangeFloat(-anim_max.Z, anim_max.Z)
                 );
 
-            _AnimRecoil += GetAnimRecoilKick(_AnimRecoilIndex);
+            if (cfg.AnimRecoilList.Count > 0)
+            {
+                _AnimRecoil += GetAnimRecoilKick(cfg, (int)_AnimRecoilIndex);
+                _AnimRecoilIndex++;
+            }
             _AnimRecoil += anim_recoil_offset;
-            _AnimRecoilIndex++;
             _AnimRecoilStopTimer = 0f;
 
             //相机自身旋转后座力
-            var max = _CameraRecoilMaxAngle;
+            var max = cfg.CameraRecoilMaxAngle;
             _CameraRecoil = new Vector3(
                 max.X == 0 ? 0f : Rng.RealRandom.RangeFloat(-max.X, max.X),
                 max.Y == 0 ? 0f : Rng.RealRandom.RangeFloat(-max.Y, max.Y),
@@ -836,38 +796,48 @@ namespace EGame
                 );
 
             //武器位移后座力
-            _WeaponRecoil += _WeaponRecoilList[Mathf.Min(_WeaponRecoilIndex, _WeaponRecoilList.Length - 1)];
-            _WeaponRecoilIndex++;
+            if (cfg.WeaponRecoilList.Count > 0)
+            {
+                _WeaponRecoil += cfg.WeaponRecoilList[Mathf.Min((int)_WeaponRecoilIndex, cfg.WeaponRecoilList.Count - 1)];
+                _WeaponRecoilIndex++;
+            }
             _WeaponRecoilStopTimer = 0f;
         }
 
-        private Vector3 GetAnimRecoilKick(int index)
+        private Vector3 GetAnimRecoilKick(RangedRecoilCfg cfg, int index)
         {
-            int count = _AnimRecoilList.Length;
+            var list = cfg.AnimRecoilList;
+            int count = list.Count;
             if (index < count)
-                return _AnimRecoilList[index];
+                return list[index];
 
-            int loop_start = count - _AnimRecoilLoopCount;
-            return _AnimRecoilList[loop_start + (index - count) % _AnimRecoilLoopCount];
+            int loop_count = Mathf.Clamp(cfg.AnimRecoilLoopCount, 1, count);
+            int loop_start = count - loop_count;
+            return list[loop_start + (index - count) % loop_count];
+        }
+
+        //停止开火超过一定时间的话，index随时间线性减少(从max_index开始，而不是从自身开始)
+        private static float RecoverRecoilIndex(float index, int length, double stop_timer, double stop_time, double recover_time, double dt)
+        {
+            if (stop_timer <= stop_time)
+                return index;
+
+            if (recover_time <= 0)
+                return 0f;
+
+            float step = (float)(length / recover_time * dt);
+            return Mathf.Max(0f, Mathf.Min(index, length) - step);
         }
 
         private void ProcessRecoil(double dt)
         {
+            var cfg = RecoilCfg;
+
             _AnimRecoilStopTimer += dt;
-            if(_AnimRecoilStopTimer > _AnimRecoilStopTime)
-            {
-                _AnimRecoilStopTimer = 0f;
-                _AnimRecoilIndex--;
-                _AnimRecoilIndex = Mathf.Max(0, _AnimRecoilIndex);
-            }
+            _AnimRecoilIndex = RecoverRecoilIndex(_AnimRecoilIndex, cfg.AnimRecoilList.Count, _AnimRecoilStopTimer, cfg.AnimRecoilStopTime, cfg.AnimRecoilRecoverTime, dt);
 
             _WeaponRecoilStopTimer += dt;
-            if(_WeaponRecoilStopTimer > _WeaponRecoilStopTime)
-            {
-                _WeaponRecoilStopTimer = 0f;
-                _WeaponRecoilIndex--;
-                _WeaponRecoilIndex = Mathf.Max(0, _WeaponRecoilIndex);
-            }
+            _WeaponRecoilIndex = RecoverRecoilIndex(_WeaponRecoilIndex, cfg.WeaponRecoilList.Count, _WeaponRecoilStopTimer, cfg.WeaponRecoilStopTime, cfg.WeaponRecoilRecoverTime, dt);
 
             var rad = Mathf.DegToRad(1f);   //转换为弧度
 
@@ -876,14 +846,14 @@ namespace EGame
             _AnimRecoilNode.Quaternion = Quaternion.FromEuler(rad_angle);
 
             //应用相机后座力
-            var camera_recoil_angle = (_AnimRecoil * _CameraRecoilScale + _CameraRecoil) * rad;
+            var camera_recoil_angle = (_AnimRecoil * cfg.CameraRecoilScale + _CameraRecoil) * rad;
             _CameraRecoilNode.Quaternion = Quaternion.FromEuler(camera_recoil_angle);
 
             //应用武器旋转后座力
             var weapon_recoil_angle = new Vector3(
-                    _AnimRecoil.X * _WeaponRecoilScale.X,
-                    _AnimRecoil.Y * _WeaponRecoilScale.Y,
-                    _AnimRecoil.Z * _WeaponRecoilScale.Z
+                    _AnimRecoil.X * cfg.WeaponRecoilScale.X,
+                    _AnimRecoil.Y * cfg.WeaponRecoilScale.Y,
+                    _AnimRecoil.Z * cfg.WeaponRecoilScale.Z
                 ) * rad;
             _WeaponRecoilNode.Quaternion = Quaternion.FromEuler(weapon_recoil_angle);
 
@@ -891,15 +861,15 @@ namespace EGame
             _WeaponRecoilNode.Position = _WeaponRecoil;
 
             //减弱Anim后坐力
-            float weight = fun.ExpDecayWeight(_AnimRecoilStopSpeed, dt);
+            float weight = fun.ExpDecayWeight(cfg.AnimRecoilStopSpeed, dt);
             _AnimRecoil = _AnimRecoil.Lerp(Vector3.Zero, weight);
 
             //减弱相机额外后座力
-            float weight2 = fun.ExpDecayWeight(_CameraRecoilStopSpeed, dt);
+            float weight2 = fun.ExpDecayWeight(cfg.CameraRecoilStopSpeed, dt);
             _CameraRecoil = _CameraRecoil.Lerp(Vector3.Zero, weight2);
 
             //减弱武器位移后座力
-            float weight3 = fun.ExpDecayWeight(_WeaponRecoilStopSpeed, dt);
+            float weight3 = fun.ExpDecayWeight(cfg.WeaponRecoilStopSpeed, dt);
             _WeaponRecoil = _WeaponRecoil.Lerp(Vector3.Zero, weight3);
         }
 
@@ -963,6 +933,7 @@ namespace EGame
             old_weapon?.UnEquip();
 
             _CurrentWeaponIndex = index;
+            ResetRecoilProgress();
             CurrentWeapon.Equip();
             Intent.Reset();
             OnWeaponChanged?.Invoke(CurrentWeapon);

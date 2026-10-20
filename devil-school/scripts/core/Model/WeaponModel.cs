@@ -33,5 +33,6 @@ namespace EGame
         }
 
         public virtual string HitSoundName => string.Empty;
+        public virtual RangedRecoilCfg RecoilCfg => RangedRecoilCfg.None;
     }
 }
