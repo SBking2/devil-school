@@ -212,8 +212,11 @@ namespace EGame
 
         public void OnAttack(DamageInfo info)
         {
-            //HitStop(0.1f);
-            //AnimUtils.ShakeRotation(CameraEffectNode, 0.1f, 1f * Vector3.One, 5f, 10f);
+            if(CurrentWeapon.Data is MeleeWeaponModel)
+            {
+                HitStop(0.1f);
+                AnimUtils.ShakeRotation(CameraEffectNode, 0.1f, 1f * Vector3.One, 5f, 10f);
+            }
         }
 
         public void Die()

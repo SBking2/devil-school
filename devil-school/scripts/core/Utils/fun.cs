@@ -37,5 +37,20 @@ namespace EGame
                     animator.Seek(0, true);
             }
         }
+
+        public static string GetSwitchAnimTrigger(WeaponModel.WeaponType type)
+        {
+            return $"{type.ToString().ToLowerInvariant()}_switch";
+        }
+
+        public static string GetReloadAnimTrigger(WeaponModel.WeaponType type)
+        {
+            return $"{type.ToString().ToLowerInvariant()}_reload";
+        }
+
+        public static string GetAttackAnimTrigger(WeaponModel.WeaponType type, int comboIndex)
+        {
+            return $"{type.ToString().ToLowerInvariant()}_attack{comboIndex + 1}";
+        }
     }
 }

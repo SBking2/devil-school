@@ -10,3 +10,8 @@ script = ExtResource("1_axanb")
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0)
 
 [node name="awp" parent="TransformOffset" unique_id=864958917 instance=ExtResource("2_axanb")]
+
+[node name="Object_6" parent="TransformOffset/awp" index="0" unique_id=965552280]
+cast_shadow = 0
+
+[editable path="TransformOffset/awp"]

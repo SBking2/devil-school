@@ -45,7 +45,7 @@ environment = SubResource("Environment_rmeui")
 
 [node name="PlayerSpawnPoint" type="Node3D" parent="RootSceneContainer/InitWorld/DebugScene" unique_id=368769083]
 unique_name_in_owner = true
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5317869, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.0123575, 3.798999, 0)
 
 [node name="Plane" type="Node3D" parent="RootSceneContainer/InitWorld/DebugScene" unique_id=1707220462]
 transform = Transform3D(20, 0, 0, 0, 1, 0, 0, 0, 20, 0, 0, 0)

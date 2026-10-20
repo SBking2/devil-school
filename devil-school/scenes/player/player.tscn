@@ -243,6 +243,9 @@ bones/64/rotation = Quaternion(8.652835e-09, 9.729462e-10, -3.5852166e-09, 1)
 bones/66/position = Vector3(8.588089e-11, 0.0009694023, -3.9345427e-10)
 bones/66/rotation = Quaternion(0, 5.551111e-17, -3.3087225e-24, 1)
 
+[node name="ArmsMesh" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/CameraRecoil/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Model/Sword_Test/ArmsRig/Skeleton3D" index="0" unique_id=1071299828]
+cast_shadow = 0
+
 [node name="hand_r" type="BoneAttachment3D" parent="CameraLand/Pitch/CameraLean/CameraBob/CameraEffect/CameraAttackEffect/CameraRecoil/WeaponRecoil/WeaponCameraEffect/WeaponBob/WeaponSway/WeaponSpeedPull/WeaponLanding/Model/Sword_Test/ArmsRig/Skeleton3D" index="1" unique_id=1148893884]
 transform = Transform3D(-0.5882415, -0.80502677, 0.07683434, 0.0005127787, -0.09538268, -0.99544036, 0.80868495, -0.5855201, 0.05652093, -0.0066047376, 0.00050747854, 0.013061)
 bone_name = "handIK.R"

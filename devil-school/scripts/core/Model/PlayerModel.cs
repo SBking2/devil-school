@@ -30,18 +30,18 @@ namespace EGame
             var ans = new CreatureAnimator(hand_idle);
 
             // 每种武器类型对应的 trigger 名字统一从 WeaponConfig 查，跟武器 Model 那边用的是同一份，不会对不上
-            ans.AddAnyBranch(WeaponConfig.GetSwitchAnimTrigger(WeaponModel.WeaponType.Hand), hand_idle);
-            ans.AddAnyBranch(WeaponConfig.GetSwitchAnimTrigger(WeaponModel.WeaponType.Pistol), pistol_switch);
-            ans.AddAnyBranch(WeaponConfig.GetSwitchAnimTrigger(WeaponModel.WeaponType.Sword), sword_idle);
-            ans.AddAnyBranch(WeaponConfig.GetSwitchAnimTrigger(WeaponModel.WeaponType.Rifle), rifle_idle);
-            ans.AddAnyBranch(WeaponConfig.GetSwitchAnimTrigger(WeaponModel.WeaponType.Sniper), sniper_idle);
+            ans.AddAnyBranch(fun.GetSwitchAnimTrigger(WeaponModel.WeaponType.Hand), hand_idle);
+            ans.AddAnyBranch(fun.GetSwitchAnimTrigger(WeaponModel.WeaponType.Pistol), pistol_switch);
+            ans.AddAnyBranch(fun.GetSwitchAnimTrigger(WeaponModel.WeaponType.Sword), sword_idle);
+            ans.AddAnyBranch(fun.GetSwitchAnimTrigger(WeaponModel.WeaponType.Rifle), rifle_idle);
+            ans.AddAnyBranch(fun.GetSwitchAnimTrigger(WeaponModel.WeaponType.Sniper), sniper_idle);
 
-            ans.AddAnyBranch(WeaponConfig.GetReloadAnimTrigger(WeaponModel.WeaponType.Pistol), pistol_switch);
+            ans.AddAnyBranch(fun.GetReloadAnimTrigger(WeaponModel.WeaponType.Pistol), pistol_switch);
 
-            ans.AddAnyBranch(WeaponConfig.GetAttackAnimTrigger(WeaponModel.WeaponType.Pistol, 0), pistol_fire);
-            ans.AddAnyBranch(WeaponConfig.GetAttackAnimTrigger(WeaponModel.WeaponType.Sword, 0), sword_attack1);
-            ans.AddAnyBranch(WeaponConfig.GetAttackAnimTrigger(WeaponModel.WeaponType.Sword, 1), sword_attack2);
-            ans.AddAnyBranch(WeaponConfig.GetAttackAnimTrigger(WeaponModel.WeaponType.Sword, 2), sword_attack3);
+            ans.AddAnyBranch(fun.GetAttackAnimTrigger(WeaponModel.WeaponType.Pistol, 0), pistol_fire);
+            ans.AddAnyBranch(fun.GetAttackAnimTrigger(WeaponModel.WeaponType.Sword, 0), sword_attack1);
+            ans.AddAnyBranch(fun.GetAttackAnimTrigger(WeaponModel.WeaponType.Sword, 1), sword_attack2);
+            ans.AddAnyBranch(fun.GetAttackAnimTrigger(WeaponModel.WeaponType.Sword, 2), sword_attack3);
             return ans;
         }
     }

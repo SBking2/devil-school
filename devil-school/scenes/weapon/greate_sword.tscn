@@ -38,6 +38,9 @@ transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0
 
 [node name="Sword" parent="TransformOffset" unique_id=294916183 instance=ExtResource("2_2wjy5")]
 
+[node name="tripo_node_00a758b7" parent="TransformOffset/Sword" index="0" unique_id=212933583]
+cast_shadow = 0
+
 [node name="ShapeCast" type="ShapeCast3D" parent="TransformOffset" unique_id=59113885]
 unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.62927055, 0)
@@ -46,3 +49,5 @@ target_position = Vector3(0, 0, 0)
 collision_mask = 8
 script = ExtResource("3_xjbkv")
 metadata/_custom_type_script = "uid://swrirh72ekud"
+
+[editable path="TransformOffset/Sword"]

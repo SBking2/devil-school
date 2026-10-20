@@ -23,13 +23,13 @@ namespace EGame
         {
             get
             {
-                return WeaponConfig.GetSwitchAnimTrigger(Type);
+                return fun.GetSwitchAnimTrigger(Type);
             }
         }
 
         public virtual string GetAttackTrigger(int comboIndex = 0)
         {
-            return WeaponConfig.GetAttackAnimTrigger(Type, comboIndex);
+            return fun.GetAttackAnimTrigger(Type, comboIndex);
         }
 
         public virtual string HitSoundName => string.Empty;

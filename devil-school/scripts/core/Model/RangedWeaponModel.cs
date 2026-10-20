@@ -22,7 +22,7 @@ namespace EGame
         {
             get
             {
-                return WeaponConfig.GetReloadAnimTrigger(Type);
+                return fun.GetReloadAnimTrigger(Type);
             }
         }
 
