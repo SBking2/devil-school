@@ -1,9 +1,13 @@
 [gd_scene format=3 uid="uid://opqx0ujjqqcs"]
 
-[ext_resource type="Script" uid="uid://cs6iryxdoic8n" path="res://scripts/Core/Nodes/Weapon/NWeapon.cs" id="1_2wjy5"]
+[ext_resource type="Script" uid="uid://cs6iryxdoic8n" path="res://scripts/core/Nodes/Weapon/NWeapon.cs" id="1_2wjy5"]
 [ext_resource type="PackedScene" uid="uid://b14gvwqk5003t" path="res://models/weapon/greate_sword/Sword.fbx" id="2_2wjy5"]
-[ext_resource type="Script" uid="uid://cs3yb65ouoyi1" path="res://scripts/Core/Resource/Extension/RotationCurve.cs" id="2_x1rx2"]
-[ext_resource type="Script" uid="uid://swrirh72ekud" path="res://scripts/Core/Nodes/Collision/NMeleeCast.cs" id="3_xjbkv"]
+[ext_resource type="Script" uid="uid://cs3yb65ouoyi1" path="res://scripts/core/Resource/Extension/RotationCurve.cs" id="2_x1rx2"]
+[ext_resource type="Script" uid="uid://swrirh72ekud" path="res://scripts/core/Nodes/Collision/NMeleeCast.cs" id="3_xjbkv"]
+[ext_resource type="Script" uid="uid://cjjx38sjlemoi" path="res://addons/proton_trail/proton_trail.gd" id="4_4kp7l"]
+[ext_resource type="Shader" uid="uid://bbe7c4nvipryd" path="res://scripts/shader/smash.gdshader" id="5_unj3e"]
+[ext_resource type="Texture2D" uid="uid://be615nlofalo" path="res://images/effects/slash_mask.png" id="6_peqxa"]
+[ext_resource type="Texture2D" uid="uid://dnlojgjac0pre" path="res://images/effects/wave_grey.png" id="7_eqvhq"]
 
 [sub_resource type="Curve" id="Curve_x1rx2"]
 _limits = [-1.5, 0.0, 0.0, 1.0]
@@ -25,6 +29,14 @@ script = ExtResource("2_x1rx2")
 Y = SubResource("Curve_4kp7l")
 metadata/_custom_type_script = "uid://cs3yb65ouoyi1"
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_4kp7l"]
+render_priority = 0
+shader = ExtResource("5_unj3e")
+shader_parameter/mask_tex = ExtResource("6_peqxa")
+shader_parameter/noise_tex = ExtResource("7_eqvhq")
+shader_parameter/uv_offset_bias = 0.5
+shader_parameter/strength_scale = 1.0
+
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_x1rx2"]
 radius = 0.095
 height = 1.09
@@ -38,8 +50,19 @@ transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0
 
 [node name="Sword" parent="TransformOffset" unique_id=294916183 instance=ExtResource("2_2wjy5")]
 
-[node name="tripo_node_00a758b7" parent="TransformOffset/Sword" index="0" unique_id=212933583]
+[node name="tripo_node_00a758b7" parent="TransformOffset/Sword" index="0" unique_id=790556779]
 cast_shadow = 0
+
+[node name="ProtonTrail" type="Node3D" parent="TransformOffset/Sword" unique_id=1960088486]
+script = ExtResource("4_4kp7l")
+material = SubResource("ShaderMaterial_4kp7l")
+metadata/_custom_type_script = "uid://cjjx38sjlemoi"
+
+[node name="Top" type="Marker3D" parent="TransformOffset/Sword/ProtonTrail" unique_id=1218856496]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.0261054, 8.856388e-08)
+
+[node name="Bottom" type="Marker3D" parent="TransformOffset/Sword/ProtonTrail" unique_id=1955396393]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.14773929, -3.72535e-08)
 
 [node name="ShapeCast" type="ShapeCast3D" parent="TransformOffset" unique_id=59113885]
 unique_name_in_owner = true
